@@ -18,6 +18,22 @@ ihn auf GitHub Pages:
 Build-Status steht unter dem Reiter **Actions**; die erste Veröffentlichung
 dauert ein paar Minuten.
 
+> GitHub Pages muss einmalig aktiviert werden: **Settings → Pages → Source →
+> „GitHub Actions"**.
+
+### Offline: eine einzelne HTML-Datei
+
+Ohne Server und ohne GitHub Pages – baut alles (JS + Assets) in **eine**
+self-contained HTML-Datei, die du einfach im Browser öffnest:
+
+```bash
+npm run build:single   # erzeugt dist/alpha-and-carry.html
+```
+
+Die Datei läuft per Doppelklick (`file://`) oder lässt sich aufs iPhone
+übertragen und in Safari öffnen. Die Persistenz fällt dort automatisch auf
+In-Memory zurück, falls der Browser `localStorage` blockt.
+
 ## Features
 
 - **Hedge Fund:** Long/Short-Positionen mit Hebel (1–5x), Mark-to-Market,

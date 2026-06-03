@@ -8,7 +8,9 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "test": "jest",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "build:web": "expo export --platform web",
+    "build:single": "expo export --platform web && node scripts/build-single-html.mjs"
   },
   "dependencies": {
     "@expo/metro-runtime": "~3.2.3",

@@ -17,6 +17,37 @@ import { investInDeal } from '../engine/vc';
 
 const STORAGE_KEY = 'alpha-carry/save-v1';
 
+/**
+ * Storage that never throws. When the underlying AsyncStorage / localStorage is
+ * unavailable — e.g. the single-file build opened from a `file://` URL or a
+ * browser in private mode — it transparently falls back to an in-memory map so
+ * hydration always completes and the game stays playable (just not persisted).
+ */
+const memoryFallback = new Map<string, string>();
+const safeStorage = {
+  getItem: async (key: string): Promise<string | null> => {
+    try {
+      return await AsyncStorage.getItem(key);
+    } catch {
+      return memoryFallback.get(key) ?? null;
+    }
+  },
+  setItem: async (key: string, value: string): Promise<void> => {
+    try {
+      await AsyncStorage.setItem(key, value);
+    } catch {
+      memoryFallback.set(key, value);
+    }
+  },
+  removeItem: async (key: string): Promise<void> => {
+    try {
+      await AsyncStorage.removeItem(key);
+    } catch {
+      memoryFallback.delete(key);
+    }
+  },
+};
+
 export interface ActionResult {
   ok: boolean;
   error?: string;
@@ -158,7 +189,7 @@ export const useGameStore = create<GameStore>()(
     }),
     {
       name: STORAGE_KEY,
-      storage: createJSONStorage(() => AsyncStorage),
+      storage: createJSONStorage(() => safeStorage),
       partialize: (state) => ({ game: state.game }),
       onRehydrateStorage: () => (state) => {
         // Flip the hydration flag once persistence has loaded (or failed).
