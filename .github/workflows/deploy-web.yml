@@ -34,13 +34,6 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Configure GitHub Pages
-        # enablement: true turns Pages on automatically (source = GitHub
-        # Actions) so no manual repo-settings step is required.
-        uses: actions/configure-pages@v5
-        with:
-          enablement: true
-
       - name: Export static web build
         # EXPO_BASE_URL prefixes all asset paths so they resolve under the
         # project Pages subpath (https://<user>.github.io/<repo>/).
