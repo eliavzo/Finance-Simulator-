@@ -1,0 +1,23 @@
+{
+  "expo": {
+    "name": "Alpha & Carry",
+    "slug": "alpha-and-carry",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "backgroundColor": "#0B0E14"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.alphacarry.game"
+    },
+    "android": {
+      "package": "com.alphacarry.game"
+    },
+    "web": {
+      "bundler": "metro"
+    }
+  }
+}
