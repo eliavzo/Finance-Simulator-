@@ -211,6 +211,8 @@ export function repriceOption(
   const baseVol = underlying && underlying.kind === 'equity' ? underlying.vol : 0.3;
   const sigma = Math.max(0.1, baseVol * (econ.volIndex / 16));
   const r = interpolateCurve(econ.yieldCurve, Math.max(0.08, t));
-  const { price } = blackScholes(opt.optionType, underlyingPrice, opt.strike, t, r, sigma);
+  const { price: perShare } = blackScholes(opt.optionType, underlyingPrice, opt.strike, t, r, sigma);
+  // Quote per contract so the portfolio's generic |qty|·price notional holds.
+  const price = perShare * opt.multiplier;
   return { ...opt, price, priceHistory: [...opt.priceHistory, price].slice(-MAX_HISTORY) };
 }

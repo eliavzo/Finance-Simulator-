@@ -1,6 +1,8 @@
 /**
- * App entry point. Wires up persistence hydration, the start screen, and the
- * four-tab navigation (Dashboard / Hedge Fund / VC / Übersicht).
+ * App entry point — "Alpha & Carry" v2 fund-management simulation.
+ *
+ * Wires persistence hydration, the start screen, and the five-tab navigation
+ * (Übersicht / Markt / Firma / Fonds / Risiko).
  */
 import React from 'react';
 import { Text } from 'react-native';
@@ -9,13 +11,14 @@ import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
-import { useGameStore } from './src/store/gameStore';
+import { useSimStore } from './src/sim/store';
 import { Loading } from './src/components/ui';
-import { StartScreen } from './src/screens/StartScreen';
-import { DashboardScreen } from './src/screens/DashboardScreen';
-import { HedgeFundScreen } from './src/screens/HedgeFundScreen';
-import { VCPortfolioScreen } from './src/screens/VCPortfolioScreen';
-import { ChartScreen } from './src/screens/ChartScreen';
+import { SimStartScreen } from './src/sim/screens/SimStartScreen';
+import { SimDashboardScreen } from './src/sim/screens/SimDashboardScreen';
+import { MarketsScreen } from './src/sim/screens/MarketsScreen';
+import { FirmScreen } from './src/sim/screens/FirmScreen';
+import { FundScreen } from './src/sim/screens/FundScreen';
+import { RiskScreen } from './src/sim/screens/RiskScreen';
 import { colors } from './src/utils/theme';
 
 const Tab = createBottomTabNavigator();
@@ -33,12 +36,12 @@ const navTheme = {
 };
 
 function TabIcon({ icon, color }: { icon: string; color: string }) {
-  return <Text style={{ fontSize: 20, color }}>{icon}</Text>;
+  return <Text style={{ fontSize: 18, color }}>{icon}</Text>;
 }
 
 export default function App() {
-  const hydrated = useGameStore((s) => s.hydrated);
-  const game = useGameStore((s) => s.game);
+  const hydrated = useSimStore((s) => s.hydrated);
+  const game = useSimStore((s) => s.game);
 
   if (!hydrated) {
     return (
@@ -53,7 +56,7 @@ export default function App() {
     <SafeAreaProvider>
       <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }} edges={['top']}>
         {!game || !game.started ? (
-          <StartScreen />
+          <SimStartScreen />
         ) : (
           <NavigationContainer theme={navTheme}>
             <Tab.Navigator
@@ -64,26 +67,11 @@ export default function App() {
                 tabBarInactiveTintColor: colors.textMuted,
               }}
             >
-              <Tab.Screen
-                name="Dashboard"
-                component={DashboardScreen}
-                options={{ tabBarIcon: ({ color }) => <TabIcon icon="◎" color={color} /> }}
-              />
-              <Tab.Screen
-                name="Hedge Fund"
-                component={HedgeFundScreen}
-                options={{ tabBarIcon: ({ color }) => <TabIcon icon="📈" color={color} /> }}
-              />
-              <Tab.Screen
-                name="VC"
-                component={VCPortfolioScreen}
-                options={{ tabBarIcon: ({ color }) => <TabIcon icon="🚀" color={color} /> }}
-              />
-              <Tab.Screen
-                name="Übersicht"
-                component={ChartScreen}
-                options={{ tabBarIcon: ({ color }) => <TabIcon icon="📊" color={color} /> }}
-              />
+              <Tab.Screen name="Übersicht" component={SimDashboardScreen} options={{ tabBarIcon: ({ color }) => <TabIcon icon="◎" color={color} /> }} />
+              <Tab.Screen name="Markt" component={MarketsScreen} options={{ tabBarIcon: ({ color }) => <TabIcon icon="📈" color={color} /> }} />
+              <Tab.Screen name="Firma" component={FirmScreen} options={{ tabBarIcon: ({ color }) => <TabIcon icon="🏢" color={color} /> }} />
+              <Tab.Screen name="Fonds" component={FundScreen} options={{ tabBarIcon: ({ color }) => <TabIcon icon="💼" color={color} /> }} />
+              <Tab.Screen name="Risiko" component={RiskScreen} options={{ tabBarIcon: ({ color }) => <TabIcon icon="⚠️" color={color} /> }} />
             </Tab.Navigator>
           </NavigationContainer>
         )}

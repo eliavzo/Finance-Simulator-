@@ -1,0 +1,132 @@
+/** v2 Fund: LP base, fee/carry economics, capital calls, and the GP income
+ *  statement + consolidated balance sheet. */
+import React, { useMemo, useState } from 'react';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useSimStore } from '../store';
+import { portfolioNav } from '../portfolio';
+import { fundMetrics, uncalledCapital } from '../fund';
+import { SimHeader } from './SimHeader';
+import { notify } from '../../utils/notify';
+import { Button, Card, Pill, SectionTitle, StatTile } from '../../components/ui';
+import { AmountStepper } from '../../components/controls';
+import { colors, spacing } from '../../utils/theme';
+import { fmtMoney, fmtMultiple, fmtPct } from '../../utils/format';
+
+export function FundScreen() {
+  const game = useSimStore((s) => s.game)!;
+  const callLpCapital = useSimStore((s) => s.callLpCapital);
+
+  const fundNav = useMemo(() => portfolioNav(game.portfolio, game.instruments), [game.portfolio, game.instruments]);
+  const metrics = useMemo(() => fundMetrics(game.fund, fundNav, game.month), [game.fund, fundNav, game.month]);
+  const uncalled = uncalledCapital(game.fund);
+  const [callAmt, setCallAmt] = useState(2_000_000);
+
+  const is = game.incomeStatements[0];
+  const bs = game.balanceSheets[0];
+
+  return (
+    <View style={styles.container}>
+      <SimHeader title="Fonds" />
+      <ScrollView contentContainerStyle={styles.scroll}>
+        <Card>
+          <SectionTitle>Fonds-Kennzahlen</SectionTitle>
+          <Text style={styles.big}>{fmtMoney(fundNav)}</Text>
+          <View style={styles.statRow}>
+            <StatTile label="Netto-IRR" value={fmtPct(metrics.netIrr)} valueColor={metrics.netIrr >= 0 ? colors.positive : colors.negative} />
+            <StatTile label="TVPI" value={fmtMultiple(metrics.tvpi)} />
+            <StatTile label="DPI" value={fmtMultiple(metrics.dpi)} />
+            <StatTile label="RVPI" value={fmtMultiple(metrics.rvpi)} />
+          </View>
+          <View style={styles.statRow}>
+            <StatTile label="Committed" value={fmtMoney(game.fund.committed)} />
+            <StatTile label="Called" value={fmtMoney(game.fund.called)} />
+            <StatTile label="Distrib." value={fmtMoney(game.fund.distributed)} />
+            <StatTile label="Uncalled" value={fmtMoney(uncalled)} />
+          </View>
+        </Card>
+
+        <Card>
+          <SectionTitle>Kapital abrufen (Dry Powder)</SectionTitle>
+          <Text style={styles.hint}>Abrufbar: {fmtMoney(uncalled)} · Konditionen: {fmtPct(game.fund.mgmtFeeRate, 0)} Fee / {fmtPct(game.fund.carryRate, 0)} Carry über {fmtPct(game.fund.hurdleRate, 0)} Hurdle</Text>
+          {uncalled <= 0 ? (
+            <Text style={styles.empty}>Kein abrufbares Kapital. Raise mehr LP-Commitments über Track-Record & IR.</Text>
+          ) : (
+            <>
+              <AmountStepper value={callAmt} onChange={setCallAmt} step={1_000_000} min={500_000} max={uncalled} />
+              <Button title="Capital Call" onPress={() => { const r = callLpCapital(callAmt); if (!r.ok) notify('Nicht möglich', r.error ?? ''); }} style={{ marginTop: spacing.md }} />
+            </>
+          )}
+        </Card>
+
+        {is ? (
+          <Card>
+            <SectionTitle>GP-Erfolgsrechnung (Monat)</SectionTitle>
+            <Line label="Management Fees" value={is.mgmtFeeRevenue} />
+            <Line label="Carried Interest" value={is.carryRevenue} />
+            <Line label="Gehälter" value={-is.salaries} />
+            <Line label="Infrastruktur" value={-is.infraOpex} />
+            <Line label="Steuern" value={-is.tax} />
+            <View style={styles.divider} />
+            <Line label="Nettoergebnis" value={is.netIncome} bold />
+          </Card>
+        ) : null}
+
+        {bs ? (
+          <Card>
+            <SectionTitle>Bilanz (konsolidiert)</SectionTitle>
+            <Line label="Fonds-Cash" value={bs.fundCash} plain />
+            <Line label="GP-Cash" value={bs.firmCash} plain />
+            <Line label="Positionen (Equity)" value={bs.positionsValue} plain />
+            <View style={styles.divider} />
+            <Line label="Summe Aktiva" value={bs.totalAssets} bold plain />
+            <Line label="Carry-Verbindlichkeit" value={-bs.accruedCarry} plain />
+            <View style={styles.divider} />
+            <Line label="LP-Kapital" value={bs.lpCapital} plain />
+            <Line label="GP-Eigenkapital" value={bs.gpEquity} plain />
+            <Line label="Eigenkapital gesamt" value={bs.totalEquity} bold plain />
+          </Card>
+        ) : null}
+
+        <Card>
+          <SectionTitle>Limited Partners ({game.fund.lps.length})</SectionTitle>
+          {game.fund.lps.map((lp) => (
+            <View key={lp.id} style={styles.lpRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.lpName}>{lp.name}</Text>
+                <Text style={styles.lpMeta}>{lp.type} · committed {fmtMoney(lp.committed)} · called {fmtMoney(lp.called)}</Text>
+              </View>
+              {lp.redeemed ? <Pill text="Redeemed" color={colors.negative} /> : <Pill text={fmtPct(lp.expectedReturn, 0)} color={colors.textMuted} />}
+            </View>
+          ))}
+        </Card>
+      </ScrollView>
+    </View>
+  );
+}
+
+function Line({ label, value, bold, plain }: { label: string; value: number; bold?: boolean; plain?: boolean }) {
+  const color = plain ? colors.text : value >= 0 ? colors.positive : colors.negative;
+  return (
+    <View style={styles.line}>
+      <Text style={[styles.lineLabel, bold && styles.bold]}>{label}</Text>
+      <Text style={[styles.lineVal, bold && styles.bold, { color }]}>{fmtMoney(value)}</Text>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: colors.bg },
+  scroll: { padding: spacing.lg, paddingBottom: spacing.xl * 2 },
+  big: { color: colors.text, fontSize: 28, fontWeight: '800', marginBottom: spacing.sm },
+  statRow: { flexDirection: 'row', flexWrap: 'wrap' },
+  hint: { color: colors.textMuted, fontSize: 12, marginBottom: spacing.md },
+  empty: { color: colors.textMuted, fontSize: 13, fontStyle: 'italic' },
+  line: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4 },
+  lineLabel: { color: colors.textMuted, fontSize: 13 },
+  lineVal: { color: colors.text, fontSize: 13, fontWeight: '600' },
+  bold: { fontWeight: '800', color: colors.text, fontSize: 14 },
+  divider: { height: 1, backgroundColor: colors.border, marginVertical: spacing.sm },
+  lpRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.sm, borderTopWidth: 1, borderTopColor: colors.border },
+  lpName: { color: colors.text, fontSize: 14, fontWeight: '700' },
+  lpMeta: { color: colors.textMuted, fontSize: 11, marginTop: 2 },
+});

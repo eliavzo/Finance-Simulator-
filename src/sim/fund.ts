@@ -179,7 +179,11 @@ export interface FundMetrics {
 
 export function fundMetrics(fund: FundState, fundNav: number, month: number): FundMetrics {
   const paidIn = fund.called;
-  const flows = [...fund.cashflows, { t: (month - fund.vintageMonth) / 12, amount: fundNav }];
+  const elapsedMonths = month - fund.vintageMonth;
+  const flows = [...fund.cashflows, { t: elapsedMonths / 12, amount: fundNav }];
+  // Annualised IRR is not meaningful in the first year (sub-year annualisation
+  // explodes); report NaN so the UI shows "—" until there's a real track record.
+  const netIrr = elapsedMonths >= 12 ? irr(flows) : NaN;
   return {
     paidIn,
     distributions: fund.distributed,
@@ -187,7 +191,7 @@ export function fundMetrics(fund: FundState, fundNav: number, month: number): Fu
     dpi: paidIn > 0 ? fund.distributed / paidIn : 0,
     rvpi: paidIn > 0 ? fundNav / paidIn : 0,
     tvpi: paidIn > 0 ? (fund.distributed + fundNav) / paidIn : 0,
-    netIrr: irr(flows),
+    netIrr,
   };
 }
 

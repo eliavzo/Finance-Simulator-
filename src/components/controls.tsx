@@ -42,12 +42,15 @@ export function AmountStepper({
   step,
   min = 0,
   max,
+  format = fmtMoney,
 }: {
   value: number;
   onChange: (v: number) => void;
   step: number;
   min?: number;
   max?: number;
+  /** How to render the value (defaults to compact money). */
+  format?: (v: number) => string;
 }) {
   const clamp = (v: number) => {
     let out = Math.max(min, v);
@@ -60,7 +63,7 @@ export function AmountStepper({
         <Text style={styles.stepperBtnText}>−</Text>
       </TouchableOpacity>
       <View style={styles.stepperValue}>
-        <Text style={styles.stepperValueText}>{fmtMoney(value)}</Text>
+        <Text style={styles.stepperValueText}>{format(value)}</Text>
       </View>
       <TouchableOpacity style={styles.stepperBtn} onPress={() => onChange(clamp(value + step))}>
         <Text style={styles.stepperBtnText}>+</Text>

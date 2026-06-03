@@ -1,9 +1,15 @@
-# Alpha & Carry 📈🚀
+# Alpha & Carry 📈🏢
 
-Ein mobiles **Finanzsimulator-Spiel** (Expo React Native + TypeScript). Du führst
-ein **Family Office** mit **10 Mio. $** Startkapital über **20 Jahre** (jeder Zug =
-1 Quartal) und steuerst parallel einen **Hedge Fund** und einen **VC-Fonds** durch
-Konjunkturzyklen, Black-Swans und Margin Calls.
+Ein mobiles **Fondsmanagement-Simulationsspiel** (Expo React Native + TypeScript).
+Du führst eine **Fondsmanagement-Firma** über **20 Jahre** (jeder Zug = 1 Monat):
+baue ein Team auf, raise LP-Kapital, handle ein Multi-Asset-Buch mit Hebel und
+überlebe Konjunkturzyklen, Margin Calls und Black Swans.
+
+> **v2 (aktuell):** tiefe Wirtschafts-Sim mit Firma, Personal, Fondsbuchhaltung
+> (Fees/Carry), Multi-Instrument-Markt (Aktien/Anleihen/FX/Rohstoffe/Optionen),
+> Faktor-VaR & Stress-Tests und echten GuV/Bilanz-Abschlüssen. Quellcode unter
+> `src/sim/`. Die ältere quartalsweise HF+VC-Version (`src/engine/`, `src/screens/`)
+> bleibt als Referenz erhalten.
 
 > Alles ist simuliert — keine echten Märkte, keine externen APIs.
 
