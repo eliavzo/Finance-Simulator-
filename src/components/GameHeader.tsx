@@ -1,8 +1,9 @@
 /** Sticky top bar: shows the current quarter, macro phase and the "advance
  *  quarter" action that drives the whole simulation forward. */
 import React from 'react';
-import { Alert, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useGameStore } from '../store/gameStore';
+import { notify } from '../utils/notify';
 import { quarterLabel } from '../engine/gameEngine';
 import { PHASE_LABEL } from '../engine/macro';
 import { colors, spacing } from '../utils/theme';
@@ -23,7 +24,7 @@ export function GameHeader({ title }: { title: string }) {
 
   const onNext = () => {
     if (game.gameOver) {
-      Alert.alert('Spielende', 'Die 20 Jahre sind vorbei. Starte ein neues Spiel über das Dashboard.');
+      notify('Spielende', 'Die 20 Jahre sind vorbei. Starte ein neues Spiel über die Übersicht.');
       return;
     }
     nextQuarter();

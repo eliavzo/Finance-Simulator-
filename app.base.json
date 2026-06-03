@@ -17,7 +17,8 @@
       "package": "com.alphacarry.game"
     },
     "web": {
-      "bundler": "metro"
+      "bundler": "metro",
+      "output": "single"
     }
   }
 }

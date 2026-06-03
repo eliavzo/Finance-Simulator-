@@ -1,7 +1,8 @@
 /** Übersichts-Chart: combined equity trajectory, per-book breakdown, and the
  *  synergy levers — moving cash between the two books and drawing LP capital. */
 import React, { useMemo, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { confirmDestructive, notify } from '../utils/notify';
 import { useGameStore } from '../store/gameStore';
 import { GameHeader } from '../components/GameHeader';
 import { Button, Card, SectionTitle, StatTile } from '../components/ui';
@@ -98,7 +99,7 @@ export function ChartScreen() {
             variant="secondary"
             onPress={() => {
               const res = transfer(transferFrom, transferAmt);
-              if (!res.ok) Alert.alert('Nicht möglich', res.error ?? 'Fehler');
+              if (!res.ok) notify('Nicht möglich', res.error ?? 'Fehler');
             }}
             style={{ marginTop: spacing.md }}
           />
@@ -126,7 +127,7 @@ export function ChartScreen() {
                 title="Kapital abrufen"
                 onPress={() => {
                   const res = drawLp(lpAmt, lpTo);
-                  if (!res.ok) Alert.alert('Nicht möglich', res.error ?? 'Fehler');
+                  if (!res.ok) notify('Nicht möglich', res.error ?? 'Fehler');
                 }}
                 style={{ marginTop: spacing.md }}
               />
@@ -149,10 +150,12 @@ export function ChartScreen() {
             title="Neues Spiel starten"
             variant="ghost"
             onPress={() =>
-              Alert.alert('Neues Spiel?', 'Der aktuelle Spielstand geht verloren.', [
-                { text: 'Abbrechen', style: 'cancel' },
-                { text: 'Neu starten', style: 'destructive', onPress: () => newGame() },
-              ])
+              confirmDestructive(
+                'Neues Spiel?',
+                'Der aktuelle Spielstand geht verloren.',
+                'Neu starten',
+                () => newGame(),
+              )
             }
           />
         )}

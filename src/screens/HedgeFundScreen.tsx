@@ -1,7 +1,8 @@
 /** Hedge Fund desk: market watchlist, position opener (long/short + leverage)
  *  and the live book with mark-to-market P/L and margin-call risk. */
 import React, { useMemo, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native';
+import { notify } from '../utils/notify';
 import { useGameStore } from '../store/gameStore';
 import { GameHeader } from '../components/GameHeader';
 import { Button, Card, Pill, SectionTitle, StatTile } from '../components/ui';
@@ -33,7 +34,7 @@ export function HedgeFundScreen() {
   const submit = () => {
     const res = open(selectedId, side, notional, leverage);
     if (!res.ok) {
-      Alert.alert('Order abgelehnt', res.error ?? 'Unbekannter Fehler');
+      notify('Order abgelehnt', res.error ?? 'Unbekannter Fehler');
     }
   };
 

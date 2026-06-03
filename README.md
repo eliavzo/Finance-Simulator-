@@ -7,6 +7,17 @@ Konjunkturzyklen, Black-Swans und Margin Calls.
 
 > Alles ist simuliert — keine echten Märkte, keine externen APIs.
 
+## 🎮 Im Browser spielen
+
+Bei jedem Push baut GitHub Actions einen statischen Web-Build und veröffentlicht
+ihn auf GitHub Pages:
+
+**→ https://eliavzo.github.io/finance-simulator-/**
+
+(Funktioniert auch im Safari auf dem iPhone — einfach die URL öffnen.) Der
+Build-Status steht unter dem Reiter **Actions**; die erste Veröffentlichung
+dauert ein paar Minuten.
+
 ## Features
 
 - **Hedge Fund:** Long/Short-Positionen mit Hebel (1–5x), Mark-to-Market,

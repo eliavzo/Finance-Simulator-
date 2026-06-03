@@ -1,7 +1,8 @@
 /** VC desk: live deal flow you can write cheques into, plus the portfolio with
  *  per-company health, ownership, MOIC and exit status. */
 import React, { useMemo, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { notify } from '../utils/notify';
 import { useGameStore } from '../store/gameStore';
 import { GameHeader } from '../components/GameHeader';
 import { Button, Card, Pill, ProgressBar, SectionTitle, StatTile } from '../components/ui';
@@ -54,7 +55,7 @@ export function VCPortfolioScreen() {
             vc.dealFlow.map((deal) => (
               <DealRow key={deal.id} deal={deal} cash={vc.cash} onInvest={(amt) => {
                 const res = invest(deal.id, amt);
-                if (!res.ok) Alert.alert('Investment abgelehnt', res.error ?? 'Fehler');
+                if (!res.ok) notify('Investment abgelehnt', res.error ?? 'Fehler');
               }} />
             ))
           )}
