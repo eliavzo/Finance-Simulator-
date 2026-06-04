@@ -100,6 +100,8 @@ interface SimStore {
   upgrade: (track: keyof Infrastructure) => ActionResult;
 
   callLpCapital: (amount: number) => ActionResult;
+  /** Buy tail-risk protection covering `notional` for `months`. */
+  buyHedge: (notional: number, months: number) => ActionResult;
 }
 
 export const useSimStore = create<SimStore>()(
@@ -272,6 +274,23 @@ export const useSimStore = create<SimStore>()(
             ...game,
             fund: res.fund,
             portfolio: { ...game.portfolio, cash: game.portfolio.cash + res.called },
+          },
+        });
+        return { ok: true };
+      },
+
+      buyHedge: (notional, months) => {
+        const { game } = get();
+        if (!game) return { ok: false, error: 'Kein Spiel.' };
+        if (notional <= 0 || months <= 0) return { ok: false, error: 'Ungültige Absicherung.' };
+        // First month's premium is due immediately.
+        const premium = notional * 0.005;
+        if (premium > game.portfolio.cash) return { ok: false, error: 'Nicht genug Cash für die Prämie.' };
+        set({
+          game: {
+            ...game,
+            portfolio: { ...game.portfolio, cash: game.portfolio.cash - premium },
+            hedge: { notional, monthsRemaining: months },
           },
         });
         return { ok: true };

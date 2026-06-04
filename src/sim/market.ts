@@ -170,8 +170,9 @@ export function expectedAnnualReturn(inst: Instrument, econ: EconomyState): numb
   }
 }
 
-/** Advance every instrument by one month. */
-export function stepMarket(instruments: Instrument[], econ: EconomyState, month: number, rng: Rng): MarketStepResult {
+/** Advance every instrument by one month. `extraEquityShock` is an additional
+ *  monthly log-return applied to equities (e.g. a crisis sell-off or squeeze). */
+export function stepMarket(instruments: Instrument[], econ: EconomyState, month: number, rng: Rng, extraEquityShock = 0): MarketStepResult {
   const swanProb = econ.regime === 'peak' || econ.regime === 'contraction' ? 0.015 : 0.004;
   const blackSwan = rng.chance(swanProb);
 
@@ -199,7 +200,8 @@ export function stepMarket(instruments: Instrument[], econ: EconomyState, month:
         let logRet =
           0.1 * logGap +
           inst.beta * marketLogReturn * 0.4 +
-          inst.vol * Math.sqrt(DT) * zIdio * 0.7;
+          inst.vol * Math.sqrt(DT) * zIdio * 0.7 +
+          extraEquityShock * inst.beta;
         if (blackSwan) logRet += Math.log(1 - Math.min(0.6, rng.range(0.12, 0.32) * inst.beta));
         const price = Math.max(0.5, inst.price * Math.exp(logRet));
         return { ...inst, eps, fairValue: fair, price, priceHistory: [...inst.priceHistory, price].slice(-MAX_HISTORY) };

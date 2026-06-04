@@ -22,6 +22,7 @@ import { scenarioEconomy, applyScenarioToInstruments } from './scenarios';
 import { generateObjective, metricValue, isMet, computeScore } from './objectives';
 import { createRivals, stepRivals, buildLeague, trailingReturn, playerRankFraction } from './rivals';
 import { maybeDecision } from './decisions';
+import { maybeTriggerCrisis, applyCrisisToEconomy, crisisEquityShock, hedgePayout, HEDGE_MONTHLY_PREMIUM, CRISIS_DESC } from './crises';
 import { tierPerks } from './tiers';
 import { ACHIEVEMENTS, evaluateAchievements } from './achievements';
 import { maxDrawdown } from '../engine/finance';
@@ -166,17 +167,33 @@ export function advanceMonth(state: SimState): SimState {
     ledger.push({ month, account, amount, memo });
 
   // 1. Economy ---------------------------------------------------------------
-  const { economy, regimeChanged } = stepEconomy(state.economy, rng);
+  const stepped = stepEconomy(state.economy, rng);
+  const regimeChanged = stepped.regimeChanged;
   if (regimeChanged) {
     events.push(ev(month, {
       type: 'economy',
-      title: `Konjunkturwende: ${REGIME_LABEL[economy.regime]}`,
-      description: `BIP ${(economy.gdpGrowth * 100).toFixed(1)}%, Leitzins ${(economy.policyRate * 100).toFixed(1)}%, Vola-Index ${economy.volIndex.toFixed(0)}.`,
+      title: `Konjunkturwende: ${REGIME_LABEL[stepped.economy.regime]}`,
+      description: `BIP ${(stepped.economy.gdpGrowth * 100).toFixed(1)}%, Leitzins ${(stepped.economy.policyRate * 100).toFixed(1)}%.`,
     }));
   }
 
+  // 1b. Crisis lifecycle -----------------------------------------------------
+  let crisis = state.crisis ? { ...state.crisis, monthsRemaining: state.crisis.monthsRemaining - 1 } : undefined;
+  if (crisis && crisis.monthsRemaining <= 0) {
+    events.push(ev(month, { type: 'economy', title: `${crisis.label} überstanden`, description: 'Die Märkte beruhigen sich.' }));
+    crisis = undefined;
+  }
+  if (!crisis) {
+    const newCrisis = maybeTriggerCrisis(stepped.economy, false, rng);
+    if (newCrisis) {
+      crisis = newCrisis;
+      events.push(ev(month, { type: 'blackswan', title: `⚠ ${crisis.label} (${crisis.monthsRemaining} Monate)`, description: CRISIS_DESC[crisis.type] }));
+    }
+  }
+  const economy = crisis ? applyCrisisToEconomy(stepped.economy, crisis) : stepped.economy;
+
   // 2. Market ----------------------------------------------------------------
-  const { instruments, blackSwan } = stepMarket(state.instruments, economy, month, rng);
+  const { instruments, blackSwan } = stepMarket(state.instruments, economy, month, rng, crisisEquityShock(crisis));
   if (blackSwan) {
     events.push(ev(month, { type: 'blackswan', title: '🦢 Black Swan', description: 'Ein extremer Schock erschüttert die Märkte – gehebelte Positionen sind in Gefahr.' }));
   }
@@ -195,6 +212,21 @@ export function advanceMonth(state: SimState): SimState {
   if (pStep.income) post('couponIncome', pStep.income);
   if (pStep.marginCalled.length > 0) {
     events.push(ev(month, { type: 'risk', title: 'Margin Call', description: `Zwangsliquidation: ${pStep.marginCalled.join(', ')}.` }));
+  }
+
+  // 3b. Hedge: pay the monthly premium, collect a payout in crashes/crises ----
+  let hedge = state.hedge;
+  if (hedge) {
+    const premium = hedge.notional * HEDGE_MONTHLY_PREMIUM;
+    let cash = portfolio.cash - premium;
+    const payout = hedgePayout(hedge.notional, blackSwan, crisis);
+    if (payout > 0) {
+      cash += payout;
+      events.push(ev(month, { type: 'risk', title: 'Absicherung greift', description: `Hedge zahlt $${(payout / 1e6).toFixed(1)}M aus.` }));
+    }
+    portfolio = { ...portfolio, cash };
+    const rem = hedge.monthsRemaining - 1;
+    hedge = rem > 0 ? { ...hedge, monthsRemaining: rem } : undefined;
   }
 
   let fundNav = portfolioNav(portfolio, instruments);
@@ -472,6 +504,8 @@ export function advanceMonth(state: SimState): SimState {
     portfolio,
     firm,
     fund,
+    crisis,
+    hedge,
     reputation,
     peakReputation,
     achievements,

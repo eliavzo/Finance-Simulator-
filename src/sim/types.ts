@@ -417,6 +417,23 @@ export interface Objective {
 
 export type GameOverReason = 'horizon' | 'insolvency' | 'reputation';
 
+/** A multi-month market crisis. */
+export type CrisisType = 'creditCrunch' | 'liquidityFreeze' | 'shortSqueeze' | 'ratesShock';
+export interface Crisis {
+  type: CrisisType;
+  label: string;
+  monthsRemaining: number;
+  /** Severity in (0, 1]. */
+  severity: number;
+}
+
+/** Tail-risk hedge / portfolio insurance the player can buy. */
+export interface Hedge {
+  /** Notional covered; payout scales with this in a crash. */
+  notional: number;
+  monthsRemaining: number;
+}
+
 /** An AI competitor fund. */
 export interface RivalFund {
   id: string;
@@ -508,6 +525,11 @@ export interface SimState {
   portfolio: PortfolioState;
   firm: FirmState;
   fund: FundState;
+
+  /** Active multi-month crisis, if any. */
+  crisis?: Crisis;
+  /** Active tail-risk hedge, if any. */
+  hedge?: Hedge;
 
   /** Reputation in [0, 100]; gates LP capital, talent and deal quality. */
   reputation: number;
