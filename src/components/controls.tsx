@@ -1,6 +1,6 @@
 /** Newspaper-styled controls: segmented selector & +/- stepper (square, inked). */
-import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useState } from 'react';
+import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { colors, fonts, spacing } from '../utils/theme';
 import { fmtMoney } from '../utils/format';
 
@@ -47,19 +47,45 @@ export function AmountStepper({
   max?: number;
   format?: (v: number) => string;
 }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState('');
   const clamp = (v: number) => {
     let out = Math.max(min, v);
     if (max !== undefined) out = Math.min(max, out);
     return out;
+  };
+  const beginEdit = () => {
+    setDraft(String(Math.round(value)));
+    setEditing(true);
+  };
+  const commit = () => {
+    const n = parseFloat(draft.replace(/[^0-9.]/g, ''));
+    if (!Number.isNaN(n)) onChange(clamp(n));
+    setEditing(false);
   };
   return (
     <View style={styles.stepperRow}>
       <TouchableOpacity style={styles.stepperBtn} onPress={() => onChange(clamp(value - step))}>
         <Text style={styles.stepperBtnText}>−</Text>
       </TouchableOpacity>
-      <View style={styles.stepperValue}>
-        <Text style={styles.stepperValueText}>{format(value)}</Text>
-      </View>
+      {editing ? (
+        <TextInput
+          style={[styles.stepperValue, styles.stepperValueText, styles.stepperInput]}
+          value={draft}
+          onChangeText={setDraft}
+          keyboardType="numeric"
+          inputMode="numeric"
+          autoFocus
+          selectTextOnFocus
+          onBlur={commit}
+          onSubmitEditing={commit}
+          returnKeyType="done"
+        />
+      ) : (
+        <TouchableOpacity style={styles.stepperValue} onPress={beginEdit} activeOpacity={0.7}>
+          <Text style={styles.stepperValueText}>{format(value)}</Text>
+        </TouchableOpacity>
+      )}
       <TouchableOpacity style={styles.stepperBtn} onPress={() => onChange(clamp(value + step))}>
         <Text style={styles.stepperBtnText}>+</Text>
       </TouchableOpacity>
@@ -120,5 +146,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  stepperValueText: { color: colors.text, fontFamily: fonts.display, fontSize: 17 },
+  stepperValueText: { color: colors.text, fontFamily: fonts.display, fontSize: 17, textAlign: 'center' },
+  stepperInput: { paddingVertical: 0, paddingHorizontal: spacing.sm },
 });

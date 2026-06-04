@@ -67,6 +67,8 @@ interface SimStore {
   candidates: Record<string, Employee[]>;
 
   newGame: (seed?: number) => void;
+  /** Wipe the current run and return to the front page. */
+  resetGame: () => void;
   nextMonth: () => void;
 
   trade: (instrumentId: string, signedQuantity: number, leverage: number) => ActionResult;
@@ -96,6 +98,8 @@ export const useSimStore = create<SimStore>()(
       candidates: {},
 
       newGame: (seed) => set({ game: createSimGame(seed), candidates: {} }),
+
+      resetGame: () => set({ game: null, candidates: {} }),
 
       nextMonth: () => {
         const { game } = get();
