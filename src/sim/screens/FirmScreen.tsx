@@ -4,6 +4,7 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSimStore, useCapabilities } from '../store';
 import { Employee, Infrastructure, Role } from '../types';
 import { ROLE_LABEL, monthlyPayroll, infraMonthlyOpex, upgradeCost, MAX_TIER } from '../firm';
+import { THESES } from '../thesis';
 import { SimHeader } from './SimHeader';
 import { notify } from '../../utils/notify';
 import { Button, Card, Pill, ProgressBar, SectionTitle, StatTile } from '../../components/ui';
@@ -39,7 +40,7 @@ export function FirmScreen() {
       <SimHeader title="Firma" />
       <ScrollView contentContainerStyle={styles.scroll}>
         <Card>
-          <SectionTitle>GP-Cash & Kosten</SectionTitle>
+          <SectionTitle>GP-Cash & Kosten · {THESES[game.thesis].label}</SectionTitle>
           <Text style={styles.big}>{fmtMoney(firm.cash)}</Text>
           <View style={styles.statRow}>
             <StatTile label="Gehälter/M" value={fmtMoney(payroll)} valueColor={colors.negative} />

@@ -15,8 +15,11 @@ import {
   TOTAL_MONTHS,
 } from './types';
 import { Rng } from '../engine/rng';
-import { createEconomy, REGIME_LABEL, stepEconomy } from './economy';
+import { REGIME_LABEL, stepEconomy } from './economy';
 import { createInstruments, stepMarket } from './market';
+import { THESES } from './thesis';
+import { scenarioEconomy, applyScenarioToInstruments } from './scenarios';
+import { FundThesis, Scenario } from './types';
 import { createPortfolio, portfolioNav, stepPortfolio } from './portfolio';
 import { createFirm, firmCapabilities, stepFirm } from './firm';
 import {
@@ -58,11 +61,15 @@ export function monthLabel(month: number): string {
   return `J${year} M${String(m).padStart(2, '0')}`;
 }
 
-export function createSimGame(seed = Date.now()): SimState {
+export function createSimGame(
+  seed = Date.now(),
+  thesis: FundThesis = 'multistrat',
+  scenario: Scenario = 'normal',
+): SimState {
   evCounter = 0;
   const rng = new Rng(seed);
-  const economy = createEconomy();
-  const instruments = createInstruments();
+  const economy = scenarioEconomy(scenario);
+  const instruments = applyScenarioToInstruments(scenario, createInstruments());
   const firm = createFirm('Dein Family Office', GP_RUNWAY, rng);
 
   let fund = createFund(0, ANCHOR_COMMITMENT, rng);
@@ -82,13 +89,15 @@ export function createSimGame(seed = Date.now()): SimState {
   const portfolio = createPortfolio(called);
 
   const enterprise = firm.cash + portfolioNav(portfolio, instruments);
-  const caps0 = firmCapabilities(firm, 50);
-  const signals0 = generateSignals(instruments, economy, caps0, rng);
+  const caps0 = firmCapabilities(firm, 50, thesis);
+  const signals0 = generateSignals(instruments, economy, caps0, rng, THESES[thesis].signalNoiseMult);
 
   return {
     month: 0,
     started: true,
     gameOver: false,
+    thesis,
+    scenario,
     economy,
     instruments,
     portfolio,
@@ -162,11 +171,12 @@ export function advanceMonth(state: SimState): SimState {
   }
 
   // 3. Trading book ----------------------------------------------------------
-  const capabilities = firmCapabilities(state.firm, state.reputation);
+  const capabilities = firmCapabilities(state.firm, state.reputation, state.thesis);
   const pStep = stepPortfolio(state.portfolio, instruments, month, {
     policyRate: economy.policyRate,
     primeBrokerTier: state.firm.infrastructure.primeBrokerTier,
     capabilities,
+    financingBonus: THESES[state.thesis].financingBonus,
   });
   let portfolio = pStep.portfolio;
   if (pStep.financingCost) post('financingCost', -pStep.financingCost);
@@ -236,7 +246,7 @@ export function advanceMonth(state: SimState): SimState {
   const reputation = Math.max(0, Math.min(100, state.reputation + repDelta));
 
   // 9. Research desk & team-contribution feedback ----------------------------
-  const signals = generateSignals(instruments, economy, capabilities, rng);
+  const signals = generateSignals(instruments, economy, capabilities, rng, THESES[state.thesis].signalNoiseMult);
   const contribution: TeamContribution = {
     alphaPnl: pStep.alphaPnl,
     financingSaved: pStep.financingSaved,
@@ -291,6 +301,8 @@ export function advanceMonth(state: SimState): SimState {
     month,
     started: true,
     gameOver,
+    thesis: state.thesis,
+    scenario: state.scenario,
     economy,
     instruments,
     portfolio,

@@ -18,12 +18,13 @@ export function generateSignals(
   econ: EconomyState,
   caps: FirmCapabilities,
   rng: Rng,
+  noiseMult = 1,
 ): ResearchSignal[] {
   // Without any research capability there is no view to publish.
   if (caps.research < 0.12) return [];
 
   const research = caps.research;
-  const noiseSd = (1 - research) * 0.16; // strong team → little noise
+  const noiseSd = (1 - research) * 0.16 * noiseMult; // strong team / quant desk → little noise
 
   const candidates = instruments
     .filter((i) => i.kind === 'equity' || i.kind === 'commodity' || i.kind === 'fx')

@@ -7,7 +7,8 @@
  * deploy capital. People cost salaries, get demoralised when the firm is
  * over-stretched or unprofitable, and quit if morale collapses.
  */
-import { Employee, FirmState, Infrastructure, Role } from './types';
+import { Employee, FirmState, FundThesis, Infrastructure, Role } from './types';
+import { THESES } from './thesis';
 import { Rng } from '../engine/rng';
 
 /* ------------------------------ Salaries --------------------------------- */
@@ -129,18 +130,19 @@ function teamScore(emps: Employee[]): number {
   return 1 - Math.exp(-0.7 * contribution);
 }
 
-export function firmCapabilities(firm: FirmState, reputation: number): FirmCapabilities {
+export function firmCapabilities(firm: FirmState, reputation: number, thesis?: FundThesis): FirmCapabilities {
   const e = firm.employees;
   const infra = firm.infrastructure;
+  const t = thesis ? THESES[thesis].cap : { research: 0, execution: 0, risk: 0, fundraising: 0, capacity: 0 };
 
-  const research = Math.min(1, teamScore([...ROLE_OF(e, 'Analyst'), ...ROLE_OF(e, 'Quant')]) * 0.8 + infra.dataTier * 0.06);
-  const execution = Math.min(1, teamScore([...ROLE_OF(e, 'Trader'), ...ROLE_OF(e, 'Quant')]) * 0.8 + infra.quantTier * 0.07);
-  const risk = Math.min(1, teamScore([...ROLE_OF(e, 'RiskManager'), ...ROLE_OF(e, 'Quant')]) * 0.85 + infra.quantTier * 0.05);
-  const fundraising = Math.min(1, teamScore(ROLE_OF(e, 'InvestorRelations')) * 0.7 + reputation / 200);
+  const research = Math.min(1, teamScore([...ROLE_OF(e, 'Analyst'), ...ROLE_OF(e, 'Quant')]) * 0.8 + infra.dataTier * 0.06 + t.research);
+  const execution = Math.min(1, teamScore([...ROLE_OF(e, 'Trader'), ...ROLE_OF(e, 'Quant')]) * 0.8 + infra.quantTier * 0.07 + t.execution);
+  const risk = Math.min(1, teamScore([...ROLE_OF(e, 'RiskManager'), ...ROLE_OF(e, 'Quant')]) * 0.85 + infra.quantTier * 0.05 + t.risk);
+  const fundraising = Math.min(1, teamScore(ROLE_OF(e, 'InvestorRelations')) * 0.7 + reputation / 200 + t.fundraising);
 
   const pmCount = ROLE_OF(e, 'PortfolioManager').length;
   const cooCount = ROLE_OF(e, 'COO').length;
-  const capacityPositions = 3 + pmCount * 4 + ROLE_OF(e, 'Trader').length * 2 + cooCount * 3 + infra.officeTier * 2;
+  const capacityPositions = 3 + pmCount * 4 + ROLE_OF(e, 'Trader').length * 2 + cooCount * 3 + infra.officeTier * 2 + t.capacity;
 
   // Alpha: research & execution add edge; weak/empty teams bleed.
   const monthlyAlpha = (research * 0.004 + execution * 0.002 - 0.001) ;

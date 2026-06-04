@@ -12,10 +12,12 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 
 import {
   Employee,
+  FundThesis,
   Infrastructure,
   Instrument,
   OptionInstrument,
   Role,
+  Scenario,
   SimState,
 } from './types';
 import { advanceMonth, createSimGame } from './engine';
@@ -68,7 +70,7 @@ interface SimStore {
   /** Month whose edition report should be shown (null = none pending). */
   pendingReportMonth: number | null;
 
-  newGame: (seed?: number) => void;
+  newGame: (opts?: { seed?: number; thesis?: FundThesis; scenario?: Scenario }) => void;
   /** Wipe the current run and return to the front page. */
   resetGame: () => void;
   nextMonth: () => void;
@@ -102,7 +104,12 @@ export const useSimStore = create<SimStore>()(
       candidates: {},
       pendingReportMonth: null,
 
-      newGame: (seed) => set({ game: createSimGame(seed), candidates: {}, pendingReportMonth: null }),
+      newGame: (opts) =>
+        set({
+          game: createSimGame(opts?.seed, opts?.thesis, opts?.scenario),
+          candidates: {},
+          pendingReportMonth: null,
+        }),
 
       resetGame: () => set({ game: null, candidates: {}, pendingReportMonth: null }),
 
@@ -255,7 +262,7 @@ export const useSimStore = create<SimStore>()(
 export function useCapabilities() {
   const game = useSimStore((s) => s.game);
   if (!game) return null;
-  return firmCapabilities(game.firm, game.reputation);
+  return firmCapabilities(game.firm, game.reputation, game.thesis);
 }
 
 export { fairSalary };

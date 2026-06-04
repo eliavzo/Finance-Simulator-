@@ -128,6 +128,8 @@ export interface PortfolioStepContext {
   policyRate: number;
   primeBrokerTier: number;
   capabilities: FirmCapabilities;
+  /** Annualised financing/borrow discount from the fund thesis. */
+  financingBonus?: number;
 }
 
 export interface PortfolioStepResult {
@@ -155,8 +157,9 @@ export function stepPortfolio(
   ctx: PortfolioStepContext,
 ): PortfolioStepResult {
   const { policyRate, primeBrokerTier, capabilities } = ctx;
-  const financingRate = Math.max(0.005, policyRate + 0.01 - primeBrokerTier * 0.002 - capabilities.execution * 0.004);
-  const shortBorrowRate = Math.max(0.003, 0.006 + 0.012 * (1 - capabilities.execution));
+  const thesisBonus = ctx.financingBonus ?? 0;
+  const financingRate = Math.max(0.005, policyRate + 0.01 - primeBrokerTier * 0.002 - capabilities.execution * 0.004 - thesisBonus);
+  const shortBorrowRate = Math.max(0.003, 0.006 + 0.012 * (1 - capabilities.execution) - thesisBonus);
   // Baseline rates with *no* execution capability — used to measure what the
   // trading team saved this month.
   const baseFinancingRate = Math.max(0.005, policyRate + 0.01 - primeBrokerTier * 0.002);

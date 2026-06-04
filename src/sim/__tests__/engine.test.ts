@@ -24,6 +24,34 @@ describe('createSimGame', () => {
   });
 });
 
+describe('thesis & scenario', () => {
+  it('thesis lifts capabilities vs none', () => {
+    const base = createSimGame(1, 'multistrat', 'normal');
+    const quant = createSimGame(1, 'quant', 'normal');
+    const baseCap = firmCapabilities(base.firm, 50, 'multistrat');
+    const quantCap = firmCapabilities(quant.firm, 50, 'quant');
+    expect(quantCap.research).toBeGreaterThan(baseCap.research);
+  });
+
+  it('scenario sets the opening macro regime', () => {
+    expect(createSimGame(1, 'macro', 'precrisis').economy.regime).toBe('peak');
+    expect(createSimGame(1, 'macro', 'stagflation').economy.regime).toBe('contraction');
+  });
+
+  it('dotcom scenario marks up tech equities', () => {
+    const normal = createSimGame(1, 'longshort', 'normal');
+    const dot = createSimGame(1, 'longshort', 'dotcom');
+    const nova = (g: typeof normal) => g.instruments.find((i) => i.symbol === 'NOVA')!.price;
+    expect(nova(dot)).toBeGreaterThan(nova(normal));
+  });
+
+  it('persists thesis & scenario across a month', () => {
+    const next = advanceMonth(createSimGame(1, 'credit', 'boom'));
+    expect(next.thesis).toBe('credit');
+    expect(next.scenario).toBe('boom');
+  });
+});
+
 describe('advanceMonth', () => {
   it('is deterministic for a seed', () => {
     const a = advanceMonth(createSimGame(777));

@@ -21,6 +21,12 @@ export const TOTAL_MONTHS = SIM_YEARS * MONTHS_PER_YEAR;
 
 export type Regime = 'expansion' | 'peak' | 'contraction' | 'trough';
 
+/** Investment style chosen at launch; tilts capabilities & edge. */
+export type FundThesis = 'quant' | 'macro' | 'longshort' | 'credit' | 'multistrat';
+
+/** Macro backdrop the game opens in. */
+export type Scenario = 'normal' | 'boom' | 'precrisis' | 'dotcom' | 'stagflation';
+
 export interface YieldCurveKnot {
   /** Tenor in years (0.25, 1, 2, 5, 10, 30…). */
   tenor: number;
@@ -418,6 +424,9 @@ export interface SimState {
   month: number;
   started: boolean;
   gameOver: boolean;
+
+  thesis: FundThesis;
+  scenario: Scenario;
 
   economy: EconomyState;
   instruments: Instrument[];
