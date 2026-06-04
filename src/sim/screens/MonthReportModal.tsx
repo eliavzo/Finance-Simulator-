@@ -20,7 +20,8 @@ export function MonthReportModal() {
   const dismiss = useSimStore((s) => s.dismissReport);
 
   const report = game?.lastReport;
-  const visible = pending !== null && !!report && report.month === pending;
+  // Let a pending decision be resolved first, then show the edition.
+  const visible = pending !== null && !!report && report.month === pending && !game?.pendingDecision;
   if (!report) return null;
 
   const year = Math.floor(report.month / 12) + 1;

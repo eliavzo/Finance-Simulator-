@@ -6,6 +6,7 @@ import { createInstruments } from '../market';
 import { createEconomy } from '../economy';
 import { generateSignals } from '../research';
 import { buildLeague } from '../rivals';
+import { applyDecision } from '../decisions';
 import { firmCapabilities, createFirm, fairSalary, infraMonthlyOpex } from '../firm';
 import { createFund, callCapital, distribute, crystalliseCarry, monthlyManagementFee, fundMetrics } from '../fund';
 import { buildBalanceSheet } from '../accounting';
@@ -108,6 +109,31 @@ describe('rivals & league', () => {
   it('rivals evolve over a month', () => {
     const next = advanceMonth(createSimGame(8));
     expect(next.rivals[0].monthlyReturns.length).toBe(1);
+  });
+});
+
+describe('decision cards', () => {
+  it('applies a choice effect and clears the pending decision', () => {
+    const g = createSimGame(1);
+    const withCard: any = {
+      ...g,
+      pendingDecision: { id: 'x', title: 'T', body: 'b', choices: [{ label: 'a', description: '', effect: { reputation: 5, cash: 100, committed: 5_000_000 } }] },
+    };
+    const after = applyDecision(withCard, 0, new Rng(1));
+    expect(after.reputation).toBe(Math.min(100, g.reputation + 5));
+    expect(after.firm.cash).toBe(g.firm.cash + 100);
+    expect(after.fund.committed).toBe(g.fund.committed + 5_000_000);
+    expect(after.pendingDecision).toBeUndefined();
+  });
+
+  it('decision cards appear over time', () => {
+    let g = createSimGame(42);
+    let seen = false;
+    for (let i = 0; i < 120 && !g.gameOver; i++) {
+      g = advanceMonth(g);
+      if (g.pendingDecision) seen = true;
+    }
+    expect(seen).toBe(true);
   });
 });
 

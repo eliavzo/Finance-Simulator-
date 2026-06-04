@@ -21,6 +21,7 @@ import { THESES } from './thesis';
 import { scenarioEconomy, applyScenarioToInstruments } from './scenarios';
 import { generateObjective, metricValue, isMet, computeScore } from './objectives';
 import { createRivals, stepRivals, buildLeague, trailingReturn, playerRankFraction } from './rivals';
+import { maybeDecision } from './decisions';
 import { FundThesis, GameOverReason, Scenario } from './types';
 import { createPortfolio, portfolioNav, stepPortfolio } from './portfolio';
 import { createFirm, firmCapabilities, stepFirm } from './firm';
@@ -370,6 +371,10 @@ export function advanceMonth(state: SimState): SimState {
     events.push(ev(month, { type: 'info', title, description: desc }));
   }
 
+  // Decision card (not on the final month).
+  const decisionState = { ...state, firm, portfolio, instruments, reputation } as SimState;
+  const pendingDecision = gameOver ? undefined : maybeDecision(decisionState, blackSwan, rng);
+
   return {
     month,
     started: true,
@@ -393,6 +398,7 @@ export function advanceMonth(state: SimState): SimState {
     incomeStatements: [incomeStatement, ...state.incomeStatements].slice(0, 36),
     balanceSheets: [balanceSheet, ...state.balanceSheets].slice(0, 36),
     ledger: [],
+    pendingDecision,
     equityHistory: [...state.equityHistory, enterprise].slice(-TOTAL_MONTHS - 1),
     events: [...events, ...state.events].slice(0, 80),
     rngState: rng.getState(),

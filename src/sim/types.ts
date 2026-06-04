@@ -434,6 +434,36 @@ export interface MarketMover {
   price: number;
 }
 
+/* -------------------------------------------------------------------------- */
+/*                              Decision cards                                 */
+/* -------------------------------------------------------------------------- */
+
+/** Numeric effects a decision choice applies. */
+export interface DecisionEffect {
+  /** GP cash delta. */
+  cash?: number;
+  /** Fund (portfolio) cash delta. */
+  fundCash?: number;
+  reputation?: number;
+  /** LP commitment added (new sovereign LP). */
+  committed?: number;
+  /** Delta applied to every employee's morale. */
+  morale?: number;
+}
+
+export interface DecisionChoice {
+  label: string;
+  description: string;
+  effect: DecisionEffect;
+}
+
+export interface DecisionCard {
+  id: string;
+  title: string;
+  body: string;
+  choices: DecisionChoice[];
+}
+
 /** End-of-month "edition" report summarising everything that changed. */
 export interface MonthlyReport {
   month: number;
@@ -492,6 +522,8 @@ export interface SimState {
   lastContribution: TeamContribution;
   /** End-of-month edition report (undefined before the first month elapses). */
   lastReport?: MonthlyReport;
+  /** A decision awaiting the player's choice (blocks nothing; shown as a modal). */
+  pendingDecision?: DecisionCard;
 
   /** Recent monthly income statements (most recent first, bounded). */
   incomeStatements: IncomeStatement[];

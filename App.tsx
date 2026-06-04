@@ -22,6 +22,7 @@ import { FirmScreen } from './src/sim/screens/FirmScreen';
 import { FundScreen } from './src/sim/screens/FundScreen';
 import { RiskScreen } from './src/sim/screens/RiskScreen';
 import { MonthReportModal } from './src/sim/screens/MonthReportModal';
+import { DecisionModal } from './src/sim/screens/DecisionModal';
 import { EndGameModal } from './src/sim/screens/EndGameModal';
 import { colors, fonts } from './src/utils/theme';
 
@@ -80,6 +81,7 @@ export default function App() {
               <Tab.Screen name="Risiko" component={RiskScreen} options={{ tabBarIcon: ({ color }) => <TabGlyph glyph="†" color={color} /> }} />
             </Tab.Navigator>
             <MonthReportModal />
+            <DecisionModal />
             <EndGameModal />
           </NavigationContainer>
         )}

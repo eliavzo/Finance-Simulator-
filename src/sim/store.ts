@@ -21,6 +21,7 @@ import {
   SimState,
 } from './types';
 import { advanceMonth, createSimGame } from './engine';
+import { applyDecision } from './decisions';
 import { closePosition, openPosition } from './portfolio';
 import { callCapital } from './fund';
 import { firmCapabilities, generateCandidate, upgradeCost, MAX_TIER, fairSalary } from './firm';
@@ -76,6 +77,8 @@ interface SimStore {
   nextMonth: () => void;
   /** Dismiss the monthly edition report overlay. */
   dismissReport: () => void;
+  /** Resolve the pending decision card by choosing an option. */
+  resolveDecision: (choiceIndex: number) => void;
 
   trade: (instrumentId: string, signedQuantity: number, leverage: number) => ActionResult;
   closeTrade: (positionId: string) => ActionResult;
@@ -121,6 +124,12 @@ export const useSimStore = create<SimStore>()(
       },
 
       dismissReport: () => set({ pendingReportMonth: null }),
+
+      resolveDecision: (choiceIndex) => {
+        const { game } = get();
+        if (!game || !game.pendingDecision) return;
+        set({ game: applyDecision(game, choiceIndex, uiRng) });
+      },
 
       trade: (instrumentId, signedQuantity, leverage) => {
         const { game } = get();
