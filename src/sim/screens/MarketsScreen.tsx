@@ -5,7 +5,8 @@ import { ScrollView, StyleSheet, Text, TouchableOpacity, View, useWindowDimensio
 import { useSimStore } from '../store';
 import { positionEquity, positionPnl } from '../portfolio';
 import { STANCE_LABEL } from '../research';
-import { Instrument, InstrumentKind, ResearchSignal } from '../types';
+import { valuationGap, sectorOutlooks } from '../fundamentals';
+import { EquityInstrument, Instrument, InstrumentKind, ResearchSignal } from '../types';
 import { SimHeader } from './SimHeader';
 import { notify } from '../../utils/notify';
 import { Button, Card, Pill, SectionTitle } from '../../components/ui';
@@ -95,12 +96,32 @@ export function MarketsScreen() {
           )}
         </Card>
 
+        <Card>
+          <SectionTitle ornament>Sektor-Ausblick (Makro)</SectionTitle>
+          {sectorOutlooks(game.economy, (game.instruments.find((i) => i.symbol === 'OIL')?.price ?? 75) / 75).map((o) => (
+            <View key={o.sector} style={styles.outlookRow}>
+              <Text style={styles.outlookSector}>{o.sector}</Text>
+              <Text style={styles.outlookDriver}>{o.driver}</Text>
+              <Text style={[styles.outlookBias, { color: o.bias >= 0 ? colors.positive : colors.negative }]}>
+                {o.bias >= 0.15 ? 'Rückenwind' : o.bias <= -0.15 ? 'Gegenwind' : 'Neutral'}
+              </Text>
+            </View>
+          ))}
+        </Card>
+
         {selected ? (
           <Card>
             <SectionTitle>{selected.symbol} · {fmtMoney(selected.price)}</SectionTitle>
             <View style={styles.chartWrap}>
-              <LineChart data={selected.priceHistory.slice(-36)} width={width - spacing.lg * 4} height={80} color={colors.primary} />
+              <LineChart
+                data={selected.priceHistory.slice(-36)}
+                width={width - spacing.lg * 4}
+                height={80}
+                color={colors.primary}
+                baseline={selected.kind === 'equity' ? (selected as EquityInstrument).fairValue : undefined}
+              />
             </View>
+            {selected.kind === 'equity' ? <Fundamentals eq={selected as EquityInstrument} /> : null}
 
             <Text style={styles.label}>Richtung</Text>
             <Segmented<'long' | 'short'>
@@ -169,6 +190,25 @@ export function MarketsScreen() {
   );
 }
 
+function Fundamentals({ eq }: { eq: EquityInstrument }) {
+  const pe = eq.eps > 0 ? eq.price / eq.eps : 0;
+  const gap = valuationGap(eq.price, eq.fairValue);
+  const cheap = gap > 0.05;
+  const dear = gap < -0.05;
+  return (
+    <View style={styles.funda}>
+      <View style={styles.fundaRow}>
+        <Text style={styles.fundaItem}>KGV <Text style={styles.fundaVal}>{pe.toFixed(1)}</Text></Text>
+        <Text style={styles.fundaItem}>Wachstum <Text style={styles.fundaVal}>{(eq.epsGrowth * 100).toFixed(0)}%</Text></Text>
+        <Text style={styles.fundaItem}>Fair <Text style={styles.fundaVal}>{fmtMoney(eq.fairValue)}</Text></Text>
+      </View>
+      <Text style={[styles.fundaTag, { color: cheap ? colors.positive : dear ? colors.negative : colors.textMuted }]}>
+        {cheap ? `Unterbewertet um ${(gap * 100).toFixed(0)}% — günstig` : dear ? `Überbewertet um ${(-gap * 100).toFixed(0)}% — teuer` : 'Fair bewertet'}
+      </Text>
+    </View>
+  );
+}
+
 function SignalRow({ sig, onSelect }: { sig: ResearchSignal; onSelect: () => void }) {
   const over = sig.stance === 'overweight';
   const color = over ? colors.positive : colors.negative;
@@ -189,8 +229,9 @@ function SignalRow({ sig, onSelect }: { sig: ResearchSignal; onSelect: () => voi
 function InstrumentRow({ inst, active, onSelect }: { inst: Instrument; active: boolean; onSelect: () => void }) {
   const hist = inst.priceHistory;
   const change = hist.length >= 2 ? inst.price / hist[hist.length - 2] - 1 : 0;
+  const eqGap = inst.kind === 'equity' ? valuationGap(inst.price, inst.fairValue) : 0;
   const sub =
-    inst.kind === 'equity' ? inst.sector :
+    inst.kind === 'equity' ? `${inst.sector} · ${eqGap > 0.05 ? `−${(eqGap * 100).toFixed(0)}% z. fair (günstig)` : eqGap < -0.05 ? `+${(-eqGap * 100).toFixed(0)}% z. fair (teuer)` : 'fair'}` :
     inst.kind === 'bond' ? `${inst.rating} · ${inst.maturityYears}Y · YTM ${(inst.ytm * 100).toFixed(1)}%` :
     inst.kind === 'fx' ? 'FX' :
     inst.kind === 'commodity' ? 'Rohstoff' : 'Option';
@@ -223,6 +264,15 @@ const styles = StyleSheet.create({
   rowPrice: { color: colors.text, fontSize: 14, fontWeight: '700' },
   rowChange: { fontSize: 12, fontWeight: '600' },
   empty: { color: colors.textMuted, fontSize: 13, fontStyle: 'italic' },
+  funda: { marginTop: spacing.xs, marginBottom: spacing.sm, paddingTop: spacing.sm, borderTopWidth: 1, borderTopColor: colors.ruleSoft },
+  fundaRow: { flexDirection: 'row', justifyContent: 'space-between', flexWrap: 'wrap' },
+  fundaItem: { color: colors.textMuted, fontSize: 12 },
+  fundaVal: { color: colors.text, fontFamily: fonts.serifBold },
+  fundaTag: { fontFamily: fonts.serifBold, fontSize: 13, marginTop: spacing.xs },
+  outlookRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 4, borderTopWidth: 1, borderTopColor: colors.ruleSoft, gap: spacing.sm },
+  outlookSector: { color: colors.text, fontSize: 13, fontFamily: fonts.serifBold, width: 96 },
+  outlookDriver: { color: colors.textMuted, fontSize: 11, flex: 1 },
+  outlookBias: { fontSize: 12, fontFamily: fonts.serifBold },
   signalRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.sm, borderTopWidth: 1, borderTopColor: colors.border, gap: spacing.sm },
   signalHead: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   signalSym: { color: colors.text, fontSize: 14, fontWeight: '700' },

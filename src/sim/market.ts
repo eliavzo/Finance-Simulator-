@@ -18,7 +18,11 @@ import {
   Sector,
 } from './types';
 import { blackScholes, bondPrice, interpolateCurve } from './quant';
+import { equityFairValue, sectorEarningsGrowth } from './fundamentals';
 import { Rng } from '../engine/rng';
+
+/** Neutral long rate used to size starting earnings so stocks open near fair. */
+const RF0 = 0.044;
 
 const DT = 1 / 12;
 const MAX_HISTORY = 120;
@@ -45,26 +49,38 @@ const SECTOR_BETA: Record<Sector, number> = {
 export function createInstruments(): Instrument[] {
   const out: Instrument[] = [];
 
-  const equities: Omit<EquityInstrument, 'id' | 'kind' | 'priceHistory' | 'beta'>[] = [
-    { symbol: 'NOVA', name: 'Nova Compute', sector: 'Tech', price: 120, drift: 0.11, vol: 0.34, dividendYield: 0 },
-    { symbol: 'QBIT', name: 'Qubit Systems', sector: 'Tech', price: 85, drift: 0.14, vol: 0.42, dividendYield: 0 },
-    { symbol: 'MERC', name: 'Mercator Bank', sector: 'Financials', price: 60, drift: 0.07, vol: 0.26, dividendYield: 0.03 },
-    { symbol: 'PETRO', name: 'PetroNova', sector: 'Energy', price: 48, drift: 0.05, vol: 0.33, dividendYield: 0.045 },
-    { symbol: 'HELI', name: 'Helios Power', sector: 'Energy', price: 32, drift: 0.10, vol: 0.4, dividendYield: 0.01 },
-    { symbol: 'MEDI', name: 'MediCore', sector: 'Healthcare', price: 140, drift: 0.08, vol: 0.22, dividendYield: 0.02 },
-    { symbol: 'GENE', name: 'GeneTrust', sector: 'Healthcare', price: 72, drift: 0.12, vol: 0.4, dividendYield: 0 },
-    { symbol: 'SHOP', name: 'ShopWave', sector: 'Consumer', price: 55, drift: 0.08, vol: 0.28, dividendYield: 0.015 },
-    { symbol: 'FORGE', name: 'Forge Industrial', sector: 'Industrials', price: 78, drift: 0.06, vol: 0.26, dividendYield: 0.025 },
+  const equities: { symbol: string; name: string; sector: Sector; price: number; epsGrowth: number; margin: number; vol: number; dividendYield: number }[] = [
+    { symbol: 'NOVA', name: 'Nova Compute', sector: 'Tech', price: 120, epsGrowth: 0.16, margin: 0.22, vol: 0.30, dividendYield: 0 },
+    { symbol: 'QBIT', name: 'Qubit Systems', sector: 'Tech', price: 85, epsGrowth: 0.18, margin: 0.18, vol: 0.36, dividendYield: 0 },
+    { symbol: 'MERC', name: 'Mercator Bank', sector: 'Financials', price: 60, epsGrowth: 0.05, margin: 0.28, vol: 0.24, dividendYield: 0.03 },
+    { symbol: 'PETRO', name: 'PetroNova', sector: 'Energy', price: 48, epsGrowth: 0.04, margin: 0.16, vol: 0.30, dividendYield: 0.045 },
+    { symbol: 'HELI', name: 'Helios Power', sector: 'Energy', price: 32, epsGrowth: 0.10, margin: 0.12, vol: 0.36, dividendYield: 0.01 },
+    { symbol: 'MEDI', name: 'MediCore', sector: 'Healthcare', price: 140, epsGrowth: 0.06, margin: 0.25, vol: 0.20, dividendYield: 0.02 },
+    { symbol: 'GENE', name: 'GeneTrust', sector: 'Healthcare', price: 72, epsGrowth: 0.13, margin: 0.15, vol: 0.34, dividendYield: 0 },
+    { symbol: 'SHOP', name: 'ShopWave', sector: 'Consumer', price: 55, epsGrowth: 0.07, margin: 0.10, vol: 0.26, dividendYield: 0.015 },
+    { symbol: 'FORGE', name: 'Forge Industrial', sector: 'Industrials', price: 78, epsGrowth: 0.06, margin: 0.14, vol: 0.24, dividendYield: 0.025 },
   ];
-  equities.forEach((e, i) =>
+  equities.forEach((e, i) => {
+    // Size starting eps so the opening price equals fair value.
+    const pe0 = equityFairValue(1, e.epsGrowth, RF0);
+    const eps = e.price / pe0;
     out.push({
-      ...e,
       id: `eq-${i}`,
       kind: 'equity',
+      symbol: e.symbol,
+      name: e.name,
+      sector: e.sector,
+      price: e.price,
+      eps,
+      epsGrowth: e.epsGrowth,
+      margin: e.margin,
+      fairValue: e.price,
+      vol: e.vol,
+      dividendYield: e.dividendYield,
       beta: SECTOR_BETA[e.sector],
       priceHistory: [e.price],
-    }),
-  );
+    });
+  });
 
   const bonds: { symbol: string; name: string; issuer: string; sector: BondInstrument['sector']; coupon: number; mat: number; rating: CreditRating }[] = [
     { symbol: 'UST2Y', name: '2Y Treasury', issuer: 'Treasury', sector: 'Government', coupon: 0.03, mat: 2, rating: 'AAA' },
@@ -112,15 +128,6 @@ export function createInstruments(): Instrument[] {
   return out;
 }
 
-const SECTOR_REGIME_TILT: Record<Sector, Record<EconomyState['regime'], number>> = {
-  Tech: { expansion: 0.06, peak: -0.02, contraction: -0.1, trough: 0.02 },
-  Financials: { expansion: 0.05, peak: 0.0, contraction: -0.08, trough: 0.0 },
-  Energy: { expansion: 0.04, peak: 0.03, contraction: -0.06, trough: -0.02 },
-  Healthcare: { expansion: 0.02, peak: 0.01, contraction: 0.0, trough: 0.02 },
-  Consumer: { expansion: 0.03, peak: -0.01, contraction: -0.05, trough: 0.0 },
-  Industrials: { expansion: 0.04, peak: 0.0, contraction: -0.07, trough: 0.0 },
-};
-
 export interface MarketStepResult {
   instruments: Instrument[];
   blackSwan: boolean;
@@ -144,8 +151,13 @@ export function marketDrift(econ: EconomyState): number {
  */
 export function expectedAnnualReturn(inst: Instrument, econ: EconomyState): number | null {
   switch (inst.kind) {
-    case 'equity':
-      return marketDrift(econ) * inst.beta + SECTOR_REGIME_TILT[inst.sector][econ.regime] + (inst.drift - 0.04);
+    case 'equity': {
+      // Fundamentals: convergence of price to fair value + dividend carry.
+      const rfLong = interpolateCurve(econ.yieldCurve, 10);
+      const fair = equityFairValue(inst.eps, inst.epsGrowth, rfLong);
+      const gap = Math.log(fair / inst.price);
+      return 0.1 * gap * 12 + inst.dividendYield;
+    }
     case 'commodity':
       return inst.drift + inst.cyclicality * (econ.gdpGrowth - 0.02) * 1.5;
     case 'fx':
@@ -160,28 +172,37 @@ export function expectedAnnualReturn(inst: Instrument, econ: EconomyState): numb
 
 /** Advance every instrument by one month. */
 export function stepMarket(instruments: Instrument[], econ: EconomyState, month: number, rng: Rng): MarketStepResult {
-  const swanProb = econ.regime === 'peak' || econ.regime === 'contraction' ? 0.02 : 0.005;
+  const swanProb = econ.regime === 'peak' || econ.regime === 'contraction' ? 0.015 : 0.004;
   const blackSwan = rng.chance(swanProb);
 
   const mDrift = marketDrift(econ);
   const mVol = Math.max(0.08, econ.volIndex / 100);
   const zMkt = rng.normal();
   const marketLogReturn = (mDrift - 0.5 * mVol * mVol) * DT + mVol * Math.sqrt(DT) * zMkt;
+  const rfLong = interpolateCurve(econ.yieldCurve, 10);
+  const oil = instruments.find((i) => i.kind === 'commodity' && i.symbol === 'OIL')?.price ?? 75;
+  const oilRel = oil / 75;
 
   // First pass: everything except options (options need updated underlyings).
   const updated = instruments.map((inst): Instrument => {
     switch (inst.kind) {
       case 'equity': {
-        const tilt = SECTOR_REGIME_TILT[inst.sector][econ.regime];
+        // 1. Earnings evolve with macro drivers (+ noise / occasional surprise).
+        const gAnnual = sectorEarningsGrowth(inst, econ, oilRel);
+        const surprise = rng.chance(0.05) ? rng.range(-0.06, 0.08) : 0;
+        const eps = Math.max(0.01, inst.eps * (1 + gAnnual / 12 + rng.normal(0, 0.012) + surprise));
+        // 2. Fair value follows earnings & rates.
+        const fair = equityFairValue(eps, inst.epsGrowth, rfLong);
+        // 3. Price mean-reverts toward fair value, plus a modest market factor.
+        const logGap = Math.log(fair / inst.price);
         const zIdio = rng.normal();
         let logRet =
-          inst.beta * marketLogReturn +
-          (tilt + inst.drift - 0.04) * DT +
-          (inst.vol * Math.sqrt(DT)) * zIdio -
-          0.5 * inst.vol * inst.vol * DT;
-        if (blackSwan) logRet += Math.log(1 - Math.min(0.7, rng.range(0.15, 0.4) * inst.beta));
+          0.1 * logGap +
+          inst.beta * marketLogReturn * 0.4 +
+          inst.vol * Math.sqrt(DT) * zIdio * 0.7;
+        if (blackSwan) logRet += Math.log(1 - Math.min(0.6, rng.range(0.12, 0.32) * inst.beta));
         const price = Math.max(0.5, inst.price * Math.exp(logRet));
-        return { ...inst, price, priceHistory: [...inst.priceHistory, price].slice(-MAX_HISTORY) };
+        return { ...inst, eps, fairValue: fair, price, priceHistory: [...inst.priceHistory, price].slice(-MAX_HISTORY) };
       }
       case 'bond': {
         const baseRate = interpolateCurve(econ.yieldCurve, inst.maturityYears);

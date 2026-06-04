@@ -66,8 +66,9 @@ export function applyScenarioToInstruments(scenario: Scenario, instruments: Inst
   if (scenario === 'dotcom') {
     return instruments.map((i) => {
       if (i.kind === 'equity' && i.sector === 'Tech') {
+        // Prices detached from fundamentals — overvalued and primed to revert.
         const price = i.price * 1.9;
-        return { ...i, price, priceHistory: [price], drift: i.drift + 0.06, vol: i.vol + 0.12 };
+        return { ...i, price, priceHistory: [price], epsGrowth: i.epsGrowth + 0.04, vol: i.vol + 0.1 };
       }
       return i;
     });

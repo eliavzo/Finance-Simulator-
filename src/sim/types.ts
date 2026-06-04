@@ -86,8 +86,14 @@ interface InstrumentBase {
 export interface EquityInstrument extends InstrumentBase {
   kind: 'equity';
   sector: Sector;
-  /** Annualised GBM drift before macro tilt. */
-  drift: number;
+  /** Earnings per share (annual) — the fundamental that drives fair value. */
+  eps: number;
+  /** Expected annual earnings growth. */
+  epsGrowth: number;
+  /** Profit margin (flavour / quality signal). */
+  margin: number;
+  /** Model fair value per share, recomputed each month from eps & rates. */
+  fairValue: number;
   /** Annualised idiosyncratic volatility. */
   vol: number;
   /** Continuous dividend yield. */
