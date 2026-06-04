@@ -124,12 +124,48 @@ export function exposures(portfolio: PortfolioState, instruments: Instrument[]):
   return { gross: longs - shorts, net: longs + shorts, longs, shorts };
 }
 
+/**
+ * Force-liquidate positions (largest equity first) to raise at least `needed`
+ * cash, selling at a `haircut` to mark — a fire sale. Returns the new book, the
+ * cash raised and the dollars lost to the haircut.
+ */
+export function raiseCash(
+  portfolio: PortfolioState,
+  instruments: Instrument[],
+  needed: number,
+  haircut: number,
+): { portfolio: PortfolioState; raised: number; haircutLoss: number } {
+  if (needed <= 0 || portfolio.positions.length === 0) return { portfolio, raised: 0, haircutLoss: 0 };
+  const priceOf = (id: string) => findInstrument(instruments, id)?.price ?? 0;
+  const ordered = [...portfolio.positions].sort(
+    (a, b) => positionEquity(b, priceOf(b.instrumentId)) - positionEquity(a, priceOf(a.instrumentId)),
+  );
+  let raised = 0;
+  let haircutLoss = 0;
+  const closedIds = new Set<string>();
+  for (const pos of ordered) {
+    if (raised >= needed) break;
+    const eq = Math.max(0, positionEquity(pos, priceOf(pos.instrumentId)));
+    const proceeds = eq * (1 - haircut);
+    raised += proceeds;
+    haircutLoss += eq - proceeds;
+    closedIds.add(pos.id);
+  }
+  return {
+    portfolio: { ...portfolio, cash: portfolio.cash + raised, positions: portfolio.positions.filter((p) => !closedIds.has(p.id)) },
+    raised,
+    haircutLoss,
+  };
+}
+
 export interface PortfolioStepContext {
   policyRate: number;
   primeBrokerTier: number;
   capabilities: FirmCapabilities;
   /** Annualised financing/borrow discount from the fund thesis. */
   financingBonus?: number;
+  /** Implied-vol index; in stress the prime broker tightens margin & financing. */
+  volIndex?: number;
 }
 
 export interface PortfolioStepResult {
@@ -158,14 +194,18 @@ export function stepPortfolio(
 ): PortfolioStepResult {
   const { policyRate, primeBrokerTier, capabilities } = ctx;
   const thesisBonus = ctx.financingBonus ?? 0;
-  const financingRate = Math.max(0.005, policyRate + 0.01 - primeBrokerTier * 0.002 - capabilities.execution * 0.004 - thesisBonus);
-  const shortBorrowRate = Math.max(0.003, 0.006 + 0.012 * (1 - capabilities.execution) - thesisBonus);
+  // Stress surcharge: when vol spikes the prime broker raises financing and
+  // tightens margin requirements — exactly when leverage hurts most.
+  const stress = Math.max(0, ((ctx.volIndex ?? 15) - 25) / 25);
+  const stressFinancing = stress * 0.04;
+  const financingRate = Math.max(0.005, policyRate + 0.01 - primeBrokerTier * 0.002 - capabilities.execution * 0.004 - thesisBonus + stressFinancing);
+  const shortBorrowRate = Math.max(0.003, 0.006 + 0.012 * (1 - capabilities.execution) - thesisBonus + stressFinancing);
   // Baseline rates with *no* execution capability — used to measure what the
   // trading team saved this month.
-  const baseFinancingRate = Math.max(0.005, policyRate + 0.01 - primeBrokerTier * 0.002);
-  const baseShortRate = Math.max(0.003, 0.006 + 0.012);
-  // No-team margin maintenance threshold; risk control lowers the live one.
-  const baseMaintenanceRatio = 0.25;
+  const baseFinancingRate = Math.max(0.005, policyRate + 0.01 - primeBrokerTier * 0.002 + stressFinancing);
+  const baseShortRate = Math.max(0.003, 0.006 + 0.012 + stressFinancing);
+  // No-team margin maintenance threshold; risk control lowers it, stress raises it.
+  const baseMaintenanceRatio = 0.25 * (1 + stress * 0.6);
   const maintenanceRatio = baseMaintenanceRatio * (1 - capabilities.risk * 0.5);
 
   let cash = portfolio.cash;

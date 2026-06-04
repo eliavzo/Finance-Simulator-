@@ -1,6 +1,6 @@
 import { advanceMonth, createSimGame, enterpriseEquity } from '../engine';
 import { TOTAL_MONTHS } from '../types';
-import { openPosition, closePosition, portfolioNav, stepPortfolio } from '../portfolio';
+import { openPosition, closePosition, portfolioNav, stepPortfolio, raiseCash } from '../portfolio';
 import { createPortfolio } from '../portfolio';
 import { createInstruments } from '../market';
 import { createEconomy } from '../economy';
@@ -187,6 +187,17 @@ describe('portfolio', () => {
     };
     const p = createPortfolio(1_000_000);
     expect(openPosition(p, opt, -10, 1, 0, 'x').ok).toBe(false);
+  });
+
+  it('raiseCash force-liquidates at a haircut', () => {
+    const instruments = createInstruments();
+    const eq = instruments.find((i) => i.kind === 'equity')!;
+    let p = createPortfolio(0);
+    p = openPosition(p, eq, 5_000, 1, 0, 'x').portfolio!;
+    const r = raiseCash(p, instruments, 100_000, 0.05);
+    expect(r.raised).toBeGreaterThan(0);
+    expect(r.haircutLoss).toBeGreaterThan(0);
+    expect(r.portfolio.positions.length).toBe(0);
   });
 
   it('liquidates a levered position after a large adverse move', () => {

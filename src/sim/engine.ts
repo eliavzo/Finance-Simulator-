@@ -26,7 +26,7 @@ import { tierPerks } from './tiers';
 import { ACHIEVEMENTS, evaluateAchievements } from './achievements';
 import { maxDrawdown } from '../engine/finance';
 import { FundThesis, GameOverReason, Scenario } from './types';
-import { createPortfolio, portfolioNav, stepPortfolio } from './portfolio';
+import { createPortfolio, portfolioNav, stepPortfolio, raiseCash } from './portfolio';
 import { createFirm, firmCapabilities, stepFirm } from './firm';
 import {
   createFund,
@@ -188,6 +188,7 @@ export function advanceMonth(state: SimState): SimState {
     primeBrokerTier: state.firm.infrastructure.primeBrokerTier,
     capabilities,
     financingBonus: THESES[state.thesis].financingBonus,
+    volIndex: economy.volIndex,
   });
   let portfolio = pStep.portfolio;
   if (pStep.financingCost) post('financingCost', -pStep.financingCost);
@@ -216,6 +217,56 @@ export function advanceMonth(state: SimState): SimState {
     events.push(ev(month, { type: 'fund', title: 'Carry kristallisiert', description: `Performance-Fee von $${(carryRes.carry / 1e6).toFixed(2)}M an die GP ausgeschüttet.` }));
   }
   fundNav = portfolioNav(portfolio, instruments);
+
+  // 4b. Redemptions & liquidity ---------------------------------------------
+  // After a lockup, disappointed LPs withdraw — forcing fire sales if the fund
+  // is short of cash, exactly when markets are ugly.
+  let redeemedCount = 0;
+  if (month - fund.vintageMonth > 18) {
+    const trailing12 = trailingReturn(portfolio.returnHistory, 12);
+    const hwm = portfolio.highWaterMark || fundNav;
+    const drawdown = hwm > 0 ? Math.max(0, (hwm - fundNav) / hwm) : 0;
+    const totalCalledActive = fund.lps.filter((l) => !l.redeemed).reduce((s, l) => s + l.called, 0) || 1;
+    const keep: typeof fund.lps = [];
+    const redeemers: typeof fund.lps = [];
+    for (const lp of fund.lps) {
+      if (lp.redeemed) {
+        keep.push(lp);
+        continue;
+      }
+      const underperf = Math.max(0, lp.expectedReturn - (Number.isFinite(trailing12) ? trailing12 : 0));
+      const pressure = underperf * 1.5 + drawdown * 1.2 + (economy.regime === 'contraction' ? 0.06 : 0);
+      const prob = Math.max(0, Math.min(0.5, pressure * (1 - lp.patience)));
+      if (rng.chance(prob)) redeemers.push(lp);
+      else keep.push(lp);
+    }
+    if (redeemers.length > 0) {
+      const redeemValue = redeemers.reduce((s, lp) => s + fundNav * (lp.called / totalCalledActive), 0);
+      const haircut = economy.volIndex > 25 ? 0.08 : 0.04;
+      let fireSaleLoss = 0;
+      if (portfolio.cash < redeemValue) {
+        const r = raiseCash(portfolio, instruments, redeemValue - portfolio.cash, haircut);
+        portfolio = r.portfolio;
+        fireSaleLoss = r.haircutLoss;
+      }
+      const paid = Math.min(redeemValue, Math.max(0, portfolio.cash));
+      portfolio = { ...portfolio, cash: portfolio.cash - paid };
+      fund = {
+        ...fund,
+        distributed: fund.distributed + paid,
+        committed: Math.max(0, fund.committed - redeemers.reduce((s, l) => s + l.committed, 0)),
+        called: Math.max(0, fund.called - redeemers.reduce((s, l) => s + l.called, 0)),
+        lps: [...keep, ...redeemers.map((l) => ({ ...l, redeemed: true, distributed: l.distributed + fundNav * (l.called / totalCalledActive) }))],
+      };
+      redeemedCount = redeemers.length;
+      fundNav = portfolioNav(portfolio, instruments);
+      events.push(ev(month, {
+        type: 'fund',
+        title: 'Mittelabzug',
+        description: `${redeemedCount} LP(s) ziehen $${(paid / 1e6).toFixed(1)}M ab${fireSaleLoss > 1000 ? ` · Notverkäufe kosten $${(fireSaleLoss / 1e6).toFixed(1)}M` : ''}.`,
+      }));
+    }
+  }
 
   // 5. Firm: payroll, opex, morale, attrition -------------------------------
   const profitable = pStep.alphaPnl + pStep.income - pStep.financingCost + fee > 0;
@@ -263,6 +314,7 @@ export function advanceMonth(state: SimState): SimState {
   // Standing vs rivals: top of the table lifts reputation, bottom drags it.
   repDelta += (0.5 - rankFrac) * 0.6;
   repDelta -= pStep.marginCalled.length * 1.5;
+  repDelta -= redeemedCount * 0.8;
   if (blackSwan && pStep.marginCalled.length === 0) repDelta += 0.5;
   if (Number.isFinite(metrics.netIrr) && metrics.netIrr > 0.15) repDelta += 0.2;
   let reputation = Math.max(0, Math.min(100, state.reputation + repDelta));

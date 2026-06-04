@@ -5,6 +5,7 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSimStore } from '../store';
 import { portfolioNav } from '../portfolio';
 import { fundMetrics, uncalledCapital } from '../fund';
+import { trailingReturn } from '../rivals';
 import { metricValue, objectiveProgress, formatMetric } from '../objectives';
 import { Objective } from '../types';
 import { SimHeader } from './SimHeader';
@@ -46,6 +47,32 @@ export function FundScreen() {
             <StatTile label="Uncalled" value={fmtMoney(uncalled)} />
           </View>
         </Card>
+
+        {(() => {
+          const cashQuote = fundNav > 0 ? game.portfolio.cash / fundNav : 0;
+          const hwm = game.portfolio.highWaterMark || fundNav;
+          const drawdown = hwm > 0 ? Math.max(0, (hwm - fundNav) / hwm) : 0;
+          const trailing = trailingReturn(game.portfolio.returnHistory);
+          const lockup = game.month - game.fund.vintageMonth <= 18;
+          const elevated = !lockup && (drawdown > 0.1 || (Number.isFinite(trailing) && trailing < 0.05));
+          return (
+            <Card>
+              <SectionTitle>Liquidität & Abzugsrisiko</SectionTitle>
+              <View style={styles.statRow}>
+                <StatTile label="Fonds-Cash" value={fmtMoney(game.portfolio.cash)} />
+                <StatTile label="Cash-Quote" value={fmtPct(cashQuote, 0)} valueColor={cashQuote < 0.1 ? colors.negative : colors.text} />
+                <StatTile label="Drawdown" value={fmtPct(drawdown)} valueColor={drawdown > 0.1 ? colors.negative : colors.text} />
+              </View>
+              <Text style={[styles.hint, { color: elevated ? colors.negative : colors.textMuted }]}>
+                {lockup
+                  ? 'Lockup aktiv — vorerst keine Mittelabzüge.'
+                  : elevated
+                    ? '⚠ Erhöhtes Abzugsrisiko: schwache Performance/Drawdown. Halte Cash-Puffer, sonst drohen Notverkäufe.'
+                    : 'Abzugsrisiko gering. Ein Cash-Puffer schützt vor Zwangsverkäufen in Krisen.'}
+              </Text>
+            </Card>
+          );
+        })()}
 
         <Card>
           <SectionTitle ornament>Mandate & Ziele der LPs</SectionTitle>
