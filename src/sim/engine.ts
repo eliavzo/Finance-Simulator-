@@ -19,7 +19,8 @@ import { REGIME_LABEL, stepEconomy } from './economy';
 import { createInstruments, stepMarket } from './market';
 import { THESES } from './thesis';
 import { scenarioEconomy, applyScenarioToInstruments } from './scenarios';
-import { FundThesis, Scenario } from './types';
+import { generateObjective, metricValue, isMet, computeScore } from './objectives';
+import { FundThesis, GameOverReason, Scenario } from './types';
 import { createPortfolio, portfolioNav, stepPortfolio } from './portfolio';
 import { createFirm, firmCapabilities, stepFirm } from './firm';
 import {
@@ -104,6 +105,7 @@ export function createSimGame(
     firm,
     fund,
     reputation: 50,
+    objectives: [generateObjective(rng, 0, 50), generateObjective(rng, 0, 50)],
     signals: signals0,
     lastContribution: NO_CONTRIBUTION,
     incomeStatements: [],
@@ -243,7 +245,37 @@ export function advanceMonth(state: SimState): SimState {
   repDelta -= pStep.marginCalled.length * 1.5;
   if (blackSwan && pStep.marginCalled.length === 0) repDelta += 0.5;
   if (Number.isFinite(metrics.netIrr) && metrics.netIrr > 0.15) repDelta += 0.2;
-  const reputation = Math.max(0, Math.min(100, state.reputation + repDelta));
+  let reputation = Math.max(0, Math.min(100, state.reputation + repDelta));
+
+  // 8b. Objectives / mandates ------------------------------------------------
+  const evalState = { ...state, fund, instruments, portfolio, month, reputation } as SimState;
+  const objectives = state.objectives.map((obj) => {
+    if (obj.status !== 'active' || month < obj.deadlineMonth) return obj;
+    const value = metricValue(evalState, obj.metric);
+    if (isMet(obj, value)) {
+      reputation = Math.min(100, reputation + obj.rewardReputation);
+      if (obj.rewardCapital > 0) {
+        const lp = createLP('Endowment', obj.rewardCapital, rng);
+        fund = { ...fund, committed: fund.committed + lp.committed, lps: [...fund.lps, lp] };
+      }
+      events.push(ev(month, {
+        type: 'fund',
+        title: `Mandat erfüllt: ${obj.title}`,
+        description: `${obj.description} erreicht. +${obj.rewardReputation} Reputation${obj.rewardCapital > 0 ? `, +$${(obj.rewardCapital / 1e6).toFixed(0)}M Commitment` : ''}.`,
+      }));
+      return { ...obj, status: 'succeeded' as const };
+    }
+    reputation = Math.max(0, reputation - obj.penaltyReputation);
+    events.push(ev(month, { type: 'fund', title: `Mandat verfehlt: ${obj.title}`, description: `${obj.description} nicht erreicht. −${obj.penaltyReputation} Reputation.` }));
+    return { ...obj, status: 'failed' as const };
+  });
+  let activeCount = objectives.filter((o) => o.status === 'active').length;
+  while (activeCount < 2 && month < TOTAL_MONTHS - 18) {
+    const fresh = generateObjective(rng, month, reputation);
+    objectives.push(fresh);
+    activeCount += 1;
+    events.push(ev(month, { type: 'fund', title: `Neues LP-Mandat: ${fresh.title}`, description: `${fresh.description} bis Monat ${fresh.deadlineMonth + 1}.` }));
+  }
 
   // 9. Research desk & team-contribution feedback ----------------------------
   const signals = generateSignals(instruments, economy, capabilities, rng, THESES[state.thesis].signalNoiseMult);
@@ -281,7 +313,7 @@ export function advanceMonth(state: SimState): SimState {
     fundReturnPct: monthReturn,
     gpNetIncome: incomeStatement.netIncome,
     contribution,
-    reputationDelta: repDelta,
+    reputationDelta: reputation - state.reputation,
     regime: economy.regime,
     regimeChanged,
     policyRate: economy.policyRate,
@@ -292,15 +324,47 @@ export function advanceMonth(state: SimState): SimState {
     headlines: events.map((e) => ({ type: e.type, title: e.title, description: e.description })),
   };
 
-  const gameOver = month >= TOTAL_MONTHS;
+  const insolvent = firm.cash < -2_000_000;
+  const ruined = reputation <= 0;
+  const horizon = month >= TOTAL_MONTHS;
+  const gameOver = insolvent || ruined || horizon;
+  let gameOverReason: GameOverReason | undefined;
+  let finalScore: number | undefined;
+  let finalGrade: string | undefined;
   if (gameOver) {
-    events.push(ev(month, { type: 'info', title: 'Spielende', description: `Nach 20 Jahren: Unternehmenswert $${(enterprise / 1e6).toFixed(1)}M, Netto-IRR ${(metrics.netIrr * 100).toFixed(1)}%.` }));
+    gameOverReason = insolvent ? 'insolvency' : ruined ? 'reputation' : 'horizon';
+    const endState = {
+      ...state,
+      firm,
+      portfolio,
+      instruments,
+      fund,
+      month,
+      reputation,
+      objectives,
+      equityHistory: [...state.equityHistory, enterprise],
+      gameOverReason,
+    } as SimState;
+    const sc = computeScore(endState);
+    finalScore = sc.score;
+    finalGrade = sc.grade;
+    const title = gameOverReason === 'horizon' ? 'Spielende' : gameOverReason === 'insolvency' ? 'GP zahlungsunfähig' : 'Vertrauen verspielt';
+    const desc =
+      gameOverReason === 'horizon'
+        ? `Nach 20 Jahren: Unternehmenswert $${(enterprise / 1e6).toFixed(1)}M. Note ${finalGrade} (${finalScore}).`
+        : gameOverReason === 'insolvency'
+          ? 'Die Management-Gesellschaft ist pleite. Das Haus schließt.'
+          : 'Die Reputation ist auf null gefallen — die LPs ziehen ab.';
+    events.push(ev(month, { type: 'info', title, description: desc }));
   }
 
   return {
     month,
     started: true,
     gameOver,
+    gameOverReason,
+    finalScore,
+    finalGrade,
     thesis: state.thesis,
     scenario: state.scenario,
     economy,
@@ -309,6 +373,7 @@ export function advanceMonth(state: SimState): SimState {
     firm,
     fund,
     reputation,
+    objectives,
     signals,
     lastContribution: contribution,
     lastReport: report,

@@ -387,6 +387,30 @@ export interface TeamContribution {
   capitalRaised: number;
 }
 
+/* -------------------------------------------------------------------------- */
+/*                            Objectives / mandates                           */
+/* -------------------------------------------------------------------------- */
+
+export type ObjectiveMetric = 'netIrr' | 'tvpi' | 'aum' | 'maxDrawdown' | 'reputation';
+
+export interface Objective {
+  id: string;
+  title: string;
+  description: string;
+  metric: ObjectiveMetric;
+  target: number;
+  /** 'gte' = must reach at least target; 'lte' = must stay at/below target. */
+  comparator: 'gte' | 'lte';
+  deadlineMonth: number;
+  status: 'active' | 'succeeded' | 'failed';
+  rewardReputation: number;
+  /** LP commitment added on success. */
+  rewardCapital: number;
+  penaltyReputation: number;
+}
+
+export type GameOverReason = 'horizon' | 'insolvency' | 'reputation';
+
 /** A single instrument's move over the month. */
 export interface MarketMover {
   symbol: string;
@@ -436,6 +460,14 @@ export interface SimState {
 
   /** Reputation in [0, 100]; gates LP capital, talent and deal quality. */
   reputation: number;
+
+  /** Active & resolved LP mandates / objectives. */
+  objectives: Objective[];
+  /** Why the game ended (set once gameOver is true). */
+  gameOverReason?: GameOverReason;
+  /** Final score & grade, computed at game over. */
+  finalScore?: number;
+  finalGrade?: string;
 
   /** Current research calls from the analyst/quant team. */
   signals: ResearchSignal[];

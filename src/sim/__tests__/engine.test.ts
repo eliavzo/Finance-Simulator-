@@ -93,6 +93,31 @@ describe('advanceMonth', () => {
   });
 });
 
+describe('objectives & score', () => {
+  it('seeds active mandates at start', () => {
+    const g = createSimGame(3);
+    expect(g.objectives.length).toBeGreaterThanOrEqual(2);
+    expect(g.objectives.every((o) => o.status === 'active')).toBe(true);
+  });
+
+  it('produces a final score and grade at the horizon', () => {
+    let g = createSimGame(2030);
+    for (let i = 0; i < TOTAL_MONTHS; i++) g = advanceMonth(g);
+    expect(g.gameOver).toBe(true);
+    expect(g.gameOverReason).toBe('horizon');
+    expect(typeof g.finalScore).toBe('number');
+    expect(['S', 'A', 'B', 'C', 'D', 'F']).toContain(g.finalGrade);
+  });
+
+  it('resolves a mandate by its deadline', () => {
+    let g = createSimGame(5);
+    const firstDeadline = Math.min(...g.objectives.map((o) => o.deadlineMonth));
+    for (let i = 0; i < firstDeadline; i++) g = advanceMonth(g);
+    const resolved = g.objectives.filter((o) => o.status !== 'active');
+    expect(resolved.length).toBeGreaterThan(0);
+  });
+});
+
 describe('portfolio', () => {
   it('posts margin = notional / leverage and closes for cash', () => {
     const instruments = createInstruments();

@@ -5,9 +5,11 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSimStore } from '../store';
 import { portfolioNav } from '../portfolio';
 import { fundMetrics, uncalledCapital } from '../fund';
+import { metricValue, objectiveProgress, formatMetric } from '../objectives';
+import { Objective } from '../types';
 import { SimHeader } from './SimHeader';
 import { notify } from '../../utils/notify';
-import { Button, Card, Pill, SectionTitle, StatTile } from '../../components/ui';
+import { Button, Card, Pill, ProgressBar, SectionTitle, StatTile } from '../../components/ui';
 import { AmountStepper } from '../../components/controls';
 import { colors, fonts, spacing } from '../../utils/theme';
 import { fmtMoney, fmtMultiple, fmtPct } from '../../utils/format';
@@ -43,6 +45,17 @@ export function FundScreen() {
             <StatTile label="Distrib." value={fmtMoney(game.fund.distributed)} />
             <StatTile label="Uncalled" value={fmtMoney(uncalled)} />
           </View>
+        </Card>
+
+        <Card>
+          <SectionTitle ornament>Mandate & Ziele der LPs</SectionTitle>
+          {game.objectives.filter((o) => o.status === 'active').length === 0 ? (
+            <Text style={styles.empty}>Derzeit keine offenen Mandate.</Text>
+          ) : (
+            game.objectives
+              .filter((o) => o.status === 'active')
+              .map((obj) => <ObjectiveRow key={obj.id} obj={obj} value={metricValue(game, obj.metric)} monthsLeft={obj.deadlineMonth - game.month} />)
+          )}
         </Card>
 
         <Card>
@@ -104,6 +117,24 @@ export function FundScreen() {
   );
 }
 
+function ObjectiveRow({ obj, value, monthsLeft }: { obj: Objective; value: number; monthsLeft: number }) {
+  const progress = objectiveProgress(obj, value);
+  const onTrack = progress >= 1;
+  return (
+    <View style={styles.objRow}>
+      <View style={styles.objHead}>
+        <Text style={styles.objTitle}>{obj.title} · {obj.description}</Text>
+        <Pill text={onTrack ? 'Im Plan' : 'Offen'} color={onTrack ? colors.positive : colors.warning} />
+      </View>
+      <ProgressBar value={progress} color={onTrack ? colors.positive : colors.primary} />
+      <Text style={styles.objMeta}>
+        Aktuell {formatMetric(obj.metric, value)} · noch {Math.max(0, monthsLeft)} Mon. · Belohnung +{obj.rewardReputation} Rep
+        {obj.rewardCapital > 0 ? ` / +$${(obj.rewardCapital / 1e6).toFixed(0)}M` : ''}
+      </Text>
+    </View>
+  );
+}
+
 function Line({ label, value, bold, plain }: { label: string; value: number; bold?: boolean; plain?: boolean }) {
   const color = plain ? colors.text : value >= 0 ? colors.positive : colors.negative;
   return (
@@ -129,4 +160,8 @@ const styles = StyleSheet.create({
   lpRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.sm, borderTopWidth: 1, borderTopColor: colors.border },
   lpName: { color: colors.text, fontSize: 14, fontWeight: '700' },
   lpMeta: { color: colors.textMuted, fontSize: 11, marginTop: 2 },
+  objRow: { paddingVertical: spacing.sm, borderTopWidth: 1, borderTopColor: colors.ruleSoft, gap: spacing.xs },
+  objHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm },
+  objTitle: { color: colors.text, fontSize: 12, flex: 1 },
+  objMeta: { color: colors.textMuted, fontSize: 11 },
 });
