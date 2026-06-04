@@ -6,6 +6,7 @@ import { useSimStore } from '../store';
 import { positionEquity, positionPnl } from '../portfolio';
 import { STANCE_LABEL } from '../research';
 import { valuationGap, sectorOutlooks } from '../fundamentals';
+import { tierPerks } from '../tiers';
 import { EquityInstrument, Instrument, InstrumentKind, ResearchSignal } from '../types';
 import { SimHeader } from './SimHeader';
 import { notify } from '../../utils/notify';
@@ -57,6 +58,7 @@ export function MarketsScreen() {
   };
 
   const cap = useMemo(() => game.portfolio.cash, [game.portfolio.cash]);
+  const perks = tierPerks(game.peakReputation ?? game.reputation);
 
   return (
     <View style={styles.container}>
@@ -129,13 +131,18 @@ export function MarketsScreen() {
               onChange={setSide}
               options={[{ label: 'LONG', value: 'long', color: colors.long }, { label: 'SHORT', value: 'short', color: colors.short }]}
             />
-            <Text style={styles.label}>Hebel</Text>
-            <LeverageSelector value={leverage} onChange={setLeverage} />
+            <Text style={styles.label}>Hebel (bis {perks.maxLeverage}× · Stufe {perks.label})</Text>
+            <LeverageSelector value={Math.min(leverage, perks.maxLeverage)} onChange={setLeverage} max={perks.maxLeverage} />
             <Text style={styles.label}>Notional (Margin {fmtMoney(notional / leverage)})</Text>
             <AmountStepper value={notional} onChange={setNotional} step={250_000} min={50_000} max={cap * leverage} />
             <Button title={`${side.toUpperCase()} ${selected.symbol} @ ${leverage}x`} onPress={submitTrade} variant={side === 'long' ? 'positive' : 'negative'} style={{ marginTop: spacing.md }} />
 
-            {selected.kind === 'equity' ? (
+            {selected.kind === 'equity' && !perks.allowOptions ? (
+              <View style={styles.optBox}>
+                <Text style={styles.lockNote}>🔒 Optionshandel ab Stufe „Aufstrebend" (Reputation 55).</Text>
+              </View>
+            ) : null}
+            {selected.kind === 'equity' && perks.allowOptions ? (
               <View style={styles.optBox}>
                 <SectionTitle>Option kaufen (5% OTM)</SectionTitle>
                 <Segmented<'call' | 'put'>
@@ -256,6 +263,7 @@ const styles = StyleSheet.create({
   chartWrap: { alignItems: 'center', marginBottom: spacing.sm },
   label: { color: colors.textMuted, fontSize: 12, marginTop: spacing.md, marginBottom: spacing.xs, fontWeight: '700' },
   optBox: { marginTop: spacing.lg, paddingTop: spacing.md, borderTopWidth: 1, borderTopColor: colors.border },
+  lockNote: { color: colors.textMuted, fontFamily: fonts.serifItalic, fontSize: 12 },
   row: { flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.sm, paddingHorizontal: spacing.sm, borderRadius: 8, gap: spacing.sm },
   rowActive: { backgroundColor: colors.surfaceAlt },
   rowSym: { color: colors.text, fontSize: 15, fontWeight: '700' },

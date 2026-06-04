@@ -22,6 +22,9 @@ import { scenarioEconomy, applyScenarioToInstruments } from './scenarios';
 import { generateObjective, metricValue, isMet, computeScore } from './objectives';
 import { createRivals, stepRivals, buildLeague, trailingReturn, playerRankFraction } from './rivals';
 import { maybeDecision } from './decisions';
+import { tierPerks } from './tiers';
+import { ACHIEVEMENTS, evaluateAchievements } from './achievements';
+import { maxDrawdown } from '../engine/finance';
 import { FundThesis, GameOverReason, Scenario } from './types';
 import { createPortfolio, portfolioNav, stepPortfolio } from './portfolio';
 import { createFirm, firmCapabilities, stepFirm } from './firm';
@@ -107,6 +110,8 @@ export function createSimGame(
     firm,
     fund,
     reputation: 50,
+    peakReputation: 50,
+    achievements: [],
     rivals: createRivals(rng),
     objectives: [generateObjective(rng, 0, 50), generateObjective(rng, 0, 50)],
     signals: signals0,
@@ -235,7 +240,9 @@ export function advanceMonth(state: SimState): SimState {
 
   // 7. Fundraising -----------------------------------------------------------
   const metrics = fundMetrics(fund, fundNav, month);
-  const newLP = tryRaiseCapital(fund, metrics, capabilities.fundraising, state.reputation, rng);
+  const peakSoFar = Math.max(state.peakReputation ?? state.reputation, state.reputation);
+  const allowedLpTypes = tierPerks(peakSoFar).lpTypes;
+  const newLP = tryRaiseCapital(fund, metrics, capabilities.fundraising, state.reputation, rng, allowedLpTypes);
   if (newLP) {
     fund = { ...fund, committed: fund.committed + newLP.committed, lps: [...fund.lps, newLP] };
     events.push(ev(month, { type: 'fund', title: 'Neues LP-Commitment', description: `${newLP.name} (${newLP.type}) committed $${(newLP.committed / 1e6).toFixed(1)}M.` }));
@@ -314,6 +321,29 @@ export function advanceMonth(state: SimState): SimState {
   const balanceSheet = buildBalanceSheet({ month, firm, fund, fundCash: portfolio.cash, positionsValue });
 
   const enterprise = firm.cash + fundNav;
+
+  // Tier progression (sticky) & achievements.
+  const peakReputation = Math.max(state.peakReputation ?? state.reputation, reputation);
+  const unlocked = new Set((state.achievements ?? []).map((a) => a.id));
+  const newlyUnlocked = evaluateAchievements(
+    {
+      state: { ...state, firm, portfolio, fund, reputation, month, objectives } as SimState,
+      enterprise,
+      fundNav,
+      tvpi: metrics.tvpi,
+      netIrr: metrics.netIrr,
+      maxDrawdown: maxDrawdown(portfolio.navHistory),
+      leagueRank: league.find((e) => e.isPlayer)?.rank ?? 99,
+      blackSwanSurvived: blackSwan && pStep.marginCalled.length === 0,
+      distinctKinds: new Set(portfolio.positions.map((p) => p.kind)).size,
+    },
+    unlocked,
+  );
+  const achievements = [...(state.achievements ?? []), ...newlyUnlocked.map((a) => ({ id: a.id, month }))];
+  for (const a of newlyUnlocked) {
+    events.push(ev(month, { type: 'info', title: `🏅 Auszeichnung: ${a.title}`, description: a.description }));
+  }
+
   const enterpriseStart = state.equityHistory[state.equityHistory.length - 1] ?? enterprise;
   const { gainers, losers } = computeMovers(instruments);
   const report: MonthlyReport = {
@@ -390,6 +420,8 @@ export function advanceMonth(state: SimState): SimState {
     firm,
     fund,
     reputation,
+    peakReputation,
+    achievements,
     rivals,
     objectives,
     signals,

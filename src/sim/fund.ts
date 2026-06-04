@@ -205,6 +205,7 @@ export function tryRaiseCapital(
   fundraisingCapability: number,
   reputation: number,
   rng: Rng,
+  allowedTypes: LPType[] = ['Pension', 'Endowment', 'FamilyOffice', 'SovereignWealth', 'FundOfFunds'],
 ): LimitedPartner | null {
   // Strong TVPI / IRR + reputation + IR capability attract inbound LPs.
   const trackRecord = Number.isFinite(metrics.netIrr) ? Math.max(0, metrics.netIrr) : metrics.tvpi > 1 ? 0.1 : 0;
@@ -212,7 +213,7 @@ export function tryRaiseCapital(
   const monthlyProb = Math.max(0, Math.min(0.25, appetite * 0.15));
   if (!rng.chance(monthlyProb)) return null;
 
-  const types: LPType[] = ['Pension', 'Endowment', 'FamilyOffice', 'SovereignWealth', 'FundOfFunds'];
+  const types = allowedTypes.length > 0 ? allowedTypes : (['Pension'] as LPType[]);
   const type = rng.pick(types);
   // Ticket size scales with reputation & track record.
   const base = 5_000_000 + reputation * 200_000;

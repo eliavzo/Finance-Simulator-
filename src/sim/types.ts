@@ -511,6 +511,10 @@ export interface SimState {
 
   /** Reputation in [0, 100]; gates LP capital, talent and deal quality. */
   reputation: number;
+  /** Highest reputation ever reached — drives sticky tier perks/unlocks. */
+  peakReputation: number;
+  /** Unlocked achievement ids with the month they were earned. */
+  achievements: { id: string; month: number }[];
 
   /** AI competitor funds for the league table. */
   rivals: RivalFund[];

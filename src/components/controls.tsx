@@ -93,20 +93,22 @@ export function AmountStepper({
   );
 }
 
-export function LeverageSelector({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+export function LeverageSelector({ value, onChange, max = 5 }: { value: number; onChange: (v: number) => void; max?: number }) {
   return (
     <View style={styles.segmented}>
       {[1, 2, 3, 4, 5].map((lev, i) => {
         const active = lev === value;
+        const locked = lev > max;
         const danger = lev >= 4;
         return (
           <TouchableOpacity
             key={lev}
-            style={[styles.segment, i > 0 && styles.segmentDivider, active && { backgroundColor: danger ? colors.warning : colors.primary }]}
+            disabled={locked}
+            style={[styles.segment, i > 0 && styles.segmentDivider, active && { backgroundColor: danger ? colors.warning : colors.primary }, locked && styles.segmentLocked]}
             onPress={() => onChange(lev)}
             activeOpacity={0.7}
           >
-            <Text style={[styles.segmentText, active && styles.segmentTextActive]}>{lev}×</Text>
+            <Text style={[styles.segmentText, active && styles.segmentTextActive, locked && styles.segmentLockedText]}>{locked ? '🔒' : `${lev}×`}</Text>
           </TouchableOpacity>
         );
       })}
@@ -126,6 +128,8 @@ const styles = StyleSheet.create({
   segmentDivider: { borderLeftWidth: 1, borderLeftColor: colors.border },
   segmentText: { color: colors.textMuted, fontFamily: fonts.serifBold, fontSize: 12, letterSpacing: 1, textTransform: 'uppercase' },
   segmentTextActive: { color: colors.paperText },
+  segmentLocked: { opacity: 0.45 },
+  segmentLockedText: { color: colors.textMuted },
   stepperRow: { flexDirection: 'row', alignItems: 'stretch', marginTop: spacing.xs },
   stepperBtn: {
     width: 46,

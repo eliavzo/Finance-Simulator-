@@ -7,6 +7,8 @@ import { portfolioNav } from '../portfolio';
 import { fundMetrics } from '../fund';
 import { computeRisk } from '../risk';
 import { buildLeague, trailingReturn } from '../rivals';
+import { tierPerks } from '../tiers';
+import { ACHIEVEMENTS } from '../achievements';
 import { REGIME_DESC, REGIME_LABEL } from '../economy';
 import { SimEventType } from '../types';
 import { SimHeader } from './SimHeader';
@@ -94,9 +96,34 @@ export function SimDashboardScreen() {
         </Card>
 
         <Card>
-          <SectionTitle>Reputation</SectionTitle>
+          <SectionTitle>Reputation · Stufe {tierPerks(game.peakReputation ?? game.reputation).label}</SectionTitle>
           <Text style={styles.rep}>{game.reputation.toFixed(0)}</Text>
           <ProgressBar value={game.reputation / 100} color={colors.warning} />
+          {(() => {
+            const p = tierPerks(game.peakReputation ?? game.reputation);
+            return (
+              <>
+                <Text style={styles.hint}>Hebel bis {p.maxLeverage}× · Optionen {p.allowOptions ? '✓' : '🔒'} · Infra bis Stufe {p.maxInfraTier} · {p.lpTypes.length} LP-Typen</Text>
+                {p.nextAt ? <Text style={styles.hint}>Nächste Stufe „{p.nextTier === 'rising' ? 'Aufstrebend' : p.nextTier === 'established' ? 'Etabliert' : 'Titan'}" ab Reputation {p.nextAt}</Text> : <Text style={styles.hint}>Höchste Stufe erreicht.</Text>}
+              </>
+            );
+          })()}
+        </Card>
+
+        <Card>
+          <SectionTitle ornament>Auszeichnungen · {(game.achievements ?? []).length}/{ACHIEVEMENTS.length}</SectionTitle>
+          {ACHIEVEMENTS.map((a) => {
+            const got = (game.achievements ?? []).some((x) => x.id === a.id);
+            return (
+              <View key={a.id} style={styles.achRow}>
+                <Text style={[styles.achMark, { color: got ? colors.warning : colors.ruleSoft }]}>{got ? '🏅' : '○'}</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.achTitle, !got && styles.achLocked]}>{a.title}</Text>
+                  <Text style={styles.achDesc}>{a.description}</Text>
+                </View>
+              </View>
+            );
+          })}
         </Card>
 
         <Card>
@@ -146,6 +173,11 @@ const styles = StyleSheet.create({
   leagueRet: { fontSize: 13, fontFamily: fonts.serifBold, width: 64, textAlign: 'right' },
   leagueAum: { color: colors.textMuted, fontSize: 12, width: 64, textAlign: 'right' },
   rep: { color: colors.text, fontSize: 30, fontFamily: fonts.displayBlack, marginBottom: spacing.sm },
+  achRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm, paddingVertical: 4, borderTopWidth: 1, borderTopColor: colors.ruleSoft },
+  achMark: { fontSize: 14, width: 20, textAlign: 'center' },
+  achTitle: { color: colors.text, fontSize: 13, fontFamily: fonts.serifBold },
+  achLocked: { color: colors.textMuted },
+  achDesc: { color: colors.textMuted, fontSize: 11, marginTop: 1 },
   macroDesc: { color: colors.textMuted, fontSize: 13, marginBottom: spacing.sm, fontStyle: 'italic' },
   event: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md },
   dot: { width: 7, height: 7, marginTop: 5 },

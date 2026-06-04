@@ -25,6 +25,7 @@ import { applyDecision } from './decisions';
 import { closePosition, openPosition } from './portfolio';
 import { callCapital } from './fund';
 import { firmCapabilities, generateCandidate, upgradeCost, MAX_TIER, fairSalary } from './firm';
+import { tierPerks } from './tiers';
 import { blackScholes, interpolateCurve } from './quant';
 import { Rng } from '../engine/rng';
 
@@ -136,6 +137,10 @@ export const useSimStore = create<SimStore>()(
         if (!game) return { ok: false, error: 'Kein Spiel.' };
         const inst = game.instruments.find((i) => i.id === instrumentId);
         if (!inst) return { ok: false, error: 'Instrument nicht gefunden.' };
+        const perks = tierPerks(game.peakReputation ?? game.reputation);
+        if (Math.abs(leverage) > perks.maxLeverage) {
+          return { ok: false, error: `Hebel bis ${perks.maxLeverage}x — höher ab Stufe „${perks.nextTier ? 'nächste Stufe' : perks.label}".` };
+        }
         uiCounter += 1;
         const res = openPosition(game.portfolio, inst, signedQuantity, leverage, game.month, String(uiCounter));
         if (!res.ok || !res.portfolio) return { ok: false, error: res.error };
@@ -153,6 +158,9 @@ export const useSimStore = create<SimStore>()(
       buyOption: (underlyingId, optionType, strikeOffsetPct, monthsToExpiry, contracts) => {
         const { game } = get();
         if (!game) return { ok: false, error: 'Kein Spiel.' };
+        if (!tierPerks(game.peakReputation ?? game.reputation).allowOptions) {
+          return { ok: false, error: 'Optionshandel ab Stufe „Aufstrebend" (Reputation 55).' };
+        }
         const underlying = game.instruments.find((i) => i.id === underlyingId);
         if (!underlying || underlying.kind !== 'equity') {
           return { ok: false, error: 'Optionen nur auf Aktien.' };
@@ -229,6 +237,10 @@ export const useSimStore = create<SimStore>()(
         if (!game) return { ok: false, error: 'Kein Spiel.' };
         const tier = game.firm.infrastructure[track];
         if (tier >= MAX_TIER) return { ok: false, error: 'Bereits maximale Stufe.' };
+        const perks = tierPerks(game.peakReputation ?? game.reputation);
+        if (tier + 1 > perks.maxInfraTier) {
+          return { ok: false, error: `Stufe ${tier + 1} ab höherer Reputation (aktuell „${perks.label}").` };
+        }
         const cost = upgradeCost(track, tier);
         if (cost > game.firm.cash) return { ok: false, error: 'Nicht genug GP-Cash.' };
         const firm = {

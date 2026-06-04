@@ -6,6 +6,8 @@ import { enterpriseEquity } from '../engine';
 import { portfolioNav } from '../portfolio';
 import { fundMetrics } from '../fund';
 import { maxDrawdown } from '../../engine/finance';
+import { ACHIEVEMENTS } from '../achievements';
+import { tierPerks } from '../tiers';
 import { Button, Rule, StatTile } from '../../components/ui';
 import { colors, fonts, spacing } from '../../utils/theme';
 import { fmtMoney, fmtMultiple, fmtPct } from '../../utils/format';
@@ -70,7 +72,11 @@ export function EndGameModal() {
             </View>
             <View style={styles.statRow}>
               <StatTile label="Mandate erfüllt" value={`${objSucceeded}/${objTotal}`} />
+              <StatTile label="Auszeichnungen" value={`${(game.achievements ?? []).length}/${ACHIEVEMENTS.length}`} />
+            </View>
+            <View style={styles.statRow}>
               <StatTile label="Committed" value={fmtMoney(game.fund.committed)} />
+              <StatTile label="Stufe" value={tierPerks(game.peakReputation ?? game.reputation).label} />
             </View>
 
             <Button title="Neues Spiel" onPress={() => newGame()} variant="primary" style={{ marginTop: spacing.lg }} />
