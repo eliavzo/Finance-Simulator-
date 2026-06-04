@@ -324,8 +324,9 @@ export function advanceMonth(state: SimState): SimState {
     headlines: events.map((e) => ({ type: e.type, title: e.title, description: e.description })),
   };
 
-  const insolvent = firm.cash < -2_000_000;
-  const ruined = reputation <= 0;
+  // Grace periods so early bad luck can't end a run in the first year(s).
+  const insolvent = firm.cash < -2_000_000 && month >= 12;
+  const ruined = reputation <= 0 && month >= 24;
   const horizon = month >= TOTAL_MONTHS;
   const gameOver = insolvent || ruined || horizon;
   let gameOverReason: GameOverReason | undefined;

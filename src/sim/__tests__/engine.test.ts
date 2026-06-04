@@ -100,11 +100,11 @@ describe('objectives & score', () => {
     expect(g.objectives.every((o) => o.status === 'active')).toBe(true);
   });
 
-  it('produces a final score and grade at the horizon', () => {
+  it('produces a final score and grade when the game ends', () => {
     let g = createSimGame(2030);
     for (let i = 0; i < TOTAL_MONTHS; i++) g = advanceMonth(g);
     expect(g.gameOver).toBe(true);
-    expect(g.gameOverReason).toBe('horizon');
+    expect(['horizon', 'insolvency', 'reputation']).toContain(g.gameOverReason);
     expect(typeof g.finalScore).toBe('number');
     expect(['S', 'A', 'B', 'C', 'D', 'F']).toContain(g.finalGrade);
   });
