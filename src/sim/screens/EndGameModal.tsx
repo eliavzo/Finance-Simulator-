@@ -47,7 +47,7 @@ export function EndGameModal() {
           <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
             <Rule double />
             <Text style={styles.masthead}>Schlussbilanz</Text>
-            <Text style={styles.dateline}>DIE FINANZ-CHRONIK · LETZTE AUSGABE</Text>
+            <Text style={styles.dateline}>{`${game.firm.name.toUpperCase()} · LETZTE AUSGABE`}</Text>
             <Rule double />
 
             <Text style={styles.headline}>{REASON_HEADLINE[reason]}</Text>

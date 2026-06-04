@@ -1,6 +1,6 @@
 /** Front page — pick a fund thesis & starting scenario, then launch. */
 import React, { useState } from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useSimStore } from '../store';
 import { THESES, THESIS_ORDER } from '../thesis';
 import { SCENARIOS, SCENARIO_ORDER } from '../scenarios';
@@ -10,8 +10,11 @@ import { colors, fonts, spacing } from '../../utils/theme';
 
 export function SimStartScreen() {
   const newGame = useSimStore((s) => s.newGame);
+  const [officeName, setOfficeName] = useState('');
   const [thesis, setThesis] = useState<FundThesis>('multistrat');
   const [scenario, setScenario] = useState<Scenario>('normal');
+  const trimmedName = officeName.trim();
+  const canStart = trimmedName.length >= 2;
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.inner}>
@@ -19,9 +22,20 @@ export function SimStartScreen() {
 
       <Text style={styles.headline}>Gründe deinen Fonds</Text>
       <Text style={styles.standfirst}>
-        Wähle deine Strategie und das Marktumfeld, in dem du startest. Beides verändert, wie sich dein
-        Haus über die nächsten zwanzig Jahre spielt.
+        Gib deinem Haus einen Namen, wähle Strategie und Marktumfeld. Alles prägt, wie sich die nächsten
+        zwanzig Jahre spielen.
       </Text>
+
+      <SectionLabel text="Name des Hauses" />
+      <TextInput
+        style={styles.nameInput}
+        value={officeName}
+        onChangeText={setOfficeName}
+        placeholder="z. B. Vivenzio Capital"
+        placeholderTextColor={colors.textMuted}
+        maxLength={32}
+        returnKeyType="done"
+      />
 
       <SectionLabel text="Strategie des Hauses" />
       {THESIS_ORDER.map((key) => (
@@ -47,7 +61,13 @@ export function SimStartScreen() {
       ))}
 
       <Rule />
-      <Button title="Erste Ausgabe drucken" onPress={() => newGame({ thesis, scenario })} variant="primary" style={styles.cta} />
+      <Button
+        title={canStart ? 'Erste Ausgabe drucken' : 'Erst dem Haus einen Namen geben'}
+        onPress={() => newGame({ thesis, scenario, officeName: trimmedName })}
+        variant="primary"
+        disabled={!canStart}
+        style={styles.cta}
+      />
       <Text style={styles.disclaimer}>Sämtliche Märkte sind simuliert. Keine echten Daten, keine externen Dienste.</Text>
     </ScrollView>
   );
@@ -75,6 +95,17 @@ const styles = StyleSheet.create({
   headline: { color: colors.text, fontFamily: fonts.displayBlack, fontSize: 28, textAlign: 'center', marginTop: spacing.sm },
   standfirst: { color: colors.text, fontFamily: fonts.serifItalic, fontSize: 14, lineHeight: 21, textAlign: 'center', marginVertical: spacing.md },
   sectionLabel: { color: colors.text, fontFamily: fonts.serifBold, fontSize: 12, letterSpacing: 2, textTransform: 'uppercase', marginBottom: spacing.sm, marginTop: spacing.xs },
+  nameInput: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    color: colors.text,
+    fontFamily: fonts.display,
+    fontSize: 20,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    marginBottom: spacing.md,
+  },
   row: { flexDirection: 'row', borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, padding: spacing.md, marginBottom: spacing.sm, gap: spacing.sm },
   rowSelected: { backgroundColor: colors.primary },
   marker: { color: colors.textMuted, fontFamily: fonts.display, fontSize: 16, width: 14 },

@@ -46,6 +46,7 @@ export function SimDashboardScreen() {
       <SimHeader title="Übersicht" />
       <ScrollView contentContainerStyle={styles.scroll}>
         <Card>
+          <Text style={styles.officeName}>{game.firm.name}</Text>
           <SectionTitle>Unternehmenswert (GP + Fonds-NAV)</SectionTitle>
           <Text style={styles.big}>{fmtMoney(enterprise)}</Text>
           <Text style={[styles.sub, { color: totalRet >= 0 ? colors.positive : colors.negative }]}>
@@ -157,6 +158,7 @@ export function SimDashboardScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
   scroll: { padding: spacing.lg, paddingBottom: spacing.xl * 2 },
+  officeName: { color: colors.accent, fontSize: 18, fontFamily: fonts.displayItalic, marginBottom: spacing.xs },
   big: { color: colors.text, fontSize: 38, fontFamily: fonts.displayBlack },
   sub: { fontSize: 14, fontFamily: fonts.serifBold, marginTop: 2 },
   chartWrap: { marginTop: spacing.md, alignItems: 'center' },

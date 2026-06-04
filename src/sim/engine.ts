@@ -71,12 +71,13 @@ export function createSimGame(
   seed = Date.now(),
   thesis: FundThesis = 'multistrat',
   scenario: Scenario = 'normal',
+  officeName = 'Family Office',
 ): SimState {
   evCounter = 0;
   const rng = new Rng(seed);
   const economy = scenarioEconomy(scenario);
   const instruments = applyScenarioToInstruments(scenario, createInstruments());
-  const firm = createFirm('Dein Family Office', GP_RUNWAY, rng);
+  const firm = createFirm(officeName.trim() || 'Family Office', GP_RUNWAY, rng);
 
   let fund = createFund(0, ANCHOR_COMMITMENT, rng);
   // Two seed LPs join at launch, so the fund has enough AUM for fees to
@@ -123,7 +124,7 @@ export function createSimGame(
     events: [
       ev(0, {
         type: 'info',
-        title: 'Firma gegründet',
+        title: `${firm.name} gegründet`,
         description: `GP-Runway $${(GP_RUNWAY / 1e6).toFixed(1)}M · Fund committed $${(committed / 1e6).toFixed(0)}M (davon $${(called / 1e6).toFixed(0)}M abgerufen). Baue Track-Record auf, um mehr LP-Kapital zu raisen.`,
       }),
     ],

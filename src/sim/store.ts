@@ -74,7 +74,7 @@ interface SimStore {
   /** Month whose edition report should be shown (null = none pending). */
   pendingReportMonth: number | null;
 
-  newGame: (opts?: { seed?: number; thesis?: FundThesis; scenario?: Scenario }) => void;
+  newGame: (opts?: { seed?: number; thesis?: FundThesis; scenario?: Scenario; officeName?: string }) => void;
   /** Wipe the current run and return to the front page. */
   resetGame: () => void;
   nextMonth: () => void;
@@ -113,7 +113,7 @@ export const useSimStore = create<SimStore>()(
 
       newGame: (opts) =>
         set({
-          game: createSimGame(opts?.seed, opts?.thesis, opts?.scenario),
+          game: createSimGame(opts?.seed, opts?.thesis, opts?.scenario, opts?.officeName),
           candidates: {},
           candidateSearchMonth: {},
           pendingReportMonth: null,

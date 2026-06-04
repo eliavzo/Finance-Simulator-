@@ -36,7 +36,7 @@ export function MonthReportModal() {
           <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
             <Rule double />
             <Text style={styles.masthead}>Die Finanz-Chronik</Text>
-            <Text style={styles.dateline}>{`AUSGABE · JAHR ${year} · MONAT ${String(m).padStart(2, '0')} · ${REGIME_LABEL[report.regime].toUpperCase()}`}</Text>
+            <Text style={styles.dateline}>{`${(game?.firm.name ?? '').toUpperCase()} · JAHR ${year} · MONAT ${String(m).padStart(2, '0')} · ${REGIME_LABEL[report.regime].toUpperCase()}`}</Text>
             <Rule double />
 
             {/* Lead story */}

@@ -20,7 +20,7 @@ export function SimHeader({ title }: { title: string }) {
 
   const year = Math.floor(game.month / 12) + 1;
   const m = (game.month % 12) + 1;
-  const dateline = `Alpha & Carry · Jahr ${year}, Monat ${String(m).padStart(2, '0')} · ${REGIME_LABEL[game.economy.regime]}`;
+  const dateline = `${game.firm.name} · Jahr ${year}, Monat ${String(m).padStart(2, '0')} · ${REGIME_LABEL[game.economy.regime]}`;
 
   const onReset = () =>
     confirmDestructive('Spiel zurücksetzen?', 'Der aktuelle Lauf geht unwiderruflich verloren.', 'Zurücksetzen', () => {

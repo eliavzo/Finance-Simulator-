@@ -42,7 +42,7 @@ export function FirmScreen() {
       <SimHeader title="Firma" />
       <ScrollView contentContainerStyle={styles.scroll}>
         <Card>
-          <SectionTitle>GP-Cash & Kosten · {THESES[game.thesis].label}</SectionTitle>
+          <SectionTitle>{game.firm.name} · {THESES[game.thesis].label}</SectionTitle>
           <Text style={styles.big}>{fmtMoney(firm.cash)}</Text>
           <View style={styles.statRow}>
             <StatTile label="Gehälter/M" value={fmtMoney(payroll)} valueColor={colors.negative} />
