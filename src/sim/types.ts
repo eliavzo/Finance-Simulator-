@@ -434,6 +434,35 @@ export interface Hedge {
   monthsRemaining: number;
 }
 
+/* -------------------------------------------------------------------------- */
+/*                           Special opportunities                            */
+/* -------------------------------------------------------------------------- */
+
+export type OpportunityType = 'ipo' | 'block' | 'private' | 'activist';
+
+/** A one-off deal offered to the fund. */
+export interface SpecialOpportunity {
+  id: string;
+  type: OpportunityType;
+  title: string;
+  body: string;
+  minInvest: number;
+  maxInvest: number;
+  resolveMonths: number;
+  /** Human-readable risk/return hint. */
+  expected: string;
+}
+
+/** An accepted opportunity that resolves to a payoff later. */
+export interface SpecialHolding {
+  id: string;
+  type: OpportunityType;
+  title: string;
+  invested: number;
+  investedMonth: number;
+  resolveMonth: number;
+}
+
 /** An AI competitor fund. */
 export interface RivalFund {
   id: string;
@@ -556,6 +585,10 @@ export interface SimState {
   lastReport?: MonthlyReport;
   /** A decision awaiting the player's choice (blocks nothing; shown as a modal). */
   pendingDecision?: DecisionCard;
+  /** A special deal awaiting accept/decline. */
+  pendingOpportunity?: SpecialOpportunity;
+  /** Accepted opportunities resolving to a payoff later. */
+  specialHoldings: SpecialHolding[];
 
   /** Recent monthly income statements (most recent first, bounded). */
   incomeStatements: IncomeStatement[];

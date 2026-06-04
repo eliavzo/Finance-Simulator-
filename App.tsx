@@ -23,6 +23,7 @@ import { FundScreen } from './src/sim/screens/FundScreen';
 import { RiskScreen } from './src/sim/screens/RiskScreen';
 import { MonthReportModal } from './src/sim/screens/MonthReportModal';
 import { DecisionModal } from './src/sim/screens/DecisionModal';
+import { OpportunityModal } from './src/sim/screens/OpportunityModal';
 import { EndGameModal } from './src/sim/screens/EndGameModal';
 import { colors, fonts } from './src/utils/theme';
 
@@ -82,6 +83,7 @@ export default function App() {
             </Tab.Navigator>
             <MonthReportModal />
             <DecisionModal />
+            <OpportunityModal />
             <EndGameModal />
           </NavigationContainer>
         )}

@@ -102,6 +102,10 @@ interface SimStore {
   callLpCapital: (amount: number) => ActionResult;
   /** Buy tail-risk protection covering `notional` for `months`. */
   buyHedge: (notional: number, months: number) => ActionResult;
+  /** Accept the pending special opportunity, investing `amount`. */
+  acceptOpportunity: (amount: number) => ActionResult;
+  /** Decline the pending special opportunity. */
+  declineOpportunity: () => void;
 }
 
 export const useSimStore = create<SimStore>()(
@@ -294,6 +298,38 @@ export const useSimStore = create<SimStore>()(
           },
         });
         return { ok: true };
+      },
+
+      acceptOpportunity: (amount) => {
+        const { game } = get();
+        if (!game || !game.pendingOpportunity) return { ok: false, error: 'Kein Angebot.' };
+        const opp = game.pendingOpportunity;
+        const invest = Math.max(opp.minInvest, Math.min(opp.maxInvest, amount));
+        if (invest > game.portfolio.cash) return { ok: false, error: 'Nicht genug Fonds-Cash.' };
+        uiCounter += 1;
+        const holding = {
+          id: `hold-${game.month}-${uiCounter}`,
+          type: opp.type,
+          title: opp.title,
+          invested: invest,
+          investedMonth: game.month,
+          resolveMonth: game.month + opp.resolveMonths,
+        };
+        set({
+          game: {
+            ...game,
+            portfolio: { ...game.portfolio, cash: game.portfolio.cash - invest },
+            specialHoldings: [...(game.specialHoldings ?? []), holding],
+            pendingOpportunity: undefined,
+          },
+        });
+        return { ok: true };
+      },
+
+      declineOpportunity: () => {
+        const { game } = get();
+        if (!game) return;
+        set({ game: { ...game, pendingOpportunity: undefined } });
       },
     }),
     {

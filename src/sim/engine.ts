@@ -22,6 +22,7 @@ import { scenarioEconomy, applyScenarioToInstruments } from './scenarios';
 import { generateObjective, metricValue, isMet, computeScore } from './objectives';
 import { createRivals, stepRivals, buildLeague, trailingReturn, playerRankFraction } from './rivals';
 import { maybeDecision } from './decisions';
+import { maybeOpportunity, payoffMultiple, OPP_LABEL } from './opportunities';
 import { maybeTriggerCrisis, applyCrisisToEconomy, crisisEquityShock, hedgePayout, HEDGE_MONTHLY_PREMIUM, CRISIS_DESC } from './crises';
 import { tierPerks } from './tiers';
 import { ACHIEVEMENTS, evaluateAchievements } from './achievements';
@@ -114,6 +115,7 @@ export function createSimGame(
     reputation: 50,
     peakReputation: 50,
     achievements: [],
+    specialHoldings: [],
     rivals: createRivals(rng),
     objectives: [generateObjective(rng, 0, 50), generateObjective(rng, 0, 50)],
     signals: signals0,
@@ -227,6 +229,25 @@ export function advanceMonth(state: SimState): SimState {
     portfolio = { ...portfolio, cash };
     const rem = hedge.monthsRemaining - 1;
     hedge = rem > 0 ? { ...hedge, monthsRemaining: rem } : undefined;
+  }
+
+  // 3c. Resolve matured special opportunities --------------------------------
+  let specialHoldings = state.specialHoldings ?? [];
+  const resolving = specialHoldings.filter((h) => month >= h.resolveMonth);
+  if (resolving.length > 0) {
+    let cashAdd = 0;
+    for (const h of resolving) {
+      const mult = payoffMultiple(h.type, state.reputation, rng);
+      const proceeds = h.invested * mult;
+      cashAdd += proceeds;
+      events.push(ev(month, {
+        type: 'fund',
+        title: `${OPP_LABEL[h.type]} realisiert`,
+        description: `${h.title}: $${(h.invested / 1e6).toFixed(1)}M → $${(proceeds / 1e6).toFixed(1)}M (${mult.toFixed(2)}×).`,
+      }));
+    }
+    portfolio = { ...portfolio, cash: portfolio.cash + cashAdd };
+    specialHoldings = specialHoldings.filter((h) => month < h.resolveMonth);
   }
 
   let fundNav = portfolioNav(portfolio, instruments);
@@ -489,6 +510,8 @@ export function advanceMonth(state: SimState): SimState {
   // Decision card (not on the final month).
   const decisionState = { ...state, firm, portfolio, instruments, reputation } as SimState;
   const pendingDecision = gameOver ? undefined : maybeDecision(decisionState, blackSwan, rng);
+  // Special opportunity (don't stack on top of a pending decision).
+  const pendingOpportunity = gameOver || pendingDecision ? undefined : maybeOpportunity(reputation, month, portfolio.cash, rng);
 
   return {
     month,
@@ -518,6 +541,8 @@ export function advanceMonth(state: SimState): SimState {
     balanceSheets: [balanceSheet, ...state.balanceSheets].slice(0, 36),
     ledger: [],
     pendingDecision,
+    pendingOpportunity,
+    specialHoldings,
     equityHistory: [...state.equityHistory, enterprise].slice(-TOTAL_MONTHS - 1),
     events: [...events, ...state.events].slice(0, 80),
     rngState: rng.getState(),

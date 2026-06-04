@@ -74,6 +74,21 @@ export function FundScreen() {
           );
         })()}
 
+        {(game.specialHoldings ?? []).length > 0 ? (
+          <Card>
+            <SectionTitle ornament>Sondersituationen</SectionTitle>
+            {(game.specialHoldings ?? []).map((h) => (
+              <View key={h.id} style={styles.lpRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.lpName}>{h.title}</Text>
+                  <Text style={styles.lpMeta}>Investiert {fmtMoney(h.invested)} · löst sich in {Math.max(0, h.resolveMonth - game.month)} Mon. auf</Text>
+                </View>
+                <Pill text="gebunden" color={colors.warning} />
+              </View>
+            ))}
+          </Card>
+        ) : null}
+
         <Card>
           <SectionTitle ornament>Mandate & Ziele der LPs</SectionTitle>
           {game.objectives.filter((o) => o.status === 'active').length === 0 ? (
