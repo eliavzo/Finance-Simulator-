@@ -192,7 +192,7 @@ describe('portfolio', () => {
   it('raiseCash force-liquidates at a haircut', () => {
     const instruments = createInstruments();
     const eq = instruments.find((i) => i.kind === 'equity')!;
-    let p = createPortfolio(0);
+    let p = createPortfolio(2_000_000);
     p = openPosition(p, eq, 5_000, 1, 0, 'x').portfolio!;
     const r = raiseCash(p, instruments, 100_000, 0.05);
     expect(r.raised).toBeGreaterThan(0);
