@@ -4,13 +4,14 @@ import React, { useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 import { useSimStore } from '../store';
 import { positionEquity, positionPnl } from '../portfolio';
-import { Instrument, InstrumentKind } from '../types';
+import { STANCE_LABEL } from '../research';
+import { Instrument, InstrumentKind, ResearchSignal } from '../types';
 import { SimHeader } from './SimHeader';
 import { notify } from '../../utils/notify';
 import { Button, Card, Pill, SectionTitle } from '../../components/ui';
 import { Segmented, LeverageSelector, AmountStepper } from '../../components/controls';
 import { LineChart } from '../../components/LineChart';
-import { colors, spacing } from '../../utils/theme';
+import { colors, fonts, spacing } from '../../utils/theme';
 import { fmtMoney, fmtNum, fmtPctSigned } from '../../utils/format';
 
 const KIND_LABEL: Record<InstrumentKind, string> = {
@@ -71,6 +72,27 @@ export function MarketsScreen() {
             }}
             options={(['equity', 'bond', 'fx', 'commodity'] as InstrumentKind[]).map((k) => ({ label: KIND_LABEL[k], value: k }))}
           />
+        </Card>
+
+        <Card>
+          <SectionTitle ornament>Research-Tipps des Hauses</SectionTitle>
+          {game.signals.length === 0 ? (
+            <Text style={styles.empty}>Kein Research-Team — stelle Analysten oder Quants ein (Firma), um Tipps zu erhalten.</Text>
+          ) : (
+            game.signals.map((sig) => (
+              <SignalRow
+                key={sig.instrumentId}
+                sig={sig}
+                onSelect={() => {
+                  const inst = game.instruments.find((i) => i.id === sig.instrumentId);
+                  if (inst) {
+                    setKind(inst.kind);
+                    setSelectedId(inst.id);
+                  }
+                }}
+              />
+            ))
+          )}
         </Card>
 
         {selected ? (
@@ -147,6 +169,23 @@ export function MarketsScreen() {
   );
 }
 
+function SignalRow({ sig, onSelect }: { sig: ResearchSignal; onSelect: () => void }) {
+  const over = sig.stance === 'overweight';
+  const color = over ? colors.positive : colors.negative;
+  return (
+    <TouchableOpacity style={styles.signalRow} onPress={onSelect} activeOpacity={0.7}>
+      <View style={{ flex: 1 }}>
+        <View style={styles.signalHead}>
+          <Text style={styles.signalSym}>{sig.symbol}</Text>
+          <Pill text={STANCE_LABEL[sig.stance]} color={color} />
+        </View>
+        <Text style={styles.signalNote}>{sig.note}</Text>
+      </View>
+      <Text style={[styles.signalConv, { color }]}>{Math.round(sig.conviction * 100)}</Text>
+    </TouchableOpacity>
+  );
+}
+
 function InstrumentRow({ inst, active, onSelect }: { inst: Instrument; active: boolean; onSelect: () => void }) {
   const hist = inst.priceHistory;
   const change = hist.length >= 2 ? inst.price / hist[hist.length - 2] - 1 : 0;
@@ -184,6 +223,11 @@ const styles = StyleSheet.create({
   rowPrice: { color: colors.text, fontSize: 14, fontWeight: '700' },
   rowChange: { fontSize: 12, fontWeight: '600' },
   empty: { color: colors.textMuted, fontSize: 13, fontStyle: 'italic' },
+  signalRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.sm, borderTopWidth: 1, borderTopColor: colors.border, gap: spacing.sm },
+  signalHead: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  signalSym: { color: colors.text, fontSize: 14, fontWeight: '700' },
+  signalNote: { color: colors.textMuted, fontSize: 11, marginTop: 2 },
+  signalConv: { fontSize: 18, fontFamily: fonts.display, minWidth: 30, textAlign: 'right' },
   pos: { flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.md, borderTopWidth: 1, borderTopColor: colors.border },
   posHead: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   posSym: { color: colors.text, fontSize: 15, fontWeight: '800' },

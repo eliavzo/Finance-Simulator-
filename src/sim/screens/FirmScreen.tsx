@@ -58,6 +58,21 @@ export function FirmScreen() {
         </Card>
 
         <Card>
+          <SectionTitle ornament>Team-Beitrag · Letzter Monat</SectionTitle>
+          <View style={styles.statRow}>
+            <StatTile label="Alpha (P&L)" value={fmtMoney(game.lastContribution.alphaPnl)} valueColor={game.lastContribution.alphaPnl >= 0 ? colors.positive : colors.negative} />
+            <StatTile label="Finanz. gespart" value={fmtMoney(game.lastContribution.financingSaved)} valueColor={colors.positive} />
+          </View>
+          <View style={styles.statRow}>
+            <StatTile label="MC vermieden" value={`${game.lastContribution.marginCallsPrevented}`} />
+            <StatTile label="Kapital geraist" value={fmtMoney(game.lastContribution.capitalRaised)} />
+          </View>
+          <Text style={styles.hint}>
+            Die Wirkung des Teams entsteht am offenen Buch: mehr Positionen & Hebel ⇒ mehr Alpha und mehr gesparte Finanzierung.
+          </Text>
+        </Card>
+
+        <Card>
           <SectionTitle>Team ({firm.employees.length})</SectionTitle>
           {firm.employees.length === 0 ? <Text style={styles.empty}>Kein Personal. Stelle jemanden ein.</Text> : null}
           {firm.employees.map((e) => (

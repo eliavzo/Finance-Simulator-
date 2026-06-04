@@ -136,6 +136,10 @@ export interface PortfolioStepResult {
   financingCost: number;
   income: number;
   alphaPnl: number;
+  /** Financing/borrow dollars saved this month vs running with no team. */
+  financingSaved: number;
+  /** Positions that would have been margin-called without risk control. */
+  marginCallsPrevented: number;
 }
 
 /**
@@ -153,13 +157,20 @@ export function stepPortfolio(
   const { policyRate, primeBrokerTier, capabilities } = ctx;
   const financingRate = Math.max(0.005, policyRate + 0.01 - primeBrokerTier * 0.002 - capabilities.execution * 0.004);
   const shortBorrowRate = Math.max(0.003, 0.006 + 0.012 * (1 - capabilities.execution));
-  // Better risk control liquidates later (deeper buffer) → fewer margin calls.
-  const maintenanceRatio = 0.25 * (1 - capabilities.risk * 0.5);
+  // Baseline rates with *no* execution capability — used to measure what the
+  // trading team saved this month.
+  const baseFinancingRate = Math.max(0.005, policyRate + 0.01 - primeBrokerTier * 0.002);
+  const baseShortRate = Math.max(0.003, 0.006 + 0.012);
+  // No-team margin maintenance threshold; risk control lowers the live one.
+  const baseMaintenanceRatio = 0.25;
+  const maintenanceRatio = baseMaintenanceRatio * (1 - capabilities.risk * 0.5);
 
   let cash = portfolio.cash;
   let financingTotal = 0;
+  let financingBaseline = 0;
   let incomeTotal = 0;
   let marginCalls = portfolio.marginCalls;
+  let marginCallsPrevented = 0;
   const marginCalled: string[] = [];
   const survivors: Position[] = [];
 
@@ -174,12 +185,16 @@ export function stepPortfolio(
 
     // --- Financing / borrow cost ---
     let monthCost = 0;
+    let monthCostBaseline = 0;
     if (pos.quantity > 0) {
       const borrowed = Math.max(0, notional - pos.margin);
       monthCost += (borrowed * financingRate) / 12;
+      monthCostBaseline += (borrowed * baseFinancingRate) / 12;
     } else {
       monthCost += (notional * shortBorrowRate) / 12;
+      monthCostBaseline += (notional * baseShortRate) / 12;
     }
+    financingBaseline += monthCostBaseline;
     // --- Coupon / dividend income (long receives, short pays) ---
     let monthIncome = 0;
     if (inst.kind === 'bond') {
@@ -205,6 +220,10 @@ export function stepPortfolio(
       marginCalls += 1;
       marginCalled.push(updated.symbol);
     } else {
+      // Survived — but would it have been called without risk control?
+      if (pos.quantity !== 0 && equity <= updated.margin * baseMaintenanceRatio) {
+        marginCallsPrevented += 1;
+      }
       survivors.push(updated);
     }
   }
@@ -245,5 +264,7 @@ export function stepPortfolio(
     financingCost: financingTotal,
     income: incomeTotal,
     alphaPnl,
+    financingSaved: Math.max(0, financingBaseline - financingTotal),
+    marginCallsPrevented,
   };
 }

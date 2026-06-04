@@ -354,6 +354,34 @@ export interface SimEvent {
 }
 
 /* -------------------------------------------------------------------------- */
+/*                          Research & team output                            */
+/* -------------------------------------------------------------------------- */
+
+/** A research call on an instrument produced by the analyst/quant team. */
+export interface ResearchSignal {
+  instrumentId: string;
+  symbol: string;
+  /** 'overweight' = the team thinks it will outperform (lean long). */
+  stance: 'overweight' | 'underweight';
+  /** Conviction in [0, 1] — higher with a stronger research team. */
+  conviction: number;
+  /** Short rationale shown to the player. */
+  note: string;
+}
+
+/** What the firm's people measurably contributed this month. */
+export interface TeamContribution {
+  /** Dollars of alpha the book earned from manager skill. */
+  alphaPnl: number;
+  /** Financing/borrow dollars saved vs. running with no team. */
+  financingSaved: number;
+  /** Forced liquidations avoided thanks to risk control. */
+  marginCallsPrevented: number;
+  /** LP commitments raised this month (fundraising). */
+  capitalRaised: number;
+}
+
+/* -------------------------------------------------------------------------- */
 /*                              Whole sim state                               */
 /* -------------------------------------------------------------------------- */
 
@@ -370,6 +398,11 @@ export interface SimState {
 
   /** Reputation in [0, 100]; gates LP capital, talent and deal quality. */
   reputation: number;
+
+  /** Current research calls from the analyst/quant team. */
+  signals: ResearchSignal[];
+  /** What the team contributed in the most recent month. */
+  lastContribution: TeamContribution;
 
   /** Recent monthly income statements (most recent first, bounded). */
   incomeStatements: IncomeStatement[];

@@ -136,6 +136,28 @@ export function marketDrift(econ: EconomyState): number {
   );
 }
 
+/**
+ * The model's *expected* annualised return for an instrument under current
+ * conditions (before noise). This is the ground truth research signals try to
+ * estimate — a strong team sees it clearly, a weak one mostly sees noise.
+ * Returns null for instruments without a clean directional view (options).
+ */
+export function expectedAnnualReturn(inst: Instrument, econ: EconomyState): number | null {
+  switch (inst.kind) {
+    case 'equity':
+      return marketDrift(econ) * inst.beta + SECTOR_REGIME_TILT[inst.sector][econ.regime] + (inst.drift - 0.04);
+    case 'commodity':
+      return inst.drift + inst.cyclicality * (econ.gdpGrowth - 0.02) * 1.5;
+    case 'fx':
+      return inst.carry;
+    case 'bond':
+      // Carry minus a small expected mean-reversion of yields; broadly the YTM.
+      return inst.ytm - 0.02;
+    default:
+      return null;
+  }
+}
+
 /** Advance every instrument by one month. */
 export function stepMarket(instruments: Instrument[], econ: EconomyState, month: number, rng: Rng): MarketStepResult {
   const swanProb = econ.regime === 'peak' || econ.regime === 'contraction' ? 0.02 : 0.005;

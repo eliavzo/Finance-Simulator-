@@ -25,6 +25,15 @@ import {
 } from './fund';
 import { buildBalanceSheet, buildIncomeStatement } from './accounting';
 import { createLP } from './fund';
+import { generateSignals } from './research';
+import { TeamContribution } from './types';
+
+const NO_CONTRIBUTION: TeamContribution = {
+  alphaPnl: 0,
+  financingSaved: 0,
+  marginCallsPrevented: 0,
+  capitalRaised: 0,
+};
 
 // Founder personal capital: GP operating runway + an anchor LP commitment.
 const GP_RUNWAY = 3_000_000;
@@ -70,6 +79,8 @@ export function createSimGame(seed = Date.now()): SimState {
   const portfolio = createPortfolio(called);
 
   const enterprise = firm.cash + portfolioNav(portfolio, instruments);
+  const caps0 = firmCapabilities(firm, 50);
+  const signals0 = generateSignals(instruments, economy, caps0, rng);
 
   return {
     month: 0,
@@ -81,6 +92,8 @@ export function createSimGame(seed = Date.now()): SimState {
     firm,
     fund,
     reputation: 50,
+    signals: signals0,
+    lastContribution: NO_CONTRIBUTION,
     incomeStatements: [],
     balanceSheets: [],
     ledger: [],
@@ -201,7 +214,26 @@ export function advanceMonth(state: SimState): SimState {
   if (Number.isFinite(metrics.netIrr) && metrics.netIrr > 0.15) repDelta += 0.2;
   const reputation = Math.max(0, Math.min(100, state.reputation + repDelta));
 
-  // 9. Statements ------------------------------------------------------------
+  // 9. Research desk & team-contribution feedback ----------------------------
+  const signals = generateSignals(instruments, economy, capabilities, rng);
+  const contribution: TeamContribution = {
+    alphaPnl: pStep.alphaPnl,
+    financingSaved: pStep.financingSaved,
+    marginCallsPrevented: pStep.marginCallsPrevented,
+    capitalRaised: newLP ? newLP.committed : 0,
+  };
+  // Surface a concise team report only when the desk actually did something
+  // material, so the log doesn't fill with no-ops.
+  const materialAlpha = Math.abs(contribution.alphaPnl) + contribution.financingSaved;
+  if (materialAlpha > 15_000 || contribution.marginCallsPrevented > 0) {
+    const parts: string[] = [];
+    if (Math.abs(contribution.alphaPnl) >= 1_000) parts.push(`Alpha ${contribution.alphaPnl >= 0 ? '+' : ''}$${(contribution.alphaPnl / 1e3).toFixed(0)}K`);
+    if (contribution.financingSaved >= 1_000) parts.push(`Finanzierung −$${(contribution.financingSaved / 1e3).toFixed(0)}K`);
+    if (contribution.marginCallsPrevented > 0) parts.push(`${contribution.marginCallsPrevented} Margin Call(s) vermieden`);
+    events.push(ev(month, { type: 'firm', title: 'Team-Beitrag', description: parts.join(' · ') }));
+  }
+
+  // 10. Statements -----------------------------------------------------------
   const positionsValue = portfolioNav(portfolio, instruments) - portfolio.cash;
   const incomeStatement: IncomeStatement = buildIncomeStatement(month, ledger);
   const balanceSheet = buildBalanceSheet({ month, firm, fund, fundCash: portfolio.cash, positionsValue });
@@ -222,6 +254,8 @@ export function advanceMonth(state: SimState): SimState {
     firm,
     fund,
     reputation,
+    signals,
+    lastContribution: contribution,
     incomeStatements: [incomeStatement, ...state.incomeStatements].slice(0, 36),
     balanceSheets: [balanceSheet, ...state.balanceSheets].slice(0, 36),
     ledger: [],

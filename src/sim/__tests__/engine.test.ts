@@ -3,6 +3,8 @@ import { TOTAL_MONTHS } from '../types';
 import { openPosition, closePosition, portfolioNav, stepPortfolio } from '../portfolio';
 import { createPortfolio } from '../portfolio';
 import { createInstruments } from '../market';
+import { createEconomy } from '../economy';
+import { generateSignals } from '../research';
 import { firmCapabilities, createFirm, fairSalary, infraMonthlyOpex } from '../firm';
 import { createFund, callCapital, distribute, crystalliseCarry, monthlyManagementFee, fundMetrics } from '../fund';
 import { buildBalanceSheet } from '../accounting';
@@ -156,6 +158,40 @@ describe('firm', () => {
     strongFirm.employees = strongFirm.employees.map((e) => ({ ...e, skill: 95, morale: 95 }));
     const strong = firmCapabilities(strongFirm, 50);
     expect(strong.research).toBeGreaterThan(weak.research);
+  });
+});
+
+describe('research signals', () => {
+  it('a team produces signals; no research desk produces none', () => {
+    const instruments = createInstruments();
+    const econ = createEconomy();
+    const rng = new Rng(4);
+
+    const strongFirm = createFirm('s', 1, new Rng(1));
+    strongFirm.employees = [
+      { id: 'a', name: 'A', role: 'Analyst', skill: 95, salary: 1, morale: 95, hiredMonth: 0 },
+      { id: 'q', name: 'Q', role: 'Quant', skill: 95, salary: 1, morale: 95, hiredMonth: 0 },
+    ];
+    const strong = generateSignals(instruments, econ, firmCapabilities(strongFirm, 60), rng);
+    expect(strong.length).toBeGreaterThan(0);
+    expect(strong[0].conviction).toBeGreaterThan(0);
+
+    const emptyFirm = createFirm('e', 1, new Rng(1));
+    emptyFirm.employees = [];
+    emptyFirm.infrastructure = { dataTier: 0, primeBrokerTier: 0, quantTier: 0, officeTier: 0 };
+    expect(generateSignals(instruments, econ, firmCapabilities(emptyFirm, 50), rng)).toHaveLength(0);
+  });
+
+  it('a new game seeds signals and zero contribution', () => {
+    const g = createSimGame(7);
+    expect(Array.isArray(g.signals)).toBe(true);
+    expect(g.lastContribution.alphaPnl).toBe(0);
+  });
+
+  it('advanceMonth records a team contribution', () => {
+    const next = advanceMonth(createSimGame(7));
+    expect(next.lastContribution.financingSaved).toBeGreaterThanOrEqual(0);
+    expect(next.lastContribution.marginCallsPrevented).toBeGreaterThanOrEqual(0);
   });
 });
 
