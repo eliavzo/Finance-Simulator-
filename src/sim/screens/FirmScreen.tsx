@@ -8,7 +8,7 @@ import { SimHeader } from './SimHeader';
 import { notify } from '../../utils/notify';
 import { Button, Card, Pill, ProgressBar, SectionTitle, StatTile } from '../../components/ui';
 import { Segmented } from '../../components/controls';
-import { colors, spacing } from '../../utils/theme';
+import { colors, fonts, spacing } from '../../utils/theme';
 import { fmtMoney, fmtPct } from '../../utils/format';
 
 const ROLES: Role[] = ['Analyst', 'Trader', 'PortfolioManager', 'Quant', 'RiskManager', 'InvestorRelations', 'COO'];
@@ -139,7 +139,7 @@ function CapBar({ label, value }: { label: string; value: number }) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
   scroll: { padding: spacing.lg, paddingBottom: spacing.xl * 2 },
-  big: { color: colors.text, fontSize: 26, fontWeight: '800', marginBottom: spacing.sm },
+  big: { color: colors.text, fontSize: 30, fontFamily: fonts.displayBlack, marginBottom: spacing.sm },
   statRow: { flexDirection: 'row', flexWrap: 'wrap' },
   hint: { color: colors.textMuted, fontSize: 12, marginTop: spacing.sm },
   empty: { color: colors.textMuted, fontSize: 13, fontStyle: 'italic' },

@@ -1,27 +1,58 @@
-/** Small reusable UI primitives shared across screens. */
+/** Newspaper UI primitives — boxed columns, hairline rules, serif type. */
 import React from 'react';
 import {
   ActivityIndicator,
   StyleSheet,
   Text,
+  TextStyle,
   TouchableOpacity,
   View,
   ViewStyle,
 } from 'react-native';
-import { colors, radius, spacing } from '../utils/theme';
+import { colors, fonts, spacing } from '../utils/theme';
 
-export function Card({
-  children,
-  style,
-}: {
-  children: React.ReactNode;
-  style?: ViewStyle;
-}) {
+/** A bordered "column" box. */
+export function Card({ children, style }: { children: React.ReactNode; style?: ViewStyle }) {
   return <View style={[styles.card, style]}>{children}</View>;
 }
 
-export function SectionTitle({ children }: { children: React.ReactNode }) {
-  return <Text style={styles.sectionTitle}>{children}</Text>;
+/** A thin horizontal rule; `double` draws the classic newspaper double rule. */
+export function Rule({ double, style }: { double?: boolean; style?: ViewStyle }) {
+  if (double) {
+    return (
+      <View style={style}>
+        <View style={styles.ruleThick} />
+        <View style={styles.ruleGap} />
+        <View style={styles.ruleThin} />
+      </View>
+    );
+  }
+  return <View style={[styles.ruleThin, style]} />;
+}
+
+/** Section header in the style of a newspaper kicker. */
+export function SectionTitle({ children, ornament }: { children: React.ReactNode; ornament?: boolean }) {
+  return (
+    <View style={styles.sectionWrap}>
+      <View style={styles.sectionRow}>
+        {ornament ? <Text style={styles.ornament}>❧ </Text> : null}
+        <Text style={styles.sectionTitle}>{children}</Text>
+      </View>
+      <View style={styles.ruleThin} />
+    </View>
+  );
+}
+
+/** A masthead — large Playfair title between double rules with a dateline. */
+export function Masthead({ title, dateline }: { title: string; dateline?: string }) {
+  return (
+    <View style={styles.masthead}>
+      <Rule double />
+      <Text style={styles.mastheadTitle}>{title}</Text>
+      {dateline ? <Text style={styles.dateline}>{dateline}</Text> : null}
+      <Rule double />
+    </View>
+  );
 }
 
 export function StatTile({
@@ -57,40 +88,27 @@ export function Button({
   disabled?: boolean;
   style?: ViewStyle;
 }) {
-  const bg: Record<string, string> = {
+  const fill: Record<string, string> = {
     primary: colors.primary,
-    secondary: colors.surfaceAlt,
+    secondary: colors.surface,
     positive: colors.positive,
     negative: colors.negative,
     ghost: 'transparent',
   };
+  const inked = variant === 'primary' || variant === 'positive' || variant === 'negative';
   return (
     <TouchableOpacity
       onPress={onPress}
       disabled={disabled}
-      activeOpacity={0.8}
-      style={[
-        styles.button,
-        { backgroundColor: bg[variant] },
-        variant === 'ghost' ? styles.buttonGhost : null,
-        disabled ? styles.buttonDisabled : null,
-        style,
-      ]}
+      activeOpacity={0.7}
+      style={[styles.button, { backgroundColor: fill[variant] }, disabled ? styles.buttonDisabled : null, style]}
     >
-      <Text
-        style={[
-          styles.buttonText,
-          variant === 'secondary' || variant === 'ghost'
-            ? { color: colors.text }
-            : { color: '#06121F' },
-        ]}
-      >
-        {title}
-      </Text>
+      <Text style={[styles.buttonText, { color: inked ? colors.paperText : colors.text }]}>{title}</Text>
     </TouchableOpacity>
   );
 }
 
+/** A bracketed boxed label, e.g. a regime or status tag. */
 export function Pill({ text, color }: { text: string; color: string }) {
   return (
     <View style={[styles.pill, { borderColor: color }]}>
@@ -111,63 +129,91 @@ export function ProgressBar({ value, color }: { value: number; color: string }) 
 export function Loading({ label }: { label?: string }) {
   return (
     <View style={styles.loading}>
-      <ActivityIndicator color={colors.primary} size="large" />
-      {label ? <Text style={styles.loadingText}>{label}</Text> : null}
+      <Text style={styles.loadingTitle}>Alpha &amp; Carry</Text>
+      <View style={styles.loadingRule} />
+      <ActivityIndicator color={colors.primary} />
+      <Text style={styles.loadingText}>{label ?? 'Die Ausgabe wird gesetzt …'}</Text>
     </View>
   );
 }
 
+const serifBold: TextStyle = { fontFamily: fonts.serifBold };
+
 const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.surface,
-    borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.border,
     padding: spacing.lg,
     marginBottom: spacing.md,
   },
+  ruleThin: { height: 1, backgroundColor: colors.border },
+  ruleThick: { height: 2, backgroundColor: colors.border },
+  ruleGap: { height: 2 },
+  sectionWrap: { marginBottom: spacing.md },
+  sectionRow: { flexDirection: 'row', alignItems: 'flex-end', marginBottom: spacing.xs },
+  ornament: { color: colors.accent, fontSize: 13 },
   sectionTitle: {
-    color: colors.textMuted,
+    color: colors.text,
+    fontFamily: fonts.serifBold,
     fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 1.2,
+    letterSpacing: 2.5,
     textTransform: 'uppercase',
-    marginBottom: spacing.sm,
   },
-  statTile: {
-    flex: 1,
-    minWidth: 90,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.sm,
+  masthead: { marginBottom: spacing.md },
+  mastheadTitle: {
+    color: colors.text,
+    fontFamily: fonts.displayBlack,
+    fontSize: 40,
+    textAlign: 'center',
+    paddingVertical: spacing.xs,
   },
-  statLabel: { color: colors.textMuted, fontSize: 11, marginBottom: 2 },
-  statValue: { color: colors.text, fontSize: 18, fontWeight: '700' },
-  statHint: { color: colors.textMuted, fontSize: 10, marginTop: 2 },
+  dateline: {
+    color: colors.textMuted,
+    fontFamily: fonts.serifItalic,
+    fontSize: 11,
+    letterSpacing: 1.5,
+    textAlign: 'center',
+    textTransform: 'uppercase',
+    marginBottom: spacing.xs,
+  },
+  statTile: { flex: 1, minWidth: 90, paddingVertical: spacing.sm, paddingRight: spacing.sm },
+  statLabel: {
+    color: colors.textMuted,
+    fontFamily: fonts.serif,
+    fontSize: 10,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    marginBottom: 2,
+  },
+  statValue: { color: colors.text, fontFamily: fonts.display, fontSize: 20 },
+  statHint: { color: colors.textMuted, fontFamily: fonts.serif, fontSize: 10, marginTop: 2 },
   button: {
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.lg,
-    borderRadius: radius.sm,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
   },
-  buttonGhost: { borderWidth: 1, borderColor: colors.border },
   buttonDisabled: { opacity: 0.4 },
-  buttonText: { fontWeight: '700', fontSize: 14 },
+  buttonText: { ...serifBold, fontSize: 13, letterSpacing: 1.5, textTransform: 'uppercase' },
   pill: {
     borderWidth: 1,
-    borderRadius: 999,
     paddingHorizontal: spacing.sm,
     paddingVertical: 2,
     alignSelf: 'flex-start',
   },
-  pillText: { fontSize: 11, fontWeight: '700' },
+  pillText: { fontFamily: fonts.serifBold, fontSize: 10, letterSpacing: 1, textTransform: 'uppercase' },
   progressTrack: {
-    height: 8,
+    height: 10,
     backgroundColor: colors.surfaceAlt,
-    borderRadius: 999,
-    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: colors.border,
   },
-  progressFill: { height: '100%', borderRadius: 999 },
-  loading: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.bg },
-  loadingText: { color: colors.textMuted, marginTop: spacing.md },
+  progressFill: { height: '100%' },
+  loading: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.bg, padding: spacing.xl },
+  loadingTitle: { color: colors.text, fontFamily: fonts.displayBlack, fontSize: 34 },
+  loadingRule: { height: 1, backgroundColor: colors.border, alignSelf: 'stretch', marginVertical: spacing.md },
+  loadingText: { color: colors.textMuted, fontFamily: fonts.serifItalic, marginTop: spacing.md },
 });

@@ -41,6 +41,42 @@ function walk(dir) {
 
 let html = readFileSync(join(DIST, 'index.html'), 'utf8');
 
+// 0. Inject @font-face rules with base64-embedded fonts so the serif faces
+//    render from a single file (and over a CDN) without runtime asset fetches.
+//    react-native-web uses the font's export name as its CSS font-family, which
+//    equals the file's basename before the content hash.
+// Only the faces the UI actually references — Expo exports every weight in the
+// package, but embedding them all bloats the file needlessly.
+const NEEDED_FONTS = new Set([
+  'PlayfairDisplay_700Bold',
+  'PlayfairDisplay_900Black',
+  'PlayfairDisplay_700Bold_Italic',
+  'PTSerif_400Regular',
+  'PTSerif_700Bold',
+  'PTSerif_400Regular_Italic',
+]);
+const fontFaces = [];
+const seenFonts = new Set();
+let fontFiles = [];
+try {
+  fontFiles = walk(join(DIST, 'assets'));
+} catch {
+  fontFiles = [];
+}
+for (const file of fontFiles) {
+  if (extname(file).toLowerCase() !== '.ttf') continue;
+  const family = file.split('/').pop().split('.')[0]; // strip ".<hash>.ttf"
+  if (!NEEDED_FONTS.has(family) || seenFonts.has(family)) continue;
+  seenFonts.add(family);
+  const data = readFileSync(file).toString('base64');
+  fontFaces.push(
+    `@font-face{font-family:'${family}';font-display:swap;src:url(data:font/ttf;base64,${data}) format('truetype');}`,
+  );
+}
+if (fontFaces.length > 0) {
+  html = html.replace('</head>', `<style>${fontFaces.join('')}</style></head>`);
+}
+
 // 1. Inline every binary asset (fonts, images) as a data URI, keyed by the
 //    absolute "/assets/..." path Expo bakes into the bundle and the HTML.
 const assetsDir = join(DIST, 'assets');

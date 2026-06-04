@@ -1,7 +1,7 @@
-/** Interactive controls: segmented selector and a +/- amount stepper. */
+/** Newspaper-styled controls: segmented selector & +/- stepper (square, inked). */
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { colors, radius, spacing } from '../utils/theme';
+import { colors, fonts, spacing } from '../utils/theme';
 import { fmtMoney } from '../utils/format';
 
 export function Segmented<T extends string>({
@@ -15,17 +15,14 @@ export function Segmented<T extends string>({
 }) {
   return (
     <View style={styles.segmented}>
-      {options.map((opt) => {
+      {options.map((opt, i) => {
         const active = opt.value === value;
         return (
           <TouchableOpacity
             key={opt.value}
-            style={[
-              styles.segment,
-              active && { backgroundColor: opt.color ?? colors.primary },
-            ]}
+            style={[styles.segment, i > 0 && styles.segmentDivider, active && { backgroundColor: opt.color ?? colors.primary }]}
             onPress={() => onChange(opt.value)}
-            activeOpacity={0.8}
+            activeOpacity={0.7}
           >
             <Text style={[styles.segmentText, active && styles.segmentTextActive]}>{opt.label}</Text>
           </TouchableOpacity>
@@ -35,7 +32,6 @@ export function Segmented<T extends string>({
   );
 }
 
-/** Stepper that adjusts a dollar amount by a multiplicative/additive step. */
 export function AmountStepper({
   value,
   onChange,
@@ -49,7 +45,6 @@ export function AmountStepper({
   step: number;
   min?: number;
   max?: number;
-  /** How to render the value (defaults to compact money). */
   format?: (v: number) => string;
 }) {
   const clamp = (v: number) => {
@@ -72,30 +67,20 @@ export function AmountStepper({
   );
 }
 
-/** A discrete leverage selector 1x..5x. */
-export function LeverageSelector({
-  value,
-  onChange,
-}: {
-  value: number;
-  onChange: (v: number) => void;
-}) {
+export function LeverageSelector({ value, onChange }: { value: number; onChange: (v: number) => void }) {
   return (
     <View style={styles.segmented}>
-      {[1, 2, 3, 4, 5].map((lev) => {
+      {[1, 2, 3, 4, 5].map((lev, i) => {
         const active = lev === value;
         const danger = lev >= 4;
         return (
           <TouchableOpacity
             key={lev}
-            style={[
-              styles.segment,
-              active && { backgroundColor: danger ? colors.warning : colors.primary },
-            ]}
+            style={[styles.segment, i > 0 && styles.segmentDivider, active && { backgroundColor: danger ? colors.warning : colors.primary }]}
             onPress={() => onChange(lev)}
-            activeOpacity={0.8}
+            activeOpacity={0.7}
           >
-            <Text style={[styles.segmentText, active && styles.segmentTextActive]}>{lev}x</Text>
+            <Text style={[styles.segmentText, active && styles.segmentTextActive]}>{lev}×</Text>
           </TouchableOpacity>
         );
       })}
@@ -106,38 +91,34 @@ export function LeverageSelector({
 const styles = StyleSheet.create({
   segmented: {
     flexDirection: 'row',
-    backgroundColor: colors.surfaceAlt,
-    borderRadius: radius.sm,
-    padding: 3,
-    gap: 3,
-  },
-  segment: {
-    flex: 1,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.sm - 2,
-    alignItems: 'center',
-  },
-  segmentText: { color: colors.textMuted, fontWeight: '700', fontSize: 13 },
-  segmentTextActive: { color: '#06121F' },
-  stepperRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  stepperBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.sm,
-    backgroundColor: colors.surfaceAlt,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  stepperBtnText: { color: colors.text, fontSize: 22, fontWeight: '700' },
-  stepperValue: {
-    flex: 1,
-    height: 44,
-    borderRadius: radius.sm,
-    backgroundColor: colors.bg,
     borderWidth: 1,
     borderColor: colors.border,
+    backgroundColor: colors.surface,
+    marginTop: spacing.xs,
+  },
+  segment: { flex: 1, paddingVertical: spacing.sm, alignItems: 'center' },
+  segmentDivider: { borderLeftWidth: 1, borderLeftColor: colors.border },
+  segmentText: { color: colors.textMuted, fontFamily: fonts.serifBold, fontSize: 12, letterSpacing: 1, textTransform: 'uppercase' },
+  segmentTextActive: { color: colors.paperText },
+  stepperRow: { flexDirection: 'row', alignItems: 'stretch', marginTop: spacing.xs },
+  stepperBtn: {
+    width: 46,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surfaceAlt,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  stepperValueText: { color: colors.text, fontSize: 16, fontWeight: '700' },
+  stepperBtnText: { color: colors.text, fontFamily: fonts.display, fontSize: 22 },
+  stepperValue: {
+    flex: 1,
+    height: 46,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stepperValueText: { color: colors.text, fontFamily: fonts.display, fontSize: 17 },
 });

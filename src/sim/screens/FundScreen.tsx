@@ -9,7 +9,7 @@ import { SimHeader } from './SimHeader';
 import { notify } from '../../utils/notify';
 import { Button, Card, Pill, SectionTitle, StatTile } from '../../components/ui';
 import { AmountStepper } from '../../components/controls';
-import { colors, spacing } from '../../utils/theme';
+import { colors, fonts, spacing } from '../../utils/theme';
 import { fmtMoney, fmtMultiple, fmtPct } from '../../utils/format';
 
 export function FundScreen() {
@@ -117,7 +117,7 @@ function Line({ label, value, bold, plain }: { label: string; value: number; bol
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
   scroll: { padding: spacing.lg, paddingBottom: spacing.xl * 2 },
-  big: { color: colors.text, fontSize: 28, fontWeight: '800', marginBottom: spacing.sm },
+  big: { color: colors.text, fontSize: 32, fontFamily: fonts.displayBlack, marginBottom: spacing.sm },
   statRow: { flexDirection: 'row', flexWrap: 'wrap' },
   hint: { color: colors.textMuted, fontSize: 12, marginBottom: spacing.md },
   empty: { color: colors.textMuted, fontSize: 13, fontStyle: 'italic' },

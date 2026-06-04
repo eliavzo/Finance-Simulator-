@@ -18,7 +18,7 @@ interface Props {
   baseline?: number;
 }
 
-export function LineChart({ data, width, height, color = colors.primary, fill = true, baseline }: Props) {
+export function LineChart({ data, width, height, color = colors.text, fill = true, baseline }: Props) {
   if (data.length < 2) {
     return <View style={{ width, height }} />;
   }
@@ -47,8 +47,8 @@ export function LineChart({ data, width, height, color = colors.primary, fill = 
     <Svg width={width} height={height}>
       <Defs>
         <LinearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
-          <Stop offset="0" stopColor={color} stopOpacity={0.35} />
-          <Stop offset="1" stopColor={color} stopOpacity={0} />
+          <Stop offset="0" stopColor={color} stopOpacity={0.16} />
+          <Stop offset="1" stopColor={color} stopOpacity={0.02} />
         </LinearGradient>
       </Defs>
 
@@ -65,8 +65,8 @@ export function LineChart({ data, width, height, color = colors.primary, fill = 
       ) : null}
 
       {fill ? <Path d={areaPath} fill="url(#areaGrad)" /> : null}
-      <Path d={d} stroke={color} strokeWidth={2} fill="none" />
-      <Circle cx={x(lastIdx)} cy={y(data[lastIdx])} r={3.5} fill={color} />
+      <Path d={d} stroke={color} strokeWidth={1.5} fill="none" />
+      <Circle cx={x(lastIdx)} cy={y(data[lastIdx])} r={2.5} fill={color} />
     </Svg>
   );
 }

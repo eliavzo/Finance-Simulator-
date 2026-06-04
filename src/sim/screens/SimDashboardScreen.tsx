@@ -11,7 +11,7 @@ import { SimEventType } from '../types';
 import { SimHeader } from './SimHeader';
 import { Card, ProgressBar, SectionTitle, StatTile } from '../../components/ui';
 import { LineChart } from '../../components/LineChart';
-import { colors, spacing } from '../../utils/theme';
+import { colors, fonts, spacing } from '../../utils/theme';
 import { fmtMoney, fmtMultiple, fmtNum, fmtPct, fmtPctSigned } from '../../utils/format';
 
 const EVENT_COLOR: Record<SimEventType, string> = {
@@ -117,18 +117,18 @@ export function SimDashboardScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
   scroll: { padding: spacing.lg, paddingBottom: spacing.xl * 2 },
-  big: { color: colors.text, fontSize: 34, fontWeight: '800' },
-  sub: { fontSize: 14, fontWeight: '700', marginTop: 2 },
+  big: { color: colors.text, fontSize: 38, fontFamily: fonts.displayBlack },
+  sub: { fontSize: 14, fontFamily: fonts.serifBold, marginTop: 2 },
   chartWrap: { marginTop: spacing.md, alignItems: 'center' },
   twoCol: { flexDirection: 'row', gap: spacing.md },
   col: { flex: 1 },
-  colVal: { color: colors.text, fontSize: 20, fontWeight: '800', marginBottom: spacing.xs },
+  colVal: { color: colors.text, fontSize: 22, fontFamily: fonts.display, marginBottom: spacing.xs },
   hint: { color: colors.textMuted, fontSize: 11, marginTop: 2 },
   statRow: { flexDirection: 'row', flexWrap: 'wrap' },
-  rep: { color: colors.text, fontSize: 28, fontWeight: '800', marginBottom: spacing.sm },
-  macroDesc: { color: colors.textMuted, fontSize: 13, marginBottom: spacing.sm },
+  rep: { color: colors.text, fontSize: 30, fontFamily: fonts.displayBlack, marginBottom: spacing.sm },
+  macroDesc: { color: colors.textMuted, fontSize: 13, marginBottom: spacing.sm, fontStyle: 'italic' },
   event: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md },
-  dot: { width: 8, height: 8, borderRadius: 4, marginTop: 5 },
-  evTitle: { color: colors.text, fontSize: 14, fontWeight: '700' },
+  dot: { width: 7, height: 7, marginTop: 5 },
+  evTitle: { color: colors.text, fontSize: 14, fontFamily: fonts.serifBold },
   evDesc: { color: colors.textMuted, fontSize: 12, marginTop: 1 },
 });
