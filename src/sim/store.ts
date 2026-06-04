@@ -69,6 +69,8 @@ interface SimStore {
   hydrated: boolean;
   /** Non-persisted pool of hire candidates, keyed by role. */
   candidates: Record<string, Employee[]>;
+  /** Month each role's candidate search was last run (once per month per role). */
+  candidateSearchMonth: Record<string, number>;
   /** Month whose edition report should be shown (null = none pending). */
   pendingReportMonth: number | null;
 
@@ -106,16 +108,18 @@ export const useSimStore = create<SimStore>()(
       game: null,
       hydrated: false,
       candidates: {},
+      candidateSearchMonth: {},
       pendingReportMonth: null,
 
       newGame: (opts) =>
         set({
           game: createSimGame(opts?.seed, opts?.thesis, opts?.scenario),
           candidates: {},
+          candidateSearchMonth: {},
           pendingReportMonth: null,
         }),
 
-      resetGame: () => set({ game: null, candidates: {}, pendingReportMonth: null }),
+      resetGame: () => set({ game: null, candidates: {}, candidateSearchMonth: {}, pendingReportMonth: null }),
 
       nextMonth: () => {
         const { game } = get();
@@ -202,10 +206,15 @@ export const useSimStore = create<SimStore>()(
       },
 
       refreshCandidates: (role) => {
-        const { game, candidates } = get();
+        const { game, candidates, candidateSearchMonth } = get();
         if (!game) return;
+        // Only one search per role per month — no re-rolling for a better slate.
+        if (candidateSearchMonth[role] === game.month) return;
         const pool = Array.from({ length: 3 }, () => generateCandidate(role, game.reputation, uiRng, game.month));
-        set({ candidates: { ...candidates, [role]: pool } });
+        set({
+          candidates: { ...candidates, [role]: pool },
+          candidateSearchMonth: { ...candidateSearchMonth, [role]: game.month },
+        });
       },
 
       hire: (candidate) => {

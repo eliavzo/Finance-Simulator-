@@ -29,8 +29,10 @@ export function FirmScreen() {
   const fire = useSimStore((s) => s.fire);
   const upgrade = useSimStore((s) => s.upgrade);
   const candidates = useSimStore((s) => s.candidates);
+  const candidateSearchMonth = useSimStore((s) => s.candidateSearchMonth);
 
   const [role, setRole] = useState<Role>('Analyst');
+  const searchedThisMonth = candidateSearchMonth[role] === game.month;
   const firm = game.firm;
   const payroll = monthlyPayroll(firm);
   const opex = infraMonthlyOpex(firm.infrastructure);
@@ -95,15 +97,22 @@ export function FirmScreen() {
           <SectionTitle>Einstellen</SectionTitle>
           <Segmented<Role>
             value={role}
-            onChange={(r) => { setRole(r); refreshCandidates(r); }}
+            onChange={setRole}
             options={ROLES.slice(0, 4).map((r) => ({ label: r === 'PortfolioManager' ? 'PM' : r, value: r }))}
           />
           <Segmented<Role>
             value={role}
-            onChange={(r) => { setRole(r); refreshCandidates(r); }}
+            onChange={setRole}
             options={ROLES.slice(4).map((r) => ({ label: r === 'InvestorRelations' ? 'IR' : r, value: r }))}
           />
-          <Button title="Kandidaten suchen" variant="secondary" onPress={() => refreshCandidates(role)} style={{ marginTop: spacing.sm }} />
+          <Button
+            title={searchedThisMonth ? 'Diesen Monat bereits gesucht' : 'Kandidaten suchen'}
+            variant="secondary"
+            disabled={searchedThisMonth}
+            onPress={() => refreshCandidates(role)}
+            style={{ marginTop: spacing.sm }}
+          />
+          <Text style={styles.hint}>Niveau der Kandidaten steigt mit deiner Reputation. Eine Suche pro Rolle und Monat.</Text>
           {(candidates[role] ?? []).map((c: Employee) => (
             <View key={c.id} style={styles.candRow}>
               <View style={{ flex: 1 }}>

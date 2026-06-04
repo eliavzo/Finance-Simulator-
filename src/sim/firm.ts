@@ -211,9 +211,13 @@ export function stepFirm(firm: FirmState, ctx: FirmStepContext, rng: Rng): FirmS
   };
 }
 
-/** Generate a hiring candidate for a role; reputation widens the talent pool. */
+/**
+ * Generate a hiring candidate for a role. Talent level scales with reputation:
+ * a no-name shop attracts mediocre applicants, a renowned house draws stars.
+ */
 export function generateCandidate(role: Role, reputation: number, rng: Rng, month: number): Employee {
-  const repBonus = (reputation - 50) / 5; // ±10 skill points
-  const skill = Math.max(20, Math.min(98, rng.range(35, 75) + repBonus + rng.normal(0, 8)));
-  return createEmployee(role, Math.round(skill), rng, month);
+  // Mean skill tracks reputation (~40 at rep 30, ~52 at 50, ~72 at 85, ~80 at 100).
+  const mean = 25 + reputation * 0.55;
+  const skill = Math.max(20, Math.min(98, Math.round(rng.normal(mean, 9))));
+  return createEmployee(role, skill, rng, month);
 }
