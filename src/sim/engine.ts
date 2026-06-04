@@ -6,7 +6,10 @@
  */
 import {
   IncomeStatement,
+  Instrument,
   LedgerEntry,
+  MarketMover,
+  MonthlyReport,
   SimEvent,
   SimState,
   TOTAL_MONTHS,
@@ -112,6 +115,24 @@ export function createSimGame(seed = Date.now()): SimState {
 /** Total enterprise equity = GP cash + fund NAV. */
 export function enterpriseEquity(state: SimState): number {
   return state.firm.cash + portfolioNav(state.portfolio, state.instruments);
+}
+
+/** Biggest one-month price moves across tradeable instruments (excl. options). */
+function computeMovers(instruments: Instrument[]): { gainers: MarketMover[]; losers: MarketMover[] } {
+  const moves: MarketMover[] = [];
+  for (const inst of instruments) {
+    if (inst.kind === 'option') continue;
+    const h = inst.priceHistory;
+    if (h.length < 2) continue;
+    const prev = h[h.length - 2];
+    if (prev <= 0) continue;
+    moves.push({ symbol: inst.symbol, kind: inst.kind, changePct: inst.price / prev - 1, price: inst.price });
+  }
+  const sorted = [...moves].sort((a, b) => b.changePct - a.changePct);
+  return {
+    gainers: sorted.filter((m) => m.changePct > 0).slice(0, 3),
+    losers: sorted.filter((m) => m.changePct < 0).slice(-3).reverse(),
+  };
 }
 
 export function advanceMonth(state: SimState): SimState {
@@ -239,6 +260,28 @@ export function advanceMonth(state: SimState): SimState {
   const balanceSheet = buildBalanceSheet({ month, firm, fund, fundCash: portfolio.cash, positionsValue });
 
   const enterprise = firm.cash + fundNav;
+  const enterpriseStart = state.equityHistory[state.equityHistory.length - 1] ?? enterprise;
+  const { gainers, losers } = computeMovers(instruments);
+  const report: MonthlyReport = {
+    month,
+    enterpriseStart,
+    enterpriseEnd: enterprise,
+    enterpriseChangePct: enterpriseStart > 0 ? enterprise / enterpriseStart - 1 : 0,
+    fundNav,
+    fundReturnPct: monthReturn,
+    gpNetIncome: incomeStatement.netIncome,
+    contribution,
+    reputationDelta: repDelta,
+    regime: economy.regime,
+    regimeChanged,
+    policyRate: economy.policyRate,
+    volIndex: economy.volIndex,
+    blackSwan,
+    gainers,
+    losers,
+    headlines: events.map((e) => ({ type: e.type, title: e.title, description: e.description })),
+  };
+
   const gameOver = month >= TOTAL_MONTHS;
   if (gameOver) {
     events.push(ev(month, { type: 'info', title: 'Spielende', description: `Nach 20 Jahren: Unternehmenswert $${(enterprise / 1e6).toFixed(1)}M, Netto-IRR ${(metrics.netIrr * 100).toFixed(1)}%.` }));
@@ -256,6 +299,7 @@ export function advanceMonth(state: SimState): SimState {
     reputation,
     signals,
     lastContribution: contribution,
+    lastReport: report,
     incomeStatements: [incomeStatement, ...state.incomeStatements].slice(0, 36),
     balanceSheets: [balanceSheet, ...state.balanceSheets].slice(0, 36),
     ledger: [],

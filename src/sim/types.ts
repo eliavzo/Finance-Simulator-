@@ -381,6 +381,35 @@ export interface TeamContribution {
   capitalRaised: number;
 }
 
+/** A single instrument's move over the month. */
+export interface MarketMover {
+  symbol: string;
+  kind: InstrumentKind;
+  changePct: number;
+  price: number;
+}
+
+/** End-of-month "edition" report summarising everything that changed. */
+export interface MonthlyReport {
+  month: number;
+  enterpriseStart: number;
+  enterpriseEnd: number;
+  enterpriseChangePct: number;
+  fundNav: number;
+  fundReturnPct: number;
+  gpNetIncome: number;
+  contribution: TeamContribution;
+  reputationDelta: number;
+  regime: Regime;
+  regimeChanged: boolean;
+  policyRate: number;
+  volIndex: number;
+  blackSwan: boolean;
+  gainers: MarketMover[];
+  losers: MarketMover[];
+  headlines: { type: SimEventType; title: string; description: string }[];
+}
+
 /* -------------------------------------------------------------------------- */
 /*                              Whole sim state                               */
 /* -------------------------------------------------------------------------- */
@@ -403,6 +432,8 @@ export interface SimState {
   signals: ResearchSignal[];
   /** What the team contributed in the most recent month. */
   lastContribution: TeamContribution;
+  /** End-of-month edition report (undefined before the first month elapses). */
+  lastReport?: MonthlyReport;
 
   /** Recent monthly income statements (most recent first, bounded). */
   incomeStatements: IncomeStatement[];

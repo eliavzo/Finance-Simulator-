@@ -65,11 +65,15 @@ interface SimStore {
   hydrated: boolean;
   /** Non-persisted pool of hire candidates, keyed by role. */
   candidates: Record<string, Employee[]>;
+  /** Month whose edition report should be shown (null = none pending). */
+  pendingReportMonth: number | null;
 
   newGame: (seed?: number) => void;
   /** Wipe the current run and return to the front page. */
   resetGame: () => void;
   nextMonth: () => void;
+  /** Dismiss the monthly edition report overlay. */
+  dismissReport: () => void;
 
   trade: (instrumentId: string, signedQuantity: number, leverage: number) => ActionResult;
   closeTrade: (positionId: string) => ActionResult;
@@ -96,16 +100,20 @@ export const useSimStore = create<SimStore>()(
       game: null,
       hydrated: false,
       candidates: {},
+      pendingReportMonth: null,
 
-      newGame: (seed) => set({ game: createSimGame(seed), candidates: {} }),
+      newGame: (seed) => set({ game: createSimGame(seed), candidates: {}, pendingReportMonth: null }),
 
-      resetGame: () => set({ game: null, candidates: {} }),
+      resetGame: () => set({ game: null, candidates: {}, pendingReportMonth: null }),
 
       nextMonth: () => {
         const { game } = get();
         if (!game || game.gameOver) return;
-        set({ game: advanceMonth(game) });
+        const next = advanceMonth(game);
+        set({ game: next, pendingReportMonth: next.month });
       },
+
+      dismissReport: () => set({ pendingReportMonth: null }),
 
       trade: (instrumentId, signedQuantity, leverage) => {
         const { game } = get();

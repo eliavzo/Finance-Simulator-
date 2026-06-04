@@ -21,6 +21,7 @@ import { MarketsScreen } from './src/sim/screens/MarketsScreen';
 import { FirmScreen } from './src/sim/screens/FirmScreen';
 import { FundScreen } from './src/sim/screens/FundScreen';
 import { RiskScreen } from './src/sim/screens/RiskScreen';
+import { MonthReportModal } from './src/sim/screens/MonthReportModal';
 import { colors, fonts } from './src/utils/theme';
 
 const Tab = createBottomTabNavigator();
@@ -77,6 +78,7 @@ export default function App() {
               <Tab.Screen name="Fonds" component={FundScreen} options={{ tabBarIcon: ({ color }) => <TabGlyph glyph="‡" color={color} /> }} />
               <Tab.Screen name="Risiko" component={RiskScreen} options={{ tabBarIcon: ({ color }) => <TabGlyph glyph="†" color={color} /> }} />
             </Tab.Navigator>
+            <MonthReportModal />
           </NavigationContainer>
         )}
         <StatusBar style="dark" />
