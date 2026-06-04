@@ -8,10 +8,12 @@ export function SettingsModal({
   visible,
   onClose,
   onReset,
+  onShowAchievements,
 }: {
   visible: boolean;
   onClose: () => void;
   onReset: () => void;
+  onShowAchievements: () => void;
 }) {
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
@@ -20,6 +22,10 @@ export function SettingsModal({
           <Rule double />
           <Text style={styles.title}>Einstellungen</Text>
           <Rule />
+
+          <Text style={styles.sectionLabel}>Sammlung</Text>
+          <Text style={styles.body}>Sieh dir an, welche Auszeichnungen du bereits errungen hast und welche noch offen sind.</Text>
+          <Button title="Auszeichnungen ansehen" variant="secondary" onPress={onShowAchievements} style={{ marginTop: spacing.md }} />
 
           <Text style={styles.sectionLabel}>Spielstand</Text>
           <Text style={styles.body}>

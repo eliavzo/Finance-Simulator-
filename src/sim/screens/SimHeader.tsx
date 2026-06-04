@@ -7,6 +7,7 @@ import { notify, confirmDestructive } from '../../utils/notify';
 import { Button, Rule } from '../../components/ui';
 import { GearIcon } from '../../components/GearIcon';
 import { SettingsModal } from '../../components/SettingsModal';
+import { AchievementsModal } from '../../components/AchievementsModal';
 import { colors, fonts, spacing } from '../../utils/theme';
 
 export function SimHeader({ title }: { title: string }) {
@@ -14,6 +15,7 @@ export function SimHeader({ title }: { title: string }) {
   const nextMonth = useSimStore((s) => s.nextMonth);
   const resetGame = useSimStore((s) => s.resetGame);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [achievementsOpen, setAchievementsOpen] = useState(false);
   if (!game) return null;
 
   const year = Math.floor(game.month / 12) + 1;
@@ -46,7 +48,16 @@ export function SimHeader({ title }: { title: string }) {
       </View>
       <Rule />
 
-      <SettingsModal visible={settingsOpen} onClose={() => setSettingsOpen(false)} onReset={onReset} />
+      <SettingsModal
+        visible={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        onReset={onReset}
+        onShowAchievements={() => {
+          setSettingsOpen(false);
+          setAchievementsOpen(true);
+        }}
+      />
+      <AchievementsModal visible={achievementsOpen} onClose={() => setAchievementsOpen(false)} />
     </View>
   );
 }
