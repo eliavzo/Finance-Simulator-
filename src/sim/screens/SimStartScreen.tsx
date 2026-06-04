@@ -31,7 +31,7 @@ export function SimStartScreen() {
         style={styles.nameInput}
         value={officeName}
         onChangeText={setOfficeName}
-        placeholder="z. B. Vivenzio Capital"
+        placeholder="z. B. Nordstern Capital"
         placeholderTextColor={colors.textMuted}
         maxLength={32}
         returnKeyType="done"
