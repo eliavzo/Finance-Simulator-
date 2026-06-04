@@ -411,6 +411,21 @@ export interface Objective {
 
 export type GameOverReason = 'horizon' | 'insolvency' | 'reputation';
 
+/** An AI competitor fund. */
+export interface RivalFund {
+  id: string;
+  name: string;
+  thesis: FundThesis;
+  aum: number;
+  /** Skill in [0, 1], drives their alpha. */
+  skill: number;
+  reputation: number;
+  /** Trailing 12-month return for the league table. */
+  ytdReturn: number;
+  /** Recent monthly returns (oldest first, bounded to 12). */
+  monthlyReturns: number[];
+}
+
 /** A single instrument's move over the month. */
 export interface MarketMover {
   symbol: string;
@@ -461,6 +476,8 @@ export interface SimState {
   /** Reputation in [0, 100]; gates LP capital, talent and deal quality. */
   reputation: number;
 
+  /** AI competitor funds for the league table. */
+  rivals: RivalFund[];
   /** Active & resolved LP mandates / objectives. */
   objectives: Objective[];
   /** Why the game ended (set once gameOver is true). */

@@ -20,6 +20,7 @@ import { createInstruments, stepMarket } from './market';
 import { THESES } from './thesis';
 import { scenarioEconomy, applyScenarioToInstruments } from './scenarios';
 import { generateObjective, metricValue, isMet, computeScore } from './objectives';
+import { createRivals, stepRivals, buildLeague, trailingReturn, playerRankFraction } from './rivals';
 import { FundThesis, GameOverReason, Scenario } from './types';
 import { createPortfolio, portfolioNav, stepPortfolio } from './portfolio';
 import { createFirm, firmCapabilities, stepFirm } from './firm';
@@ -105,6 +106,7 @@ export function createSimGame(
     firm,
     fund,
     reputation: 50,
+    rivals: createRivals(rng),
     objectives: [generateObjective(rng, 0, 50), generateObjective(rng, 0, 50)],
     signals: signals0,
     lastContribution: NO_CONTRIBUTION,
@@ -241,7 +243,16 @@ export function advanceMonth(state: SimState): SimState {
   // 8. Reputation ------------------------------------------------------------
   const prevNav = state.portfolio.navHistory[state.portfolio.navHistory.length - 1] ?? fundNav;
   const monthReturn = prevNav > 0 ? fundNav / prevNav - 1 : 0;
+
+  // Rivals & league standing.
+  const rivals = stepRivals(state.rivals, economy, rng);
+  const playerTrailing = trailingReturn(portfolio.returnHistory, 12);
+  const league = buildLeague(rivals, state.firm.name, playerTrailing, fundNav);
+  const rankFrac = playerRankFraction(league);
+
   let repDelta = Math.max(-2, Math.min(2, monthReturn * 30));
+  // Standing vs rivals: top of the table lifts reputation, bottom drags it.
+  repDelta += (0.5 - rankFrac) * 0.6;
   repDelta -= pStep.marginCalled.length * 1.5;
   if (blackSwan && pStep.marginCalled.length === 0) repDelta += 0.5;
   if (Number.isFinite(metrics.netIrr) && metrics.netIrr > 0.15) repDelta += 0.2;
@@ -374,6 +385,7 @@ export function advanceMonth(state: SimState): SimState {
     firm,
     fund,
     reputation,
+    rivals,
     objectives,
     signals,
     lastContribution: contribution,

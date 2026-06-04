@@ -6,6 +6,7 @@ import { enterpriseEquity } from '../engine';
 import { portfolioNav } from '../portfolio';
 import { fundMetrics } from '../fund';
 import { computeRisk } from '../risk';
+import { buildLeague, trailingReturn } from '../rivals';
 import { REGIME_DESC, REGIME_LABEL } from '../economy';
 import { SimEventType } from '../types';
 import { SimHeader } from './SimHeader';
@@ -81,6 +82,18 @@ export function SimDashboardScreen() {
         </Card>
 
         <Card>
+          <SectionTitle ornament>Rangliste · 12-Monats-Rendite</SectionTitle>
+          {buildLeague(game.rivals, game.firm.name, trailingReturn(game.portfolio.returnHistory), fundNav).map((e) => (
+            <View key={e.name} style={[styles.leagueRow, e.isPlayer && styles.leagueMe]}>
+              <Text style={[styles.leagueRank, e.isPlayer && styles.leagueMeText]}>{e.rank}</Text>
+              <Text style={[styles.leagueName, e.isPlayer && styles.leagueMeText]} numberOfLines={1}>{e.name}</Text>
+              <Text style={[styles.leagueRet, { color: e.trailingReturn >= 0 ? colors.positive : colors.negative }]}>{fmtPctSigned(e.trailingReturn)}</Text>
+              <Text style={styles.leagueAum}>{fmtMoney(e.aum)}</Text>
+            </View>
+          ))}
+        </Card>
+
+        <Card>
           <SectionTitle>Reputation</SectionTitle>
           <Text style={styles.rep}>{game.reputation.toFixed(0)}</Text>
           <ProgressBar value={game.reputation / 100} color={colors.warning} />
@@ -125,6 +138,13 @@ const styles = StyleSheet.create({
   colVal: { color: colors.text, fontSize: 22, fontFamily: fonts.display, marginBottom: spacing.xs },
   hint: { color: colors.textMuted, fontSize: 11, marginTop: 2 },
   statRow: { flexDirection: 'row', flexWrap: 'wrap' },
+  leagueRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 5, borderTopWidth: 1, borderTopColor: colors.ruleSoft, gap: spacing.sm },
+  leagueMe: { backgroundColor: colors.surfaceAlt },
+  leagueMeText: { fontFamily: fonts.serifBold },
+  leagueRank: { color: colors.textMuted, fontSize: 13, width: 18, fontFamily: fonts.display },
+  leagueName: { color: colors.text, fontSize: 13, flex: 1 },
+  leagueRet: { fontSize: 13, fontFamily: fonts.serifBold, width: 64, textAlign: 'right' },
+  leagueAum: { color: colors.textMuted, fontSize: 12, width: 64, textAlign: 'right' },
   rep: { color: colors.text, fontSize: 30, fontFamily: fonts.displayBlack, marginBottom: spacing.sm },
   macroDesc: { color: colors.textMuted, fontSize: 13, marginBottom: spacing.sm, fontStyle: 'italic' },
   event: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md },

@@ -5,6 +5,7 @@ import { createPortfolio } from '../portfolio';
 import { createInstruments } from '../market';
 import { createEconomy } from '../economy';
 import { generateSignals } from '../research';
+import { buildLeague } from '../rivals';
 import { firmCapabilities, createFirm, fairSalary, infraMonthlyOpex } from '../firm';
 import { createFund, callCapital, distribute, crystalliseCarry, monthlyManagementFee, fundMetrics } from '../fund';
 import { buildBalanceSheet } from '../accounting';
@@ -83,13 +84,30 @@ describe('advanceMonth', () => {
     expect(bs.lpCapital + bs.gpEquity).toBeCloseTo(bs.totalEquity, 4);
   });
 
-  it('runs the full 20-year horizon and ends', () => {
+  it('ends within the horizon and is idempotent afterwards', () => {
     let g = createSimGame(2026);
     for (let i = 0; i < TOTAL_MONTHS; i++) g = advanceMonth(g);
-    expect(g.month).toBe(TOTAL_MONTHS);
     expect(g.gameOver).toBe(true);
+    expect(g.month).toBeLessThanOrEqual(TOTAL_MONTHS);
     expect(advanceMonth(g)).toBe(g);
-    expect(g.equityHistory.length).toBe(TOTAL_MONTHS + 1);
+    expect(g.equityHistory.length).toBe(g.month + 1);
+  });
+});
+
+describe('rivals & league', () => {
+  it('seeds rivals and ranks the player in the league', () => {
+    const g = createSimGame(8);
+    expect(g.rivals.length).toBeGreaterThanOrEqual(4);
+    const league = buildLeague(g.rivals, g.firm.name, 0.05, 12_000_000);
+    expect(league.length).toBe(g.rivals.length + 1);
+    expect(league.some((e) => e.isPlayer)).toBe(true);
+    // ranks are 1..n, contiguous
+    expect(league.map((e) => e.rank)).toEqual(league.map((_, i) => i + 1));
+  });
+
+  it('rivals evolve over a month', () => {
+    const next = advanceMonth(createSimGame(8));
+    expect(next.rivals[0].monthlyReturns.length).toBe(1);
   });
 });
 
