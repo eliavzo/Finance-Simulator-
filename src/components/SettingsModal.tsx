@@ -11,6 +11,7 @@ export function SettingsModal({
   onShowAchievements,
   onReplayOnboarding,
   onOpenManual,
+  ironman,
 }: {
   visible: boolean;
   onClose: () => void;
@@ -18,6 +19,7 @@ export function SettingsModal({
   onShowAchievements: () => void;
   onReplayOnboarding: () => void;
   onOpenManual: () => void;
+  ironman?: boolean;
 }) {
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
@@ -39,10 +41,11 @@ export function SettingsModal({
 
           <Text style={styles.sectionLabel}>Spielstand</Text>
           <Text style={styles.body}>
-            Setzt den aktuellen Lauf zurück und kehrt zur Titelseite zurück. Dein Fortschritt geht dabei
-            unwiderruflich verloren.
+            {ironman
+              ? 'Ironman-Modus: Zurücksetzen ist deaktiviert. Der Lauf endet erst mit Spielende oder Pleite.'
+              : 'Setzt den aktuellen Lauf zurück und kehrt zur Titelseite zurück. Dein Fortschritt geht dabei unwiderruflich verloren.'}
           </Text>
-          <Button title="Spiel zurücksetzen" variant="negative" onPress={onReset} style={{ marginTop: spacing.md }} />
+          <Button title="Spiel zurücksetzen" variant="negative" disabled={ironman} onPress={onReset} style={{ marginTop: spacing.md }} />
 
           <View style={{ height: spacing.md }} />
           <Button title="Schließen" variant="secondary" onPress={onClose} />

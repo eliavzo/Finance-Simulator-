@@ -172,8 +172,8 @@ export function expectedAnnualReturn(inst: Instrument, econ: EconomyState): numb
 
 /** Advance every instrument by one month. `extraEquityShock` is an additional
  *  monthly log-return applied to equities (e.g. a crisis sell-off or squeeze). */
-export function stepMarket(instruments: Instrument[], econ: EconomyState, month: number, rng: Rng, extraEquityShock = 0): MarketStepResult {
-  const swanProb = econ.regime === 'peak' || econ.regime === 'contraction' ? 0.015 : 0.004;
+export function stepMarket(instruments: Instrument[], econ: EconomyState, month: number, rng: Rng, extraEquityShock = 0, swanProbMult = 1): MarketStepResult {
+  const swanProb = (econ.regime === 'peak' || econ.regime === 'contraction' ? 0.015 : 0.004) * swanProbMult;
   const blackSwan = rng.chance(swanProb);
 
   const mDrift = marketDrift(econ);

@@ -4,17 +4,24 @@ import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 
 import { useSimStore } from '../store';
 import { THESES, THESIS_ORDER } from '../thesis';
 import { SCENARIOS, SCENARIO_ORDER } from '../scenarios';
-import { FundThesis, Scenario } from '../types';
+import { PRESETS, DEFAULT_DIFFICULTY, difficultyParams, presetLabel, heatLabel, MODIFIER_LABEL, LEVEL_LABEL, ModifierKey } from '../difficulty';
+import { DifficultyConfig, DifficultyLevel, FundThesis, Scenario } from '../types';
 import { Button, Masthead, Rule } from '../../components/ui';
+import { Segmented } from '../../components/controls';
 import { colors, fonts, spacing } from '../../utils/theme';
+
+const MOD_KEYS: ModifierKey[] = ['market', 'capital', 'fees', 'rivals'];
 
 export function SimStartScreen() {
   const newGame = useSimStore((s) => s.newGame);
   const [officeName, setOfficeName] = useState('');
   const [thesis, setThesis] = useState<FundThesis>('multistrat');
   const [scenario, setScenario] = useState<Scenario>('normal');
+  const [difficulty, setDifficulty] = useState<DifficultyConfig>(DEFAULT_DIFFICULTY);
+  const dp = difficultyParams(difficulty);
   const trimmedName = officeName.trim();
   const canStart = trimmedName.length >= 2;
+  const setLevel = (key: ModifierKey, level: DifficultyLevel) => setDifficulty({ ...difficulty, [key]: level });
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.inner}>
@@ -60,10 +67,45 @@ export function SimStartScreen() {
         />
       ))}
 
+      <View style={{ height: spacing.md }} />
+      <SectionLabel text={`Schwierigkeit · ${presetLabel(difficulty)}`} />
+      {PRESETS.map((p) => (
+        <SelectRow
+          key={p.id}
+          label={p.label}
+          blurb={p.blurb}
+          selected={presetLabel(difficulty) === p.label}
+          onPress={() => setDifficulty(p.config)}
+        />
+      ))}
+
+      <Text style={styles.tuneLabel}>Feinjustierung</Text>
+      {MOD_KEYS.map((key) => (
+        <View key={key} style={styles.modRow}>
+          <Text style={styles.modName}>{MODIFIER_LABEL[key]}</Text>
+          <Segmented<string>
+            value={String(difficulty[key])}
+            onChange={(v) => setLevel(key, parseInt(v, 10) as DifficultyLevel)}
+            options={([-1, 0, 1, 2] as DifficultyLevel[]).map((lv) => ({ label: LEVEL_LABEL[key][lv + 1], value: String(lv) }))}
+          />
+        </View>
+      ))}
+      <View style={styles.modRow}>
+        <Text style={styles.modName}>Ironman (kein Reset)</Text>
+        <Segmented<string>
+          value={difficulty.ironman ? '1' : '0'}
+          onChange={(v) => setDifficulty({ ...difficulty, ironman: v === '1' })}
+          options={[{ label: 'Aus', value: '0' }, { label: 'An', value: '1' }]}
+        />
+      </View>
+      <Text style={styles.heatLine}>
+        Härtegrad: {heatLabel(dp.heat)} ({dp.heat >= 0 ? '+' : ''}{dp.heat}) · Score ×{dp.scoreMult.toFixed(2)}
+      </Text>
+
       <Rule />
       <Button
         title={canStart ? 'Erste Ausgabe drucken' : 'Erst dem Haus einen Namen geben'}
-        onPress={() => newGame({ thesis, scenario, officeName: trimmedName })}
+        onPress={() => newGame({ thesis, scenario, officeName: trimmedName, difficulty })}
         variant="primary"
         disabled={!canStart}
         style={styles.cta}
@@ -114,6 +156,10 @@ const styles = StyleSheet.create({
   rowLabelOn: { color: colors.paperText },
   rowBlurb: { color: colors.textMuted, fontFamily: fonts.serif, fontSize: 12, marginTop: 2, lineHeight: 17 },
   rowBlurbOn: { color: colors.paperText, opacity: 0.85 },
+  tuneLabel: { color: colors.textMuted, fontFamily: fonts.serifBold, fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', marginTop: spacing.sm, marginBottom: spacing.xs },
+  modRow: { marginBottom: spacing.sm },
+  modName: { color: colors.text, fontFamily: fonts.serif, fontSize: 13, marginBottom: 2 },
+  heatLine: { color: colors.accent, fontFamily: fonts.serifBold, fontSize: 13, marginTop: spacing.sm, marginBottom: spacing.xs },
   cta: { marginTop: spacing.md },
   disclaimer: { color: colors.textMuted, fontFamily: fonts.serifItalic, fontSize: 11, textAlign: 'center', marginTop: spacing.md },
 });

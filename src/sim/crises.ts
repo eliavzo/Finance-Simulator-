@@ -26,9 +26,9 @@ export const CRISIS_DESC: Record<CrisisType, string> = {
 };
 
 /** Try to start a crisis this month (only one at a time). */
-export function maybeTriggerCrisis(econ: EconomyState, hasActive: boolean, rng: Rng): Crisis | undefined {
+export function maybeTriggerCrisis(econ: EconomyState, hasActive: boolean, rng: Rng, probMult = 1): Crisis | undefined {
   if (hasActive) return undefined;
-  const base = econ.regime === 'peak' || econ.regime === 'contraction' ? 0.04 : 0.012;
+  const base = (econ.regime === 'peak' || econ.regime === 'contraction' ? 0.04 : 0.012) * probMult;
   if (!rng.chance(base)) return undefined;
   const types: CrisisType[] = ['creditCrunch', 'liquidityFreeze', 'shortSqueeze', 'ratesShock'];
   const type = rng.pick(types);

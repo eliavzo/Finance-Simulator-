@@ -27,6 +27,18 @@ export type FundThesis = 'quant' | 'macro' | 'longshort' | 'credit' | 'multistra
 /** Macro backdrop the game opens in. */
 export type Scenario = 'normal' | 'boom' | 'precrisis' | 'dotcom' | 'stagflation';
 
+/** A difficulty modifier level: -1 mild, 0 normal, 1 hard, 2 brutal. */
+export type DifficultyLevel = -1 | 0 | 1 | 2;
+
+/** Composable difficulty configuration. */
+export interface DifficultyConfig {
+  market: DifficultyLevel;
+  capital: DifficultyLevel;
+  fees: DifficultyLevel;
+  rivals: DifficultyLevel;
+  ironman: boolean;
+}
+
 export interface YieldCurveKnot {
   /** Tenor in years (0.25, 1, 2, 5, 10, 30…). */
   tenor: number;
@@ -607,6 +619,7 @@ export interface SimState {
 
   thesis: FundThesis;
   scenario: Scenario;
+  difficulty: DifficultyConfig;
 
   economy: EconomyState;
   instruments: Instrument[];

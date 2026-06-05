@@ -38,13 +38,13 @@ export function trailingReturn(returns: number[], n = 12): number {
   return slice.reduce((acc, r) => acc * (1 + r), 1) - 1;
 }
 
-/** Advance every rival one month. */
-export function stepRivals(rivals: RivalFund[], econ: EconomyState, rng: Rng): RivalFund[] {
+/** Advance every rival one month. `skillBonus` (difficulty) sharpens them. */
+export function stepRivals(rivals: RivalFund[], econ: EconomyState, rng: Rng, skillBonus = 0): RivalFund[] {
   const marketMonthly = (0.04 + econ.sentiment * 0.07 + (econ.gdpGrowth - 0.02) * 1.2 - (econ.policyRate - 0.03) * 0.6) / 12;
   const volMonthly = Math.max(0.02, econ.volIndex / 100 / Math.sqrt(12));
 
   return rivals.map((r) => {
-    const alpha = (r.skill - 0.5) * 0.012; // skill edge per month
+    const alpha = (Math.min(0.95, r.skill + skillBonus) - 0.5) * 0.012; // skill edge per month
     const ret = rng.normal(marketMonthly + alpha, volMonthly * (0.8 + 0.6 * (1 - r.skill)));
     const aum = Math.max(2_000_000, r.aum * (1 + ret) * (1 + (r.reputation > 60 ? 0.004 : 0))); // perf + slow inflows
     const monthlyReturns = [...r.monthlyReturns, ret].slice(-12);

@@ -8,6 +8,7 @@ import { fundMetrics } from '../fund';
 import { maxDrawdown } from '../../engine/finance';
 import { ACHIEVEMENTS } from '../achievements';
 import { tierPerks } from '../tiers';
+import { difficultyParams, presetLabel, heatLabel } from '../difficulty';
 import { Button, Rule, StatTile } from '../../components/ui';
 import { colors, fonts, spacing } from '../../utils/theme';
 import { fmtMoney, fmtMultiple, fmtPct } from '../../utils/format';
@@ -55,6 +56,9 @@ export function EndGameModal() {
             <View style={styles.gradeWrap}>
               <Text style={styles.grade}>{game.finalGrade ?? '—'}</Text>
               <Text style={styles.score}>{game.finalScore ?? 0} Punkte</Text>
+              <Text style={styles.diffLine}>
+                {presetLabel(game.difficulty)} · Härtegrad {heatLabel(difficultyParams(game.difficulty).heat)} · Score ×{difficultyParams(game.difficulty).scoreMult.toFixed(2)}
+              </Text>
             </View>
 
             <Rule />
@@ -99,6 +103,7 @@ const styles = StyleSheet.create({
   gradeWrap: { alignItems: 'center', marginVertical: spacing.md },
   grade: { color: colors.primary, fontFamily: fonts.displayBlack, fontSize: 72, lineHeight: 78 },
   score: { color: colors.textMuted, fontFamily: fonts.serifBold, fontSize: 14, letterSpacing: 1 },
+  diffLine: { color: colors.accent, fontFamily: fonts.serifItalic, fontSize: 11, marginTop: spacing.xs, textAlign: 'center' },
   statRow: { flexDirection: 'row', flexWrap: 'wrap' },
   colophon: { color: colors.textMuted, fontFamily: fonts.serifItalic, fontSize: 10, textAlign: 'center', letterSpacing: 1, marginTop: spacing.md },
 });

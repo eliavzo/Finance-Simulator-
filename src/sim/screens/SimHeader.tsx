@@ -66,6 +66,7 @@ export function SimHeader({ title }: { title: string }) {
           setSettingsOpen(false);
           openManual();
         }}
+        ironman={game.difficulty?.ironman}
       />
       <AchievementsModal visible={achievementsOpen} onClose={() => setAchievementsOpen(false)} />
     </View>

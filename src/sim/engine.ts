@@ -28,7 +28,8 @@ import { maybeTriggerCrisis, applyCrisisToEconomy, crisisEquityShock, hedgePayou
 import { tierPerks } from './tiers';
 import { ACHIEVEMENTS, evaluateAchievements } from './achievements';
 import { maxDrawdown } from '../engine/finance';
-import { FundThesis, GameOverReason, Scenario } from './types';
+import { difficultyParams, DEFAULT_DIFFICULTY } from './difficulty';
+import { DifficultyConfig, FundThesis, GameOverReason, Scenario } from './types';
 import { createPortfolio, portfolioNav, stepPortfolio, raiseCash } from './portfolio';
 import { createFirm, firmCapabilities, stepFirm } from './firm';
 import {
@@ -75,19 +76,23 @@ export function createSimGame(
   thesis: FundThesis = 'multistrat',
   scenario: Scenario = 'normal',
   officeName = 'Family Office',
+  difficulty: DifficultyConfig = DEFAULT_DIFFICULTY,
 ): SimState {
   evCounter = 0;
   const rng = new Rng(seed);
+  const dp = difficultyParams(difficulty);
   const economy = scenarioEconomy(scenario);
   const instruments = applyScenarioToInstruments(scenario, createInstruments());
-  const firm = createFirm(officeName.trim() || 'Family Office', GP_RUNWAY, rng);
+  const firm = createFirm(officeName.trim() || 'Family Office', GP_RUNWAY * dp.startCapitalMult, rng);
 
-  let fund = createFund(0, ANCHOR_COMMITMENT, rng);
+  let fund = createFund(0, ANCHOR_COMMITMENT * dp.startCapitalMult, rng);
+  // Leaner fees on harder difficulties.
+  fund = { ...fund, mgmtFeeRate: fund.mgmtFeeRate * dp.feeMult, carryRate: fund.carryRate * dp.feeMult };
   // Two seed LPs join at launch, so the fund has enough AUM for fees to
   // support a lean team through the J-curve.
-  const seedLPs = [createLP('Endowment', 12_000_000, rng), createLP('Pension', 13_000_000, rng)];
-  const committed = ANCHOR_COMMITMENT + seedLPs.reduce((a, l) => a + l.committed, 0);
-  const called = Math.min(INITIAL_CALL, committed);
+  const seedLPs = [createLP('Endowment', 12_000_000 * dp.startCapitalMult, rng), createLP('Pension', 13_000_000 * dp.startCapitalMult, rng)];
+  const committed = ANCHOR_COMMITMENT * dp.startCapitalMult + seedLPs.reduce((a, l) => a + l.committed, 0);
+  const called = Math.min(INITIAL_CALL * dp.startCapitalMult, committed);
   fund = {
     ...fund,
     committed,
@@ -108,6 +113,7 @@ export function createSimGame(
     gameOver: false,
     thesis,
     scenario,
+    difficulty,
     economy,
     instruments,
     portfolio,
@@ -164,6 +170,7 @@ export function advanceMonth(state: SimState): SimState {
   if (state.gameOver) return state;
 
   const rng = new Rng(state.rngState);
+  const dp = difficultyParams(state.difficulty ?? DEFAULT_DIFFICULTY);
   const month = state.month + 1;
   const events: SimEvent[] = [];
   const ledger: LedgerEntry[] = [];
@@ -188,16 +195,18 @@ export function advanceMonth(state: SimState): SimState {
     crisis = undefined;
   }
   if (!crisis) {
-    const newCrisis = maybeTriggerCrisis(stepped.economy, false, rng);
+    const newCrisis = maybeTriggerCrisis(stepped.economy, false, rng, dp.crisisProbMult);
     if (newCrisis) {
       crisis = newCrisis;
       events.push(ev(month, { type: 'blackswan', title: `⚠ ${crisis.label} (${crisis.monthsRemaining} Monate)`, description: CRISIS_DESC[crisis.type] }));
     }
   }
-  const economy = crisis ? applyCrisisToEconomy(stepped.economy, crisis) : stepped.economy;
+  const econBase = crisis ? applyCrisisToEconomy(stepped.economy, crisis) : stepped.economy;
+  // Difficulty raises the ambient volatility.
+  const economy = { ...econBase, volIndex: econBase.volIndex * dp.volMult };
 
   // 2. Market ----------------------------------------------------------------
-  const { instruments, blackSwan } = stepMarket(state.instruments, economy, month, rng, crisisEquityShock(crisis));
+  const { instruments, blackSwan } = stepMarket(state.instruments, economy, month, rng, crisisEquityShock(crisis), dp.swanProbMult);
   if (blackSwan) {
     events.push(ev(month, { type: 'blackswan', title: '🦢 Black Swan', description: 'Ein extremer Schock erschüttert die Märkte – gehebelte Positionen sind in Gefahr.' }));
   }
@@ -339,9 +348,12 @@ export function advanceMonth(state: SimState): SimState {
   const profitable = pStep.alphaPnl + pStep.income - pStep.financingCost + fee > 0;
   const firmStep = stepFirm(firm, { openPositions: portfolio.positions.length, profitable, reputation: state.reputation }, rng);
   firm = firmStep.firm;
-  firm = { ...firm, cash: firm.cash - firmStep.payroll - firmStep.infraOpex };
-  post('salaries', -firmStep.payroll);
-  post('infraOpex', -firmStep.infraOpex);
+  // Difficulty raises the cost base.
+  const payroll = firmStep.payroll * dp.opexMult;
+  const infraOpex = firmStep.infraOpex * dp.opexMult;
+  firm = { ...firm, cash: firm.cash - payroll - infraOpex };
+  post('salaries', -payroll);
+  post('infraOpex', -infraOpex);
   for (const dep of firmStep.departures) {
     events.push(ev(month, { type: 'firm', title: 'Kündigung', description: `${dep.name} (${dep.role}) verlässt die Firma (Moral ${dep.morale.toFixed(0)}).` }));
   }
@@ -350,7 +362,7 @@ export function advanceMonth(state: SimState): SimState {
   }
 
   // 6. Tax on GP net income (monthly, on positive pre-tax) -------------------
-  const preTax = fee + carryRes.carry - firmStep.payroll - firmStep.infraOpex;
+  const preTax = fee + carryRes.carry - payroll - infraOpex;
   const tax = Math.max(0, preTax) * TAX_RATE;
   if (tax > 0) {
     firm = { ...firm, cash: firm.cash - tax };
@@ -372,7 +384,7 @@ export function advanceMonth(state: SimState): SimState {
   const monthReturn = prevNav > 0 ? fundNav / prevNav - 1 : 0;
 
   // Rivals & league standing.
-  const rivals = stepRivals(state.rivals, economy, rng);
+  const rivals = stepRivals(state.rivals, economy, rng, dp.rivalSkillBonus);
   const playerTrailing = trailingReturn(portfolio.returnHistory, 12);
   const league = buildLeague(rivals, state.firm.name, playerTrailing, fundNav);
   const rankFrac = playerRankFraction(league);
@@ -487,7 +499,8 @@ export function advanceMonth(state: SimState): SimState {
   };
 
   // Grace periods so early bad luck can't end a run in the first year(s).
-  const insolvent = firm.cash < -2_000_000 && month >= 12;
+  // Ironman: no safety net — insolvency ends the run immediately.
+  const insolvent = dp.ironman ? firm.cash < 0 : firm.cash < -2_000_000 && month >= 12;
   const ruined = reputation <= 0 && month >= 24;
   const horizon = month >= TOTAL_MONTHS;
   const gameOver = insolvent || ruined || horizon;
@@ -536,6 +549,7 @@ export function advanceMonth(state: SimState): SimState {
     finalGrade,
     thesis: state.thesis,
     scenario: state.scenario,
+    difficulty: state.difficulty ?? DEFAULT_DIFFICULTY,
     economy,
     instruments,
     portfolio,
