@@ -9,11 +9,15 @@ export function SettingsModal({
   onClose,
   onReset,
   onShowAchievements,
+  onReplayOnboarding,
+  onOpenManual,
 }: {
   visible: boolean;
   onClose: () => void;
   onReset: () => void;
   onShowAchievements: () => void;
+  onReplayOnboarding: () => void;
+  onOpenManual: () => void;
 }) {
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
@@ -22,6 +26,12 @@ export function SettingsModal({
           <Rule double />
           <Text style={styles.title}>Einstellungen</Text>
           <Rule />
+
+          <Text style={styles.sectionLabel}>Hilfe</Text>
+          <Text style={styles.body}>Neu hier? Wiederhole die Einführung oder schlage Details im Leitfaden nach.</Text>
+          <Button title="Leitfaden öffnen" variant="secondary" onPress={onOpenManual} style={{ marginTop: spacing.md }} />
+          <View style={{ height: spacing.sm }} />
+          <Button title="Einführung wiederholen" variant="secondary" onPress={onReplayOnboarding} />
 
           <Text style={styles.sectionLabel}>Sammlung</Text>
           <Text style={styles.body}>Sieh dir an, welche Auszeichnungen du bereits errungen hast und welche noch offen sind.</Text>

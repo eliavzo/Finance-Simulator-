@@ -12,6 +12,7 @@ import { ACHIEVEMENTS } from '../achievements';
 import { REGIME_DESC, REGIME_LABEL } from '../economy';
 import { SimEventType } from '../types';
 import { SimHeader } from './SimHeader';
+import { TabTip } from '../../components/TabTip';
 import { Card, ProgressBar, SectionTitle, StatTile } from '../../components/ui';
 import { LineChart } from '../../components/LineChart';
 import { colors, fonts, spacing } from '../../utils/theme';
@@ -45,6 +46,7 @@ export function SimDashboardScreen() {
     <View style={styles.container}>
       <SimHeader title="Übersicht" />
       <ScrollView contentContainerStyle={styles.scroll}>
+        <TabTip tipKey="dashboard" text="Dein Cockpit. Mit „Nächste Ausgabe ▸“ oben rückst du einen Monat vor; danach kommt der Monatsbericht mit allen Veränderungen." />
         <Card>
           <Text style={styles.officeName}>{game.firm.name}</Text>
           <SectionTitle>Unternehmenswert (GP + Fonds-NAV)</SectionTitle>

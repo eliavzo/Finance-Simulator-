@@ -6,6 +6,7 @@ import { Employee, Infrastructure, Role } from '../types';
 import { ROLE_LABEL, monthlyPayroll, infraMonthlyOpex, upgradeCost, MAX_TIER } from '../firm';
 import { THESES } from '../thesis';
 import { SimHeader } from './SimHeader';
+import { TabTip } from '../../components/TabTip';
 import { notify } from '../../utils/notify';
 import { Button, Card, Pill, ProgressBar, SectionTitle, StatTile } from '../../components/ui';
 import { Segmented } from '../../components/controls';
@@ -41,6 +42,7 @@ export function FirmScreen() {
     <View style={styles.container}>
       <SimHeader title="Firma" />
       <ScrollView contentContainerStyle={styles.scroll}>
+        <TabTip tipKey="firma" text="Stelle Analysten, Trader & Quants ein und rüste Infrastruktur auf — dein Team erzeugt Alpha, senkt Kosten und verhindert Margin Calls." />
         <Card>
           <SectionTitle>{game.firm.name} · {THESES[game.thesis].label}</SectionTitle>
           <Text style={styles.big}>{fmtMoney(firm.cash)}</Text>

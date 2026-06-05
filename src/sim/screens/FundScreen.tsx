@@ -9,6 +9,7 @@ import { trailingReturn } from '../rivals';
 import { metricValue, objectiveProgress, formatMetric } from '../objectives';
 import { Objective } from '../types';
 import { SimHeader } from './SimHeader';
+import { TabTip } from '../../components/TabTip';
 import { notify } from '../../utils/notify';
 import { Button, Card, Pill, ProgressBar, SectionTitle, StatTile } from '../../components/ui';
 import { AmountStepper } from '../../components/controls';
@@ -31,6 +32,7 @@ export function FundScreen() {
     <View style={styles.container}>
       <SimHeader title="Fonds" />
       <ScrollView contentContainerStyle={styles.scroll}>
+        <TabTip tipKey="fonds" text="Rufe LP-Kapital ab für Dry Powder, erfülle Mandate für Reputation & frisches Kapital, und halte einen Cash-Puffer gegen Mittelabzüge." />
         <Card>
           <SectionTitle>Fonds-Kennzahlen</SectionTitle>
           <Text style={styles.big}>{fmtMoney(fundNav)}</Text>

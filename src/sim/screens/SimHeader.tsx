@@ -14,6 +14,8 @@ export function SimHeader({ title }: { title: string }) {
   const game = useSimStore((s) => s.game);
   const nextMonth = useSimStore((s) => s.nextMonth);
   const resetGame = useSimStore((s) => s.resetGame);
+  const replayOnboarding = useSimStore((s) => s.replayOnboarding);
+  const openManual = useSimStore((s) => s.openManual);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [achievementsOpen, setAchievementsOpen] = useState(false);
   if (!game) return null;
@@ -55,6 +57,14 @@ export function SimHeader({ title }: { title: string }) {
         onShowAchievements={() => {
           setSettingsOpen(false);
           setAchievementsOpen(true);
+        }}
+        onReplayOnboarding={() => {
+          setSettingsOpen(false);
+          replayOnboarding();
+        }}
+        onOpenManual={() => {
+          setSettingsOpen(false);
+          openManual();
         }}
       />
       <AchievementsModal visible={achievementsOpen} onClose={() => setAchievementsOpen(false)} />

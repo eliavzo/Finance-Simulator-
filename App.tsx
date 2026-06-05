@@ -26,6 +26,8 @@ import { MonthReportModal } from './src/sim/screens/MonthReportModal';
 import { DecisionModal } from './src/sim/screens/DecisionModal';
 import { OpportunityModal } from './src/sim/screens/OpportunityModal';
 import { EndGameModal } from './src/sim/screens/EndGameModal';
+import { OnboardingModal } from './src/components/OnboardingModal';
+import { ManualModal } from './src/components/ManualModal';
 import { colors, fonts } from './src/utils/theme';
 
 const Tab = createBottomTabNavigator();
@@ -87,6 +89,8 @@ export default function App() {
             <DecisionModal />
             <OpportunityModal />
             <EndGameModal />
+            <OnboardingModal />
+            <ManualModal />
           </NavigationContainer>
         )}
         <StatusBar style="dark" />

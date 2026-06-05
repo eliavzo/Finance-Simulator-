@@ -6,6 +6,7 @@ import { portfolioNav, exposures } from '../portfolio';
 import { computeRisk, STRESS_SCENARIOS, stressPnl } from '../risk';
 import { CRISIS_DESC, HEDGE_MONTHLY_PREMIUM } from '../crises';
 import { SimHeader } from './SimHeader';
+import { TabTip } from '../../components/TabTip';
 import { notify } from '../../utils/notify';
 import { Button, Card, Pill, SectionTitle, StatTile } from '../../components/ui';
 import { AmountStepper, Segmented } from '../../components/controls';
@@ -28,6 +29,7 @@ export function RiskScreen() {
     <View style={styles.container}>
       <SimHeader title="Risiko" />
       <ScrollView contentContainerStyle={styles.scroll}>
+        <TabTip tipKey="risiko" text="Prüfe VaR, Drawdown & Stress-Szenarien — und kaufe vor Krisen eine Absicherung, die in Crashs und Krisen auszahlt." />
         {game.crisis ? (
           <View style={styles.crisisBanner}>
             <Text style={styles.crisisTitle}>⚠ {game.crisis.label} · noch {game.crisis.monthsRemaining} Monate</Text>

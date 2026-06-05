@@ -5,6 +5,7 @@ import { useSimStore } from '../store';
 import { vcMetrics, holdingValue } from '../vc';
 import { Startup, StartupDeal } from '../types';
 import { SimHeader } from './SimHeader';
+import { TabTip } from '../../components/TabTip';
 import { notify } from '../../utils/notify';
 import { Button, Card, Pill, ProgressBar, SectionTitle, StatTile } from '../../components/ui';
 import { AmountStepper } from '../../components/controls';
@@ -25,6 +26,7 @@ export function StartupsScreen() {
     <View style={styles.container}>
       <SimHeader title="Startups" />
       <ScrollView contentContainerStyle={styles.scroll}>
+        <TabTip tipKey="startups" text="Investiere in junge Firmen, unterstütze sie operativ und zieh bei neuen Runden pro-rata mit. Wenige werden Raketen (IPO/M&A), viele scheitern." />
         <Card>
           <SectionTitle>VC-Portfolio</SectionTitle>
           <Text style={styles.big}>{fmtMoney(metrics.residual)}</Text>

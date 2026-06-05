@@ -9,6 +9,7 @@ import { valuationGap, sectorOutlooks } from '../fundamentals';
 import { tierPerks } from '../tiers';
 import { EquityInstrument, Instrument, InstrumentKind, ResearchSignal } from '../types';
 import { SimHeader } from './SimHeader';
+import { TabTip } from '../../components/TabTip';
 import { notify } from '../../utils/notify';
 import { Button, Card, Pill, SectionTitle } from '../../components/ui';
 import { Segmented, LeverageSelector, AmountStepper } from '../../components/controls';
@@ -64,6 +65,7 @@ export function MarketsScreen() {
     <View style={styles.container}>
       <SimHeader title="Markt" />
       <ScrollView contentContainerStyle={styles.scroll}>
+        <TabTip tipKey="markt" text="Kaufe Aktien unter ihrem fairen Wert („günstig“) und meide teure. Long/Short mit Hebel; die Research-Tipps deines Teams helfen bei der Auswahl." />
         <Card>
           <SectionTitle>Fonds-Cash: {fmtMoney(cap)}</SectionTitle>
           <Segmented<InstrumentKind>

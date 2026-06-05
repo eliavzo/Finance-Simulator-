@@ -75,6 +75,17 @@ interface SimStore {
   /** Month whose edition report should be shown (null = none pending). */
   pendingReportMonth: number | null;
 
+  /* Tutorial / help (onboardingSeen & dismissedTips are persisted). */
+  onboardingSeen: boolean;
+  dismissedTips: Record<string, boolean>;
+  showOnboarding: boolean;
+  showManual: boolean;
+  completeOnboarding: () => void;
+  replayOnboarding: () => void;
+  openManual: () => void;
+  closeManual: () => void;
+  dismissTip: (key: string) => void;
+
   newGame: (opts?: { seed?: number; thesis?: FundThesis; scenario?: Scenario; officeName?: string }) => void;
   /** Wipe the current run and return to the front page. */
   resetGame: () => void;
@@ -124,14 +135,26 @@ export const useSimStore = create<SimStore>()(
       candidates: {},
       candidateSearchMonth: {},
       pendingReportMonth: null,
+      onboardingSeen: false,
+      dismissedTips: {},
+      showOnboarding: false,
+      showManual: false,
+
+      completeOnboarding: () => set({ onboardingSeen: true, showOnboarding: false }),
+      replayOnboarding: () => set({ showOnboarding: true }),
+      openManual: () => set({ showManual: true }),
+      closeManual: () => set({ showManual: false }),
+      dismissTip: (key) => set((s) => ({ dismissedTips: { ...s.dismissedTips, [key]: true } })),
 
       newGame: (opts) =>
-        set({
+        set((s) => ({
           game: createSimGame(opts?.seed, opts?.thesis, opts?.scenario, opts?.officeName),
           candidates: {},
           candidateSearchMonth: {},
           pendingReportMonth: null,
-        }),
+          // Show the intro automatically for first-time players.
+          showOnboarding: !s.onboardingSeen,
+        })),
 
       resetGame: () => set({ game: null, candidates: {}, candidateSearchMonth: {}, pendingReportMonth: null }),
 
@@ -373,9 +396,11 @@ export const useSimStore = create<SimStore>()(
     {
       name: STORAGE_KEY,
       storage: createJSONStorage(() => safeStorage),
-      partialize: (state) => ({ game: state.game }),
-      onRehydrateStorage: () => () => {
-        useSimStore.setState({ hydrated: true });
+      partialize: (state) => ({ game: state.game, onboardingSeen: state.onboardingSeen, dismissedTips: state.dismissedTips }),
+      onRehydrateStorage: () => (state) => {
+        // Show the intro for a restored game that never saw it.
+        const showOnboarding = !!state?.game?.started && !state?.onboardingSeen;
+        useSimStore.setState({ hydrated: true, showOnboarding });
       },
     },
   ),
