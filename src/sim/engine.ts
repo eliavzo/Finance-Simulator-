@@ -23,7 +23,6 @@ import { generateObjective, metricValue, isMet, computeScore } from './objective
 import { createRivals, stepRivals, buildLeague, trailingReturn, playerRankFraction } from './rivals';
 import { maybeDecision } from './decisions';
 import { maybeOpportunity, payoffMultiple, OPP_LABEL } from './opportunities';
-import { refreshTargets, stepCompany, equityValue } from './buyouts';
 import { maybeTriggerCrisis, applyCrisisToEconomy, crisisEquityShock, hedgePayout, HEDGE_MONTHLY_PREMIUM, CRISIS_DESC } from './crises';
 import { tierPerks } from './tiers';
 import { ACHIEVEMENTS, evaluateAchievements } from './achievements';
@@ -117,7 +116,6 @@ export function createSimGame(
     peakReputation: 50,
     achievements: [],
     specialHoldings: [],
-    buyouts: { targets: refreshTargets(rng, economy, 50), companies: [] },
     rivals: createRivals(rng),
     objectives: [generateObjective(rng, 0, 50), generateObjective(rng, 0, 50)],
     signals: signals0,
@@ -137,14 +135,9 @@ export function createSimGame(
   };
 }
 
-/** Combined equity value of all owned buyout companies. */
-export function buyoutEquityValue(state: SimState): number {
-  return (state.buyouts?.companies ?? []).reduce((s, c) => s + equityValue(c, state.economy), 0);
-}
-
-/** Total enterprise equity = GP cash + fund NAV + buyout equity. */
+/** Total enterprise equity = GP cash + fund NAV. */
 export function enterpriseEquity(state: SimState): number {
-  return state.firm.cash + portfolioNav(state.portfolio, state.instruments) + buyoutEquityValue(state);
+  return state.firm.cash + portfolioNav(state.portfolio, state.instruments);
 }
 
 /** Biggest one-month price moves across tradeable instruments (excl. options). */
@@ -205,17 +198,6 @@ export function advanceMonth(state: SimState): SimState {
   const { instruments, blackSwan } = stepMarket(state.instruments, economy, month, rng, crisisEquityShock(crisis));
   if (blackSwan) {
     events.push(ev(month, { type: 'blackswan', title: '🦢 Black Swan', description: 'Ein extremer Schock erschüttert die Märkte – gehebelte Positionen sind in Gefahr.' }));
-  }
-
-  // 2b. Buyout companies: organic growth, debt service, distress -------------
-  const buyoutCompanies: typeof state.buyouts.companies = [];
-  for (const c of state.buyouts?.companies ?? []) {
-    const r = stepCompany(c, economy, rng);
-    if (r.defaulted) {
-      events.push(ev(month, { type: 'fund', title: 'Beteiligung insolvent', description: `${c.name} kollabiert unter der Schuldenlast — Eigenkapital verloren.` }));
-    } else if (r.company) {
-      buyoutCompanies.push(r.company);
-    }
   }
 
   // 3. Trading book ----------------------------------------------------------
@@ -444,9 +426,7 @@ export function advanceMonth(state: SimState): SimState {
   const incomeStatement: IncomeStatement = buildIncomeStatement(month, ledger);
   const balanceSheet = buildBalanceSheet({ month, firm, fund, fundCash: portfolio.cash, positionsValue });
 
-  const buyoutEq = buyoutCompanies.reduce((s, c) => s + equityValue(c, economy), 0);
-  const buyouts = { companies: buyoutCompanies, targets: refreshTargets(rng, economy, reputation) };
-  const enterprise = firm.cash + fundNav + buyoutEq;
+  const enterprise = firm.cash + fundNav;
 
   // Tier progression (sticky) & achievements.
   const peakReputation = Math.max(state.peakReputation ?? state.reputation, reputation);
@@ -563,7 +543,6 @@ export function advanceMonth(state: SimState): SimState {
     pendingDecision,
     pendingOpportunity,
     specialHoldings,
-    buyouts,
     equityHistory: [...state.equityHistory, enterprise].slice(-TOTAL_MONTHS - 1),
     events: [...events, ...state.events].slice(0, 80),
     rngState: rng.getState(),

@@ -24,7 +24,6 @@ import { advanceMonth, createSimGame } from './engine';
 import { applyDecision } from './decisions';
 import { closePosition, openPosition } from './portfolio';
 import { callCapital } from './fund';
-import { buyCompany, cutCosts, investGrowth, addOn, payDownDebt, exitProceeds, equityValue } from './buyouts';
 import { firmCapabilities, generateCandidate, upgradeCost, MAX_TIER, fairSalary } from './firm';
 import { tierPerks } from './tiers';
 import { blackScholes, interpolateCurve } from './quant';
@@ -107,15 +106,6 @@ interface SimStore {
   acceptOpportunity: (amount: number) => ActionResult;
   /** Decline the pending special opportunity. */
   declineOpportunity: () => void;
-
-  /** Buy a target company via LBO with the given leverage fraction (0–0.7). */
-  acquireCompany: (targetId: string, leverageFrac: number) => ActionResult;
-  /** Apply an operational lever to an owned company. */
-  improveCompany: (companyId: string, lever: 'cut' | 'grow' | 'addon') => ActionResult;
-  /** Pay down a company's LBO debt with fund cash. */
-  payCompanyDebt: (companyId: string, amount: number) => ActionResult;
-  /** Sell an owned company; proceeds go to the fund. */
-  sellCompany: (companyId: string) => ActionResult;
 }
 
 export const useSimStore = create<SimStore>()(
@@ -340,89 +330,6 @@ export const useSimStore = create<SimStore>()(
         const { game } = get();
         if (!game) return;
         set({ game: { ...game, pendingOpportunity: undefined } });
-      },
-
-      acquireCompany: (targetId, leverageFrac) => {
-        const { game } = get();
-        if (!game) return { ok: false, error: 'Kein Spiel.' };
-        const target = game.buyouts.targets.find((t) => t.id === targetId);
-        if (!target) return { ok: false, error: 'Ziel nicht verfügbar.' };
-        const res = buyCompany(target, leverageFrac, game.month);
-        if (!res.ok || !res.company) return { ok: false, error: res.error };
-        if ((res.equity ?? 0) > game.portfolio.cash) return { ok: false, error: 'Nicht genug Fonds-Cash für das Eigenkapital.' };
-        set({
-          game: {
-            ...game,
-            portfolio: { ...game.portfolio, cash: game.portfolio.cash - (res.equity ?? 0) },
-            buyouts: {
-              targets: game.buyouts.targets.filter((t) => t.id !== targetId),
-              companies: [...game.buyouts.companies, res.company],
-            },
-          },
-        });
-        return { ok: true };
-      },
-
-      improveCompany: (companyId, lever) => {
-        const { game } = get();
-        if (!game) return { ok: false, error: 'Kein Spiel.' };
-        const c = game.buyouts.companies.find((x) => x.id === companyId);
-        if (!c) return { ok: false, error: 'Firma nicht gefunden.' };
-        const res = lever === 'cut' ? cutCosts(c) : lever === 'grow' ? investGrowth(c) : addOn(c);
-        if (!res.ok || !res.company) return { ok: false, error: res.error };
-        if ((res.cost ?? 0) > game.portfolio.cash) return { ok: false, error: 'Nicht genug Fonds-Cash.' };
-        set({
-          game: {
-            ...game,
-            portfolio: { ...game.portfolio, cash: game.portfolio.cash - (res.cost ?? 0) },
-            buyouts: { ...game.buyouts, companies: game.buyouts.companies.map((x) => (x.id === companyId ? res.company! : x)) },
-          },
-        });
-        return { ok: true };
-      },
-
-      payCompanyDebt: (companyId, amount) => {
-        const { game } = get();
-        if (!game) return { ok: false, error: 'Kein Spiel.' };
-        const c = game.buyouts.companies.find((x) => x.id === companyId);
-        if (!c) return { ok: false, error: 'Firma nicht gefunden.' };
-        const res = payDownDebt(c, amount);
-        if (!res.ok || !res.company) return { ok: false, error: res.error };
-        if ((res.cost ?? 0) > game.portfolio.cash) return { ok: false, error: 'Nicht genug Fonds-Cash.' };
-        set({
-          game: {
-            ...game,
-            portfolio: { ...game.portfolio, cash: game.portfolio.cash - (res.cost ?? 0) },
-            buyouts: { ...game.buyouts, companies: game.buyouts.companies.map((x) => (x.id === companyId ? res.company! : x)) },
-          },
-        });
-        return { ok: true };
-      },
-
-      sellCompany: (companyId) => {
-        const { game } = get();
-        if (!game) return { ok: false, error: 'Kein Spiel.' };
-        const c = game.buyouts.companies.find((x) => x.id === companyId);
-        if (!c) return { ok: false, error: 'Firma nicht gefunden.' };
-        const proceeds = exitProceeds(c, game.economy);
-        const moic = c.equityInvested > 0 ? (equityValue(c, game.economy) / c.equityInvested) : 0;
-        uiCounter += 1;
-        const exitEvent = {
-          id: `exit-${game.month}-${uiCounter}`,
-          month: game.month,
-          type: 'fund' as const,
-          title: 'Beteiligung verkauft',
-          description: `${c.name}: Exit für $${(proceeds / 1e6).toFixed(1)}M (${moic.toFixed(2)}× auf eingesetztes Eigenkapital).`,
-        };
-        set({
-          game: {
-            ...game,
-            portfolio: { ...game.portfolio, cash: game.portfolio.cash + proceeds },
-            buyouts: { ...game.buyouts, companies: game.buyouts.companies.filter((x) => x.id !== companyId) },
-            events: [exitEvent, ...game.events].slice(0, 80),
-          },
-        });
-        return { ok: true };
       },
     }),
     {
