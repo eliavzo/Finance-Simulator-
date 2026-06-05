@@ -20,6 +20,7 @@ import { SimDashboardScreen } from './src/sim/screens/SimDashboardScreen';
 import { MarketsScreen } from './src/sim/screens/MarketsScreen';
 import { FirmScreen } from './src/sim/screens/FirmScreen';
 import { FundScreen } from './src/sim/screens/FundScreen';
+import { StartupsScreen } from './src/sim/screens/StartupsScreen';
 import { RiskScreen } from './src/sim/screens/RiskScreen';
 import { MonthReportModal } from './src/sim/screens/MonthReportModal';
 import { DecisionModal } from './src/sim/screens/DecisionModal';
@@ -79,6 +80,7 @@ export default function App() {
               <Tab.Screen name="Markt" component={MarketsScreen} options={{ tabBarIcon: ({ color }) => <TabGlyph glyph="$" color={color} /> }} />
               <Tab.Screen name="Firma" component={FirmScreen} options={{ tabBarIcon: ({ color }) => <TabGlyph glyph="¶" color={color} /> }} />
               <Tab.Screen name="Fonds" component={FundScreen} options={{ tabBarIcon: ({ color }) => <TabGlyph glyph="‡" color={color} /> }} />
+              <Tab.Screen name="Startups" component={StartupsScreen} options={{ tabBarIcon: ({ color }) => <TabGlyph glyph="◇" color={color} /> }} />
               <Tab.Screen name="Risiko" component={RiskScreen} options={{ tabBarIcon: ({ color }) => <TabGlyph glyph="†" color={color} /> }} />
             </Tab.Navigator>
             <MonthReportModal />

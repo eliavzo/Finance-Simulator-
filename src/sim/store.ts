@@ -24,6 +24,7 @@ import { advanceMonth, createSimGame } from './engine';
 import { applyDecision } from './decisions';
 import { closePosition, openPosition } from './portfolio';
 import { callCapital } from './fund';
+import { investInDeal, followOn, supportStartup } from './vc';
 import { firmCapabilities, generateCandidate, upgradeCost, MAX_TIER, fairSalary } from './firm';
 import { tierPerks } from './tiers';
 import { blackScholes, interpolateCurve } from './quant';
@@ -106,6 +107,13 @@ interface SimStore {
   acceptOpportunity: (amount: number) => ActionResult;
   /** Decline the pending special opportunity. */
   declineOpportunity: () => void;
+
+  /** Invest `amount` into a startup deal. */
+  investStartup: (dealId: string, amount: number) => ActionResult;
+  /** Follow on pro-rata in a startup's open round. */
+  followOnStartup: (startupId: string) => ActionResult;
+  /** Provide operational support to a startup. */
+  supportStartup: (startupId: string) => ActionResult;
 }
 
 export const useSimStore = create<SimStore>()(
@@ -330,6 +338,36 @@ export const useSimStore = create<SimStore>()(
         const { game } = get();
         if (!game) return;
         set({ game: { ...game, pendingOpportunity: undefined } });
+      },
+
+      investStartup: (dealId, amount) => {
+        const { game } = get();
+        if (!game) return { ok: false, error: 'Kein Spiel.' };
+        if (amount > game.portfolio.cash) return { ok: false, error: 'Nicht genug Fonds-Cash.' };
+        const res = investInDeal(game.vc, dealId, amount, game.month);
+        if (!res.ok || !res.vc) return { ok: false, error: res.error };
+        set({ game: { ...game, vc: res.vc, portfolio: { ...game.portfolio, cash: game.portfolio.cash - (res.amount ?? 0) } } });
+        return { ok: true };
+      },
+
+      followOnStartup: (startupId) => {
+        const { game } = get();
+        if (!game) return { ok: false, error: 'Kein Spiel.' };
+        const res = followOn(game.vc, startupId, game.month);
+        if (!res.ok || !res.vc) return { ok: false, error: res.error };
+        if ((res.cost ?? 0) > game.portfolio.cash) return { ok: false, error: 'Nicht genug Fonds-Cash.' };
+        set({ game: { ...game, vc: res.vc, portfolio: { ...game.portfolio, cash: game.portfolio.cash - (res.cost ?? 0) } } });
+        return { ok: true };
+      },
+
+      supportStartup: (startupId) => {
+        const { game } = get();
+        if (!game) return { ok: false, error: 'Kein Spiel.' };
+        const res = supportStartup(game.vc, startupId, game.month);
+        if (!res.ok || !res.vc) return { ok: false, error: res.error };
+        if ((res.cost ?? 0) > game.portfolio.cash) return { ok: false, error: 'Nicht genug Fonds-Cash.' };
+        set({ game: { ...game, vc: res.vc, portfolio: { ...game.portfolio, cash: game.portfolio.cash - (res.cost ?? 0) } } });
+        return { ok: true };
       },
     }),
     {

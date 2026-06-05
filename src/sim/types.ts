@@ -538,6 +538,65 @@ export interface MonthlyReport {
 }
 
 /* -------------------------------------------------------------------------- */
+/*                            Venture / startups                              */
+/* -------------------------------------------------------------------------- */
+
+export type FundingStage = 'Seed' | 'Series A' | 'Series B' | 'Series C' | 'Pre-IPO';
+
+/** A startup raising a round, available to invest in. */
+export interface StartupDeal {
+  id: string;
+  name: string;
+  sector: Sector;
+  stage: FundingStage;
+  /** Pre-money valuation. */
+  preMoney: number;
+  /** Total round size being raised. */
+  roundSize: number;
+  revenue: number;
+  growthRate: number;
+  burnRate: number;
+  /** Team quality in [0, 1]. */
+  quality: number;
+}
+
+/** A startup the fund holds equity in. */
+export interface Startup {
+  id: string;
+  name: string;
+  sector: Sector;
+  stage: FundingStage;
+  status: 'active' | 'exited' | 'failed';
+  revenue: number;
+  growthRate: number;
+  burnRate: number;
+  /** Cash the company has in the bank (drives runway). */
+  runwayCash: number;
+  /** Current post-money valuation. */
+  postMoney: number;
+  /** The fund's fully-diluted ownership (0-1). */
+  ownership: number;
+  /** Total dollars the fund has invested across rounds. */
+  totalInvested: number;
+  /** Operational support level the fund has provided (0-1). */
+  support: number;
+  health: number;
+  foundedMonth: number;
+  /** Set the month a startup raises a new round; lets the player follow on. */
+  raising?: { proRata: number; ownershipIfFollow: number; stage: FundingStage };
+  exit?: { type: 'IPO' | 'M&A'; month: number; proceeds: number };
+}
+
+export interface VCState {
+  deals: StartupDeal[];
+  portfolio: Startup[];
+  totalInvested: number;
+  totalReturned: number;
+  /** Dated cash flows (invest −, exit +) in years from t0, for IRR. */
+  cashflows: { t: number; amount: number }[];
+}
+
+/* -------------------------------------------------------------------------- */
 /*                              Whole sim state                               */
 /* -------------------------------------------------------------------------- */
 
@@ -589,6 +648,8 @@ export interface SimState {
   pendingOpportunity?: SpecialOpportunity;
   /** Accepted opportunities resolving to a payoff later. */
   specialHoldings: SpecialHolding[];
+  /** Venture-capital / startup book. */
+  vc: VCState;
 
   /** Recent monthly income statements (most recent first, bounded). */
   incomeStatements: IncomeStatement[];

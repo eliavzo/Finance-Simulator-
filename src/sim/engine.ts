@@ -23,6 +23,7 @@ import { generateObjective, metricValue, isMet, computeScore } from './objective
 import { createRivals, stepRivals, buildLeague, trailingReturn, playerRankFraction } from './rivals';
 import { maybeDecision } from './decisions';
 import { maybeOpportunity, payoffMultiple, OPP_LABEL } from './opportunities';
+import { createVC, refreshDeals, stepVC, vcResidualValue } from './vc';
 import { maybeTriggerCrisis, applyCrisisToEconomy, crisisEquityShock, hedgePayout, HEDGE_MONTHLY_PREMIUM, CRISIS_DESC } from './crises';
 import { tierPerks } from './tiers';
 import { ACHIEVEMENTS, evaluateAchievements } from './achievements';
@@ -116,6 +117,7 @@ export function createSimGame(
     peakReputation: 50,
     achievements: [],
     specialHoldings: [],
+    vc: { ...createVC(), deals: refreshDeals(rng, 50) },
     rivals: createRivals(rng),
     objectives: [generateObjective(rng, 0, 50), generateObjective(rng, 0, 50)],
     signals: signals0,
@@ -135,9 +137,9 @@ export function createSimGame(
   };
 }
 
-/** Total enterprise equity = GP cash + fund NAV. */
+/** Total enterprise equity = GP cash + fund NAV + venture residual value. */
 export function enterpriseEquity(state: SimState): number {
-  return state.firm.cash + portfolioNav(state.portfolio, state.instruments);
+  return state.firm.cash + portfolioNav(state.portfolio, state.instruments) + vcResidualValue(state.vc);
 }
 
 /** Biggest one-month price moves across tradeable instruments (excl. options). */
@@ -248,6 +250,18 @@ export function advanceMonth(state: SimState): SimState {
     }
     portfolio = { ...portfolio, cash: portfolio.cash + cashAdd };
     specialHoldings = specialHoldings.filter((h) => month < h.resolveMonth);
+  }
+
+  // 3d. Venture book: startups grow, raise, fail or exit ---------------------
+  const vcStep = stepVC(state.vc, economy, month, rng, state.reputation);
+  const vc = vcStep.vc;
+  if (vcStep.proceeds > 0) {
+    portfolio = { ...portfolio, cash: portfolio.cash + vcStep.proceeds };
+  }
+  for (const note of vcStep.notes) {
+    const isExit = note.includes('Exit');
+    const isFail = note.includes('gescheitert');
+    events.push(ev(month, { type: 'fund', title: isExit ? 'Startup-Exit' : isFail ? 'Startup gescheitert' : 'Finanzierungsrunde', description: note }));
   }
 
   let fundNav = portfolioNav(portfolio, instruments);
@@ -426,7 +440,7 @@ export function advanceMonth(state: SimState): SimState {
   const incomeStatement: IncomeStatement = buildIncomeStatement(month, ledger);
   const balanceSheet = buildBalanceSheet({ month, firm, fund, fundCash: portfolio.cash, positionsValue });
 
-  const enterprise = firm.cash + fundNav;
+  const enterprise = firm.cash + fundNav + vcResidualValue(vc);
 
   // Tier progression (sticky) & achievements.
   const peakReputation = Math.max(state.peakReputation ?? state.reputation, reputation);
@@ -543,6 +557,7 @@ export function advanceMonth(state: SimState): SimState {
     pendingDecision,
     pendingOpportunity,
     specialHoldings,
+    vc,
     equityHistory: [...state.equityHistory, enterprise].slice(-TOTAL_MONTHS - 1),
     events: [...events, ...state.events].slice(0, 80),
     rngState: rng.getState(),
