@@ -538,6 +538,45 @@ export interface MonthlyReport {
 }
 
 /* -------------------------------------------------------------------------- */
+/*                          Buyouts / private equity                          */
+/* -------------------------------------------------------------------------- */
+
+/** A company available for acquisition. */
+export interface BuyoutTarget {
+  id: string;
+  name: string;
+  sector: Sector;
+  revenue: number;
+  ebitdaMargin: number;
+  growthRate: number;
+  quality: number;
+  /** Asking EV/EBITDA multiple. */
+  askingMultiple: number;
+}
+
+/** A company owned by the fund (post-buyout). */
+export interface PortfolioCompany {
+  id: string;
+  name: string;
+  sector: Sector;
+  revenue: number;
+  ebitdaMargin: number;
+  growthRate: number;
+  quality: number;
+  entryMultiple: number;
+  debt: number;
+  /** Total fund equity put in (basis for MOIC). */
+  equityInvested: number;
+  acquiredMonth: number;
+  distressMonths: number;
+}
+
+export interface BuyoutState {
+  targets: BuyoutTarget[];
+  companies: PortfolioCompany[];
+}
+
+/* -------------------------------------------------------------------------- */
 /*                              Whole sim state                               */
 /* -------------------------------------------------------------------------- */
 
@@ -589,6 +628,8 @@ export interface SimState {
   pendingOpportunity?: SpecialOpportunity;
   /** Accepted opportunities resolving to a payoff later. */
   specialHoldings: SpecialHolding[];
+  /** Private-equity / buyout book. */
+  buyouts: BuyoutState;
 
   /** Recent monthly income statements (most recent first, bounded). */
   incomeStatements: IncomeStatement[];
