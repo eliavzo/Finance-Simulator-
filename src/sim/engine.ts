@@ -265,7 +265,9 @@ export function advanceMonth(state: SimState): SimState {
   }
 
   // 3d. Venture book: startups grow, raise, fail or exit ---------------------
-  const vcStep = stepVC(state.vc, economy, month, rng, state.reputation);
+  // Deal flow scales with the fund's size so investing stays meaningful later.
+  const vcScale = Math.max(1, Math.min(12, portfolioNav(portfolio, instruments) / 15_000_000));
+  const vcStep = stepVC(state.vc, economy, month, rng, state.reputation, vcScale);
   const vc = vcStep.vc;
   if (vcStep.proceeds > 0) {
     portfolio = { ...portfolio, cash: portfolio.cash + vcStep.proceeds };

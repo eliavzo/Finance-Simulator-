@@ -40,15 +40,22 @@ export function createVC(): VCState {
   return { deals: [], portfolio: [], totalInvested: 0, totalReturned: 0, cashflows: [] };
 }
 
-/** Generate a startup raising a round. Higher reputation surfaces stronger teams. */
-export function generateDeal(rng: Rng, reputation: number): StartupDeal {
+/**
+ * Generate a startup raising a round. Higher reputation surfaces stronger teams;
+ * `scale` (the fund's size relative to its start) shifts deals toward bigger,
+ * later-stage rounds so investing stays meaningful as the fund grows.
+ */
+export function generateDeal(rng: Rng, reputation: number, scale = 1): StartupDeal {
   ctr += 1;
-  // Mostly early stage.
-  const r = rng.next();
-  const stage: FundingStage = r < 0.65 ? 'Seed' : r < 0.88 ? 'Series A' : 'Series B';
+  // Fund maturity (0 = small/new, 1 = large) biases the stage upward.
+  const maturity = Math.max(0, Math.min(1, (scale - 1) / 7));
+  const idx = Math.max(0, Math.min(STAGES.length - 1, Math.round(maturity * 3 + rng.range(-0.8, 1.2))));
+  const stage = STAGES[idx];
   const p = STAGE[stage];
-  const preMoney = rng.range(p.preLow, p.preHigh);
-  const roundSize = rng.range(p.roundLow, p.roundHigh);
+  // Gentle within-stage size growth with fund scale.
+  const sizeMult = Math.max(1, Math.min(2.5, 1 + (scale - 1) * 0.12));
+  const preMoney = rng.range(p.preLow, p.preHigh) * sizeMult;
+  const roundSize = rng.range(p.roundLow, p.roundHigh) * sizeMult;
   const revenue = preMoney * rng.range(0.03, 0.18);
   const repBonus = (reputation - 50) / 100 * 0.2;
   return {
@@ -65,9 +72,9 @@ export function generateDeal(rng: Rng, reputation: number): StartupDeal {
   };
 }
 
-export function refreshDeals(rng: Rng, reputation: number): StartupDeal[] {
+export function refreshDeals(rng: Rng, reputation: number, scale = 1): StartupDeal[] {
   const count = rng.int(2, reputation > 60 ? 4 : 3);
-  return Array.from({ length: count }, () => generateDeal(rng, reputation));
+  return Array.from({ length: count }, () => generateDeal(rng, reputation, scale));
 }
 
 export interface InvestResult {
@@ -203,8 +210,8 @@ export interface VCStepResult {
   notes: string[];
 }
 
-/** Advance the whole venture book one month. */
-export function stepVC(vc: VCState, econ: EconomyState, month: number, rng: Rng, reputation: number): VCStepResult {
+/** Advance the whole venture book one month. `scale` sizes new deal flow. */
+export function stepVC(vc: VCState, econ: EconomyState, month: number, rng: Rng, reputation: number, scale = 1): VCStepResult {
   const notes: string[] = [];
   let proceeds = 0;
   const cashflows = [...vc.cashflows];
@@ -225,7 +232,7 @@ export function stepVC(vc: VCState, econ: EconomyState, month: number, rng: Rng,
       portfolio,
       totalReturned: vc.totalReturned + proceeds,
       cashflows,
-      deals: refreshDeals(rng, reputation),
+      deals: refreshDeals(rng, reputation, scale),
     },
     proceeds,
     notes,

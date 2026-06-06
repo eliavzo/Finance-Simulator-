@@ -21,6 +21,30 @@ describe('venture deals & investing', () => {
     expect(refreshDeals(new Rng(1), 50).length).toBeGreaterThan(0);
   });
 
+  it('deal sizes scale up with fund scale', () => {
+    const avg = (scale: number) => {
+      let sum = 0;
+      for (let i = 0; i < 200; i++) {
+        const d = generateDeal(new Rng(i + scale * 1000), 50, scale);
+        sum += d.preMoney + d.roundSize;
+      }
+      return sum / 200;
+    };
+    expect(avg(10)).toBeGreaterThan(avg(1) * 3);
+  });
+
+  it('a larger fund sees more later-stage deals', () => {
+    const lateFrac = (scale: number) => {
+      let late = 0;
+      for (let i = 0; i < 300; i++) {
+        const d = generateDeal(new Rng(i + scale * 777), 50, scale);
+        if (d.stage === 'Series B' || d.stage === 'Series C' || d.stage === 'Pre-IPO') late++;
+      }
+      return late / 300;
+    };
+    expect(lateFrac(10)).toBeGreaterThan(lateFrac(1));
+  });
+
   it('ownership = cheque / post-money', () => {
     let vc = createVC();
     vc = { ...vc, deals: [generateDeal(new Rng(3), 50)] };
