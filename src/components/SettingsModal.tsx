@@ -11,6 +11,7 @@ export function SettingsModal({
   onShowAchievements,
   onReplayOnboarding,
   onOpenManual,
+  onOpenAnalysis,
   ironman,
 }: {
   visible: boolean;
@@ -19,6 +20,7 @@ export function SettingsModal({
   onShowAchievements: () => void;
   onReplayOnboarding: () => void;
   onOpenManual: () => void;
+  onOpenAnalysis: () => void;
   ironman?: boolean;
 }) {
   return (
@@ -32,6 +34,8 @@ export function SettingsModal({
           <Text style={styles.sectionLabel}>Hilfe</Text>
           <Text style={styles.body}>Neu hier? Wiederhole die Einführung oder schlage Details im Leitfaden nach.</Text>
           <Button title="Leitfaden öffnen" variant="secondary" onPress={onOpenManual} style={{ marginTop: spacing.md }} />
+          <View style={{ height: spacing.sm }} />
+          <Button title="Spielanalyse ansehen" variant="secondary" onPress={onOpenAnalysis} />
           <View style={{ height: spacing.sm }} />
           <Button title="Einführung wiederholen" variant="secondary" onPress={onReplayOnboarding} />
 

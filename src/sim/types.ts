@@ -429,6 +429,30 @@ export interface Objective {
 
 export type GameOverReason = 'horizon' | 'insolvency' | 'reputation';
 
+/** Running aggregates of player behaviour, for the end-of-run analysis. */
+export interface RunAnalytics {
+  months: number;
+  /** Sum of gross leverage (gross exposure / NAV) per month. */
+  grossLevSum: number;
+  maxGrossLev: number;
+  /** Months with gross leverage above 2×. */
+  monthsOverLev: number;
+  monthsHedged: number;
+  crisisMonths: number;
+  crisisMonthsHedged: number;
+  redemptions: number;
+  redemptionLoss: number;
+  /** Sum of cash / NAV per month (idle-cash drag). */
+  cashQuoteSum: number;
+  /** Sum & count of held-equity valuation gaps (cheap = positive). */
+  valuationGapSum: number;
+  valuationSamples: number;
+  /** Months the GP turned a profit (fees+carry > costs). */
+  gpProfitMonths: number;
+  /** Sum of open-position counts per month (activity proxy). */
+  positionsSum: number;
+}
+
 /** A multi-month market crisis. */
 export type CrisisType = 'creditCrunch' | 'liquidityFreeze' | 'shortSqueeze' | 'ratesShock';
 export interface Crisis {
@@ -648,6 +672,8 @@ export interface SimState {
   /** Final score & grade, computed at game over. */
   finalScore?: number;
   finalGrade?: string;
+  /** Running behaviour analytics for the end-of-run coaching report. */
+  analytics: RunAnalytics;
 
   /** Current research calls from the analyst/quant team. */
   signals: ResearchSignal[];

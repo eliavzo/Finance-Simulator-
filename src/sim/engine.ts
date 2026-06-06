@@ -30,7 +30,9 @@ import { ACHIEVEMENTS, evaluateAchievements } from './achievements';
 import { maxDrawdown } from '../engine/finance';
 import { difficultyParams, DEFAULT_DIFFICULTY } from './difficulty';
 import { DifficultyConfig, FundThesis, GameOverReason, Scenario } from './types';
-import { createPortfolio, portfolioNav, stepPortfolio, raiseCash } from './portfolio';
+import { createPortfolio, portfolioNav, stepPortfolio, raiseCash, exposures } from './portfolio';
+import { EMPTY_ANALYTICS } from './analysis';
+import { RunAnalytics } from './types';
 import { createFirm, firmCapabilities, stepFirm } from './firm';
 import {
   createFund,
@@ -121,6 +123,7 @@ export function createSimGame(
     fund,
     reputation: 50,
     peakReputation: 50,
+    analytics: EMPTY_ANALYTICS,
     achievements: [],
     specialHoldings: [],
     vc: { ...createVC(), deals: refreshDeals(rng, 50) },
@@ -298,6 +301,7 @@ export function advanceMonth(state: SimState): SimState {
   // After a lockup, disappointed LPs withdraw — forcing fire sales if the fund
   // is short of cash, exactly when markets are ugly.
   let redeemedCount = 0;
+  let fireSaleLoss = 0;
   if (month - fund.vintageMonth > 18) {
     const trailing12 = trailingReturn(portfolio.returnHistory, 12);
     const hwm = portfolio.highWaterMark || fundNav;
@@ -319,7 +323,6 @@ export function advanceMonth(state: SimState): SimState {
     if (redeemers.length > 0) {
       const redeemValue = redeemers.reduce((s, lp) => s + fundNav * (lp.called / totalCalledActive), 0);
       const haircut = economy.volIndex > 25 ? 0.08 : 0.04;
-      let fireSaleLoss = 0;
       if (portfolio.cash < redeemValue) {
         const r = raiseCash(portfolio, instruments, redeemValue - portfolio.cash, haircut);
         portfolio = r.portfolio;
@@ -454,6 +457,37 @@ export function advanceMonth(state: SimState): SimState {
 
   const enterprise = firm.cash + fundNav + vcResidualValue(vc);
 
+  // Behaviour analytics for the end-of-run coaching report.
+  const expo = exposures(portfolio, instruments);
+  const grossLev = fundNav > 0 ? expo.gross / fundNav : 0;
+  let vgWeighted = 0;
+  let vgWeight = 0;
+  for (const p of portfolio.positions) {
+    if (p.kind !== 'equity') continue;
+    const inst = instruments.find((i) => i.id === p.instrumentId);
+    if (!inst || inst.kind !== 'equity' || inst.price <= 0) continue;
+    const w = Math.abs(p.quantity) * inst.price;
+    vgWeighted += (inst.fairValue / inst.price - 1) * w;
+    vgWeight += w;
+  }
+  const prevA = state.analytics ?? EMPTY_ANALYTICS;
+  const analytics: RunAnalytics = {
+    months: prevA.months + 1,
+    grossLevSum: prevA.grossLevSum + grossLev,
+    maxGrossLev: Math.max(prevA.maxGrossLev, grossLev),
+    monthsOverLev: prevA.monthsOverLev + (grossLev > 2 ? 1 : 0),
+    monthsHedged: prevA.monthsHedged + (hedge ? 1 : 0),
+    crisisMonths: prevA.crisisMonths + (crisis ? 1 : 0),
+    crisisMonthsHedged: prevA.crisisMonthsHedged + (crisis && hedge ? 1 : 0),
+    redemptions: prevA.redemptions + redeemedCount,
+    redemptionLoss: prevA.redemptionLoss + fireSaleLoss,
+    cashQuoteSum: prevA.cashQuoteSum + (fundNav > 0 ? portfolio.cash / fundNav : 0),
+    valuationGapSum: prevA.valuationGapSum + (vgWeight > 0 ? vgWeighted / vgWeight : 0),
+    valuationSamples: prevA.valuationSamples + (vgWeight > 0 ? 1 : 0),
+    gpProfitMonths: prevA.gpProfitMonths + (incomeStatement.netIncome > 0 ? 1 : 0),
+    positionsSum: prevA.positionsSum + portfolio.positions.length,
+  };
+
   // Tier progression (sticky) & achievements.
   const peakReputation = Math.max(state.peakReputation ?? state.reputation, reputation);
   const unlocked = new Set((state.achievements ?? []).map((a) => a.id));
@@ -547,6 +581,7 @@ export function advanceMonth(state: SimState): SimState {
     gameOverReason,
     finalScore,
     finalGrade,
+    analytics,
     thesis: state.thesis,
     scenario: state.scenario,
     difficulty: state.difficulty ?? DEFAULT_DIFFICULTY,

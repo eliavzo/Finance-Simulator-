@@ -16,6 +16,7 @@ export function SimHeader({ title }: { title: string }) {
   const resetGame = useSimStore((s) => s.resetGame);
   const replayOnboarding = useSimStore((s) => s.replayOnboarding);
   const openManual = useSimStore((s) => s.openManual);
+  const openAnalysis = useSimStore((s) => s.openAnalysis);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [achievementsOpen, setAchievementsOpen] = useState(false);
   if (!game) return null;
@@ -65,6 +66,10 @@ export function SimHeader({ title }: { title: string }) {
         onOpenManual={() => {
           setSettingsOpen(false);
           openManual();
+        }}
+        onOpenAnalysis={() => {
+          setSettingsOpen(false);
+          openAnalysis();
         }}
         ironman={game.difficulty?.ironman}
       />

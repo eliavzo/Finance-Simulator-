@@ -81,10 +81,13 @@ interface SimStore {
   dismissedTips: Record<string, boolean>;
   showOnboarding: boolean;
   showManual: boolean;
+  showAnalysis: boolean;
   completeOnboarding: () => void;
   replayOnboarding: () => void;
   openManual: () => void;
   closeManual: () => void;
+  openAnalysis: () => void;
+  closeAnalysis: () => void;
   dismissTip: (key: string) => void;
 
   newGame: (opts?: { seed?: number; thesis?: FundThesis; scenario?: Scenario; officeName?: string; difficulty?: DifficultyConfig }) => void;
@@ -140,11 +143,14 @@ export const useSimStore = create<SimStore>()(
       dismissedTips: {},
       showOnboarding: false,
       showManual: false,
+      showAnalysis: false,
 
       completeOnboarding: () => set({ onboardingSeen: true, showOnboarding: false }),
       replayOnboarding: () => set({ showOnboarding: true }),
       openManual: () => set({ showManual: true }),
       closeManual: () => set({ showManual: false }),
+      openAnalysis: () => set({ showAnalysis: true }),
+      closeAnalysis: () => set({ showAnalysis: false }),
       dismissTip: (key) => set((s) => ({ dismissedTips: { ...s.dismissedTips, [key]: true } })),
 
       newGame: (opts) =>
