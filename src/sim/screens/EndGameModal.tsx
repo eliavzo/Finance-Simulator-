@@ -21,7 +21,7 @@ const REASON_HEADLINE: Record<string, string> = {
 
 export function EndGameModal() {
   const game = useSimStore((s) => s.game);
-  const newGame = useSimStore((s) => s.newGame);
+  const resetGame = useSimStore((s) => s.resetGame);
   const openAnalysis = useSimStore((s) => s.openAnalysis);
   const [dismissed, setDismissed] = useState(false);
 
@@ -85,7 +85,7 @@ export function EndGameModal() {
             </View>
 
             <Button title="Spielanalyse ansehen" onPress={openAnalysis} variant="primary" style={{ marginTop: spacing.lg }} />
-            <Button title="Neues Spiel" onPress={() => newGame()} variant="secondary" style={{ marginTop: spacing.sm }} />
+            <Button title="Neues Spiel" onPress={resetGame} variant="secondary" style={{ marginTop: spacing.sm }} />
             <Button title="Bücher ansehen" onPress={() => setDismissed(true)} variant="secondary" style={{ marginTop: spacing.sm }} />
             <Text style={styles.colophon}>Alpha &amp; Carry · Die Finanz-Chronik</Text>
           </ScrollView>
