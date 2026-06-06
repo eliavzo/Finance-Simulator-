@@ -50,6 +50,14 @@ const SECTIONS: { title: string; body: string }[] = [
     title: 'Ereignisse & Gelegenheiten',
     body: 'Manchmal erscheint ein „Extrablatt" (Entscheidung mit Trade-off) oder eine „Gelegenheit" (IPO-Zuteilung, Block-Trade, Private Placement, Aktivisten-Stake). Diese binden Kapital und lösen sich später zu einem Payoff auf.',
   },
+  {
+    title: 'Schwere Grade: warum man verliert',
+    body: 'Auf Hart/Brutal schwanken die Kurse stärker und weichen weiter vom fairen Wert ab. Das ist KEIN Nachteil deiner Bewertung — größere Abschläge = höhere erwartete Rendite. Du verlierst nicht, weil die These falsch ist, sondern weil du vor der Rückkehr rausgeworfen wirst: Das Überschießen erzeugt einen Drawdown → Margin Call oder LP-Mittelabzug → Notverkauf am Tief, genau bevor der Kurs zum fairen Wert zurückkehrt. Es ist ein Durchhalte-Problem, kein Analyse-Problem.',
+  },
+  {
+    title: 'Schwere Grade: die Strategie',
+    body: '1) Hebel radikal runter (Kern 1×, max 2×) — in Stress verschärft der Prime Broker zudem die Margin-Schwelle. 2) Tiefer kaufen (−15 bis −25 % zum Fair) und den Einstieg staffeln. 3) Breit streuen über Sektoren UND Anlageklassen — das mittelt das verstärkte idiosynkratische Rauschen weg. 4) Netto-Beta klein halten (Longs gegen Shorts / Tail-Hedge), um das Markt-Rauschen zu neutralisieren. 5) 25–35 % Cash-Puffer halten — das ist die eigentliche Halte-Fähigkeit: so musst du bei Mittelabzügen nicht am Tief verkaufen und kannst bis zur Rückkehr durchhalten. 6) Antizyklisch handeln: vor Krisen hedgen, im Crash mit dem Puffer nachkaufen (max. erwartete Rückkehr), in der Euphorie abbauen. 7) Früh Risk Manager & Quant einstellen (weniger Margin Calls, schärfere Signale). 8) Geduld — die Rückkehr ist eine Mehrmonats-Kraft; nicht hin- und herhandeln.',
+  },
 ];
 
 export function ManualModal() {
