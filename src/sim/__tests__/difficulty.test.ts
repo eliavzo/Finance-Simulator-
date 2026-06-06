@@ -1,4 +1,4 @@
-import { difficultyParams, presetLabel, PRESETS, DEFAULT_DIFFICULTY } from '../difficulty';
+import { difficultyParams, presetLabel, PRESETS, DEFAULT_DIFFICULTY, computeUnlocks, levelUnlocked, presetUnlocked, UNLOCK_AT } from '../difficulty';
 import { createSimGame, advanceMonth, enterpriseEquity } from '../engine';
 import { DifficultyConfig } from '../types';
 
@@ -38,6 +38,41 @@ describe('presets', () => {
   it('round-trip to their labels, deviations become Eigene', () => {
     for (const p of PRESETS) expect(presetLabel(p.config)).toBe(p.label);
     expect(presetLabel(cfg({ market: 1 }))).toBe('Eigene');
+  });
+});
+
+describe('meta-progression unlocks', () => {
+  it('renommee thresholds unlock hard then brutal', () => {
+    expect(computeUnlocks({ renommee: 0, horizonFinishes: 0 })).toEqual({ hard: false, brutal: false, ironman: false });
+    expect(computeUnlocks({ renommee: UNLOCK_AT.hard, horizonFinishes: 0 }).hard).toBe(true);
+    expect(computeUnlocks({ renommee: UNLOCK_AT.brutal, horizonFinishes: 0 }).brutal).toBe(true);
+  });
+
+  it('ironman also needs a completed (horizon) run', () => {
+    expect(computeUnlocks({ renommee: UNLOCK_AT.ironman, horizonFinishes: 0 }).ironman).toBe(false);
+    expect(computeUnlocks({ renommee: UNLOCK_AT.ironman, horizonFinishes: 1 }).ironman).toBe(true);
+  });
+
+  it('levels gate by unlock', () => {
+    const none = { hard: false, brutal: false, ironman: false };
+    const all = { hard: true, brutal: true, ironman: true };
+    expect(levelUnlocked(-1, none)).toBe(true);
+    expect(levelUnlocked(0, none)).toBe(true);
+    expect(levelUnlocked(1, none)).toBe(false);
+    expect(levelUnlocked(1, all)).toBe(true);
+    expect(levelUnlocked(2, { hard: true, brutal: false, ironman: false })).toBe(false);
+  });
+
+  it('presets gate correctly', () => {
+    const none = { hard: false, brutal: false, ironman: false };
+    const all = { hard: true, brutal: true, ironman: true };
+    const byId = (id: string) => PRESETS.find((p) => p.id === id)!.config;
+    expect(presetUnlocked(byId('erbe'), none)).toBe(true);
+    expect(presetUnlocked(byId('aufsteiger'), none)).toBe(true);
+    expect(presetUnlocked(byId('selfmade'), none)).toBe(false);
+    expect(presetUnlocked(byId('selfmade'), { hard: true, brutal: false, ironman: false })).toBe(true);
+    expect(presetUnlocked(byId('albtraum'), none)).toBe(false);
+    expect(presetUnlocked(byId('albtraum'), all)).toBe(true);
   });
 });
 

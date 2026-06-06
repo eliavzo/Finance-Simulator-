@@ -4,7 +4,7 @@ import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 
 import { useSimStore } from '../store';
 import { THESES, THESIS_ORDER } from '../thesis';
 import { SCENARIOS, SCENARIO_ORDER } from '../scenarios';
-import { PRESETS, DEFAULT_DIFFICULTY, difficultyParams, presetLabel, heatLabel, MODIFIER_LABEL, LEVEL_LABEL, ModifierKey } from '../difficulty';
+import { PRESETS, DEFAULT_DIFFICULTY, UNLOCK_AT, difficultyParams, presetLabel, heatLabel, MODIFIER_LABEL, LEVEL_LABEL, ModifierKey, computeUnlocks, levelUnlocked, presetUnlocked, nextUnlockHint, Unlocks } from '../difficulty';
 import { DifficultyConfig, DifficultyLevel, FundThesis, Scenario } from '../types';
 import { Button, Masthead, Rule } from '../../components/ui';
 import { Segmented } from '../../components/controls';
@@ -12,8 +12,20 @@ import { colors, fonts, spacing } from '../../utils/theme';
 
 const MOD_KEYS: ModifierKey[] = ['market', 'capital', 'fees', 'rivals'];
 
+function presetRequirement(cfg: DifficultyConfig, u: Unlocks): string {
+  const parts: string[] = [];
+  const needsBrutal = MOD_KEYS.some((k) => cfg[k] === 2);
+  const needsHard = MOD_KEYS.some((k) => cfg[k] >= 1);
+  if (needsBrutal && !u.brutal) parts.push(`„Brutal" (${UNLOCK_AT.brutal} Renommee)`);
+  else if (needsHard && !u.hard) parts.push(`„Hart" (${UNLOCK_AT.hard} Renommee)`);
+  if (cfg.ironman && !u.ironman) parts.push(`Ironman (${UNLOCK_AT.ironman} Renommee + 1 Lauf)`);
+  return `🔒 Benötigt ${parts.join(' + ')}`;
+}
+
 export function SimStartScreen() {
   const newGame = useSimStore((s) => s.newGame);
+  const meta = useSimStore((s) => s.meta);
+  const unlocks = computeUnlocks(meta);
   const [officeName, setOfficeName] = useState('');
   const [thesis, setThesis] = useState<FundThesis>('multistrat');
   const [scenario, setScenario] = useState<Scenario>('normal');
@@ -21,7 +33,10 @@ export function SimStartScreen() {
   const dp = difficultyParams(difficulty);
   const trimmedName = officeName.trim();
   const canStart = trimmedName.length >= 2;
-  const setLevel = (key: ModifierKey, level: DifficultyLevel) => setDifficulty({ ...difficulty, [key]: level });
+  const setLevel = (key: ModifierKey, level: DifficultyLevel) => {
+    if (!levelUnlocked(level, unlocks)) return;
+    setDifficulty({ ...difficulty, [key]: level });
+  };
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.inner}>
@@ -69,15 +84,20 @@ export function SimStartScreen() {
 
       <View style={{ height: spacing.md }} />
       <SectionLabel text={`Schwierigkeit · ${presetLabel(difficulty)}`} />
-      {PRESETS.map((p) => (
-        <SelectRow
-          key={p.id}
-          label={p.label}
-          blurb={p.blurb}
-          selected={presetLabel(difficulty) === p.label}
-          onPress={() => setDifficulty(p.config)}
-        />
-      ))}
+      <Text style={styles.renommee}>Renommee: {meta.renommee} · {nextUnlockHint(meta)}</Text>
+      {PRESETS.map((p) => {
+        const locked = !presetUnlocked(p.config, unlocks);
+        return (
+          <SelectRow
+            key={p.id}
+            label={p.label}
+            blurb={locked ? presetRequirement(p.config, unlocks) : p.blurb}
+            selected={presetLabel(difficulty) === p.label}
+            locked={locked}
+            onPress={() => !locked && setDifficulty(p.config)}
+          />
+        );
+      })}
 
       <Text style={styles.tuneLabel}>Feinjustierung</Text>
       {MOD_KEYS.map((key) => (
@@ -86,7 +106,7 @@ export function SimStartScreen() {
           <Segmented<string>
             value={String(difficulty[key])}
             onChange={(v) => setLevel(key, parseInt(v, 10) as DifficultyLevel)}
-            options={([-1, 0, 1, 2] as DifficultyLevel[]).map((lv) => ({ label: LEVEL_LABEL[key][lv + 1], value: String(lv) }))}
+            options={([-1, 0, 1, 2] as DifficultyLevel[]).map((lv) => ({ label: LEVEL_LABEL[key][lv + 1], value: String(lv), disabled: !levelUnlocked(lv, unlocks) }))}
           />
         </View>
       ))}
@@ -94,8 +114,8 @@ export function SimStartScreen() {
         <Text style={styles.modName}>Ironman (kein Reset)</Text>
         <Segmented<string>
           value={difficulty.ironman ? '1' : '0'}
-          onChange={(v) => setDifficulty({ ...difficulty, ironman: v === '1' })}
-          options={[{ label: 'Aus', value: '0' }, { label: 'An', value: '1' }]}
+          onChange={(v) => { if (v === '0' || unlocks.ironman) setDifficulty({ ...difficulty, ironman: v === '1' }); }}
+          options={[{ label: 'Aus', value: '0' }, { label: 'An', value: '1', disabled: !unlocks.ironman }]}
         />
       </View>
       <Text style={styles.heatLine}>
@@ -119,13 +139,13 @@ function SectionLabel({ text }: { text: string }) {
   return <Text style={styles.sectionLabel}>{text}</Text>;
 }
 
-function SelectRow({ label, blurb, selected, onPress }: { label: string; blurb: string; selected: boolean; onPress: () => void }) {
+function SelectRow({ label, blurb, selected, onPress, locked }: { label: string; blurb: string; selected: boolean; onPress: () => void; locked?: boolean }) {
   return (
-    <TouchableOpacity style={[styles.row, selected && styles.rowSelected]} onPress={onPress} activeOpacity={0.7}>
-      <Text style={[styles.marker, selected && styles.markerOn]}>{selected ? '▸' : ' '}</Text>
+    <TouchableOpacity style={[styles.row, selected && styles.rowSelected, locked && styles.rowLocked]} onPress={onPress} disabled={locked} activeOpacity={0.7}>
+      <Text style={[styles.marker, selected && styles.markerOn]}>{locked ? '🔒' : selected ? '▸' : ' '}</Text>
       <View style={{ flex: 1 }}>
-        <Text style={[styles.rowLabel, selected && styles.rowLabelOn]}>{label}</Text>
-        <Text style={[styles.rowBlurb, selected && styles.rowBlurbOn]}>{blurb}</Text>
+        <Text style={[styles.rowLabel, selected && styles.rowLabelOn, locked && styles.rowLockedText]}>{label}</Text>
+        <Text style={[styles.rowBlurb, selected && styles.rowBlurbOn, locked && styles.rowLockedText]}>{blurb}</Text>
       </View>
     </TouchableOpacity>
   );
@@ -156,6 +176,9 @@ const styles = StyleSheet.create({
   rowLabelOn: { color: colors.paperText },
   rowBlurb: { color: colors.textMuted, fontFamily: fonts.serif, fontSize: 12, marginTop: 2, lineHeight: 17 },
   rowBlurbOn: { color: colors.paperText, opacity: 0.85 },
+  renommee: { color: colors.accent, fontFamily: fonts.serifBold, fontSize: 12, marginBottom: spacing.sm },
+  rowLocked: { opacity: 0.55 },
+  rowLockedText: { color: colors.textMuted },
   tuneLabel: { color: colors.textMuted, fontFamily: fonts.serifBold, fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', marginTop: spacing.sm, marginBottom: spacing.xs },
   modRow: { marginBottom: spacing.sm },
   modName: { color: colors.text, fontFamily: fonts.serif, fontSize: 13, marginBottom: 2 },

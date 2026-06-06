@@ -95,3 +95,58 @@ export function heatLabel(heat: number): string {
   if (heat <= -4) return 'Entspannt';
   return 'Ausgewogen';
 }
+
+/* --------------------------- Meta progression ---------------------------- */
+
+/** Persistent cross-run progress that unlocks harder modes. */
+export interface MetaProgress {
+  /** Cumulative end-of-run score earned across all games. */
+  renommee: number;
+  /** Number of runs that reached the full 20-year horizon. */
+  horizonFinishes: number;
+}
+
+export const DEFAULT_META: MetaProgress = { renommee: 0, horizonFinishes: 0 };
+
+/** Renommee thresholds for the unlocks. */
+export const UNLOCK_AT = { hard: 150, brutal: 500, ironman: 500 };
+
+export interface Unlocks {
+  hard: boolean;
+  brutal: boolean;
+  ironman: boolean;
+}
+
+export function computeUnlocks(meta: MetaProgress): Unlocks {
+  const m = meta ?? DEFAULT_META;
+  return {
+    hard: m.renommee >= UNLOCK_AT.hard,
+    brutal: m.renommee >= UNLOCK_AT.brutal,
+    // Ironman: enough renommee AND at least one completed (horizon) run.
+    ironman: m.renommee >= UNLOCK_AT.ironman && m.horizonFinishes >= 1,
+  };
+}
+
+/** Is a given modifier level selectable with the current unlocks? */
+export function levelUnlocked(level: DifficultyLevel, u: Unlocks): boolean {
+  if (level <= 0) return true; // Mild & Normal always available
+  if (level === 1) return u.hard;
+  return u.brutal; // level 2
+}
+
+/** Is a preset fully unlocked? */
+export function presetUnlocked(cfg: DifficultyConfig, u: Unlocks): boolean {
+  const levelsOk = (['market', 'capital', 'fees', 'rivals'] as ModifierKey[]).every((k) => levelUnlocked(cfg[k], u));
+  return levelsOk && (!cfg.ironman || u.ironman);
+}
+
+/** Short text describing what's still needed to unlock the next thing. */
+export function nextUnlockHint(meta: MetaProgress): string {
+  const m = meta ?? DEFAULT_META;
+  if (m.renommee < UNLOCK_AT.hard) return `„Hart" ab ${UNLOCK_AT.hard} Renommee`;
+  if (m.renommee < UNLOCK_AT.brutal) return `„Brutal" ab ${UNLOCK_AT.brutal} Renommee`;
+  if (m.renommee < UNLOCK_AT.ironman || m.horizonFinishes < 1)
+    return `Ironman ab ${UNLOCK_AT.ironman} Renommee + 1 abgeschlossenem Lauf`;
+  return 'Alles freigeschaltet';
+}
+

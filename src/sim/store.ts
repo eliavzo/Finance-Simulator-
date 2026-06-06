@@ -28,6 +28,7 @@ import { callCapital } from './fund';
 import { investInDeal, followOn, supportStartup } from './vc';
 import { firmCapabilities, generateCandidate, upgradeCost, MAX_TIER, fairSalary } from './firm';
 import { tierPerks } from './tiers';
+import { MetaProgress, DEFAULT_META } from './difficulty';
 import { blackScholes, interpolateCurve } from './quant';
 import { Rng } from '../engine/rng';
 
@@ -79,6 +80,8 @@ interface SimStore {
   /* Tutorial / help (onboardingSeen & dismissedTips are persisted). */
   onboardingSeen: boolean;
   dismissedTips: Record<string, boolean>;
+  /** Persistent cross-run meta progression (unlocks harder modes). */
+  meta: MetaProgress;
   showOnboarding: boolean;
   showManual: boolean;
   showAnalysis: boolean;
@@ -141,6 +144,7 @@ export const useSimStore = create<SimStore>()(
       pendingReportMonth: null,
       onboardingSeen: false,
       dismissedTips: {},
+      meta: DEFAULT_META,
       showOnboarding: false,
       showManual: false,
       showAnalysis: false,
@@ -166,10 +170,22 @@ export const useSimStore = create<SimStore>()(
       resetGame: () => set({ game: null, candidates: {}, candidateSearchMonth: {}, pendingReportMonth: null }),
 
       nextMonth: () => {
-        const { game } = get();
+        const { game, meta } = get();
         if (!game || game.gameOver) return;
         const next = advanceMonth(game);
-        set({ game: next, pendingReportMonth: next.month });
+        // On the game-over transition, bank the score as Renommee for unlocks.
+        if (next.gameOver) {
+          set({
+            game: next,
+            pendingReportMonth: next.month,
+            meta: {
+              renommee: meta.renommee + Math.max(0, next.finalScore ?? 0),
+              horizonFinishes: meta.horizonFinishes + (next.gameOverReason === 'horizon' ? 1 : 0),
+            },
+          });
+        } else {
+          set({ game: next, pendingReportMonth: next.month });
+        }
       },
 
       dismissReport: () => set({ pendingReportMonth: null }),
@@ -403,7 +419,7 @@ export const useSimStore = create<SimStore>()(
     {
       name: STORAGE_KEY,
       storage: createJSONStorage(() => safeStorage),
-      partialize: (state) => ({ game: state.game, onboardingSeen: state.onboardingSeen, dismissedTips: state.dismissedTips }),
+      partialize: (state) => ({ game: state.game, onboardingSeen: state.onboardingSeen, dismissedTips: state.dismissedTips, meta: state.meta }),
       onRehydrateStorage: () => (state) => {
         // Show the intro for a restored game that never saw it.
         const showOnboarding = !!state?.game?.started && !state?.onboardingSeen;

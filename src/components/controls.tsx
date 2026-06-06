@@ -9,7 +9,7 @@ export function Segmented<T extends string>({
   value,
   onChange,
 }: {
-  options: { label: string; value: T; color?: string }[];
+  options: { label: string; value: T; color?: string; disabled?: boolean }[];
   value: T;
   onChange: (v: T) => void;
 }) {
@@ -20,11 +20,12 @@ export function Segmented<T extends string>({
         return (
           <TouchableOpacity
             key={opt.value}
-            style={[styles.segment, i > 0 && styles.segmentDivider, active && { backgroundColor: opt.color ?? colors.primary }]}
+            disabled={opt.disabled}
+            style={[styles.segment, i > 0 && styles.segmentDivider, active && { backgroundColor: opt.color ?? colors.primary }, opt.disabled && styles.segmentLocked]}
             onPress={() => onChange(opt.value)}
             activeOpacity={0.7}
           >
-            <Text style={[styles.segmentText, active && styles.segmentTextActive]}>{opt.label}</Text>
+            <Text style={[styles.segmentText, active && styles.segmentTextActive, opt.disabled && styles.segmentLockedText]}>{opt.disabled ? `🔒` : opt.label}</Text>
           </TouchableOpacity>
         );
       })}
