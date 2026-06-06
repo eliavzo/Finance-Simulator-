@@ -181,7 +181,7 @@ export function advanceMonth(state: SimState): SimState {
     ledger.push({ month, account, amount, memo });
 
   // 1. Economy ---------------------------------------------------------------
-  const stepped = stepEconomy(state.economy, rng);
+  const stepped = stepEconomy(state.economy, rng, dp.volMult);
   const regimeChanged = stepped.regimeChanged;
   if (regimeChanged) {
     events.push(ev(month, {
@@ -204,9 +204,9 @@ export function advanceMonth(state: SimState): SimState {
       events.push(ev(month, { type: 'blackswan', title: `⚠ ${crisis.label} (${crisis.monthsRemaining} Monate)`, description: CRISIS_DESC[crisis.type] }));
     }
   }
-  const econBase = crisis ? applyCrisisToEconomy(stepped.economy, crisis) : stepped.economy;
-  // Difficulty raises the ambient volatility.
-  const economy = { ...econBase, volIndex: econBase.volIndex * dp.volMult };
+  // Difficulty already raised the vol *target* in stepEconomy (stable, mean-
+  // reverting); a crisis adds a transient spike on top that reverts afterwards.
+  const economy = crisis ? applyCrisisToEconomy(stepped.economy, crisis) : stepped.economy;
 
   // 2. Market ----------------------------------------------------------------
   const { instruments, blackSwan } = stepMarket(state.instruments, economy, month, rng, crisisEquityShock(crisis), dp.swanProbMult);
@@ -587,7 +587,9 @@ export function advanceMonth(state: SimState): SimState {
     thesis: state.thesis,
     scenario: state.scenario,
     difficulty: state.difficulty ?? DEFAULT_DIFFICULTY,
-    economy,
+    // Persist the canonical economy; the crisis spike is transient (this month
+    // only) so it can't ratchet the vol index upward across months.
+    economy: stepped.economy,
     instruments,
     portfolio,
     firm,

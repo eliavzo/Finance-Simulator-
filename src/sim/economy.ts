@@ -69,7 +69,7 @@ export interface EconomyStepResult {
 }
 
 /** Advance the economy by one month. */
-export function stepEconomy(econ: EconomyState, rng: Rng): EconomyStepResult {
+export function stepEconomy(econ: EconomyState, rng: Rng, volTargetMult = 1): EconomyStepResult {
   const typical = DURATION[econ.regime];
   const hazard = Math.min(0.9, (econ.monthsInRegime / typical) * 0.25);
   let regime = econ.regime;
@@ -100,7 +100,7 @@ export function stepEconomy(econ: EconomyState, rng: Rng): EconomyStepResult {
       yieldCurve: buildCurve(policyRate, termPremium, regime),
       igSpread: Math.max(0.003, adapt(econ.igSpread, target.ig, 0.0015)),
       hySpread: Math.max(0.015, adapt(econ.hySpread, target.hy, 0.004)),
-      volIndex: Math.max(8, adapt(econ.volIndex, target.vol, 1.2, 0.2)),
+      volIndex: Math.max(8, adapt(econ.volIndex, target.vol * volTargetMult, 1.2, 0.2)),
       sentiment: Math.max(-1, Math.min(1, adapt(econ.sentiment, target.sent, 0.05))),
       usdIndex: Math.max(60, adapt(econ.usdIndex, 100 + econ.policyRate * 200, 0.8)),
     },
