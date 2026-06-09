@@ -2,41 +2,64 @@
 import React, { useState } from 'react';
 import { Modal, StyleSheet, Text, View } from 'react-native';
 import { useSimStore } from '../sim/store';
+import { useTr, Loc } from '../i18n';
 import { Button, Rule } from './ui';
 import { colors, fonts, spacing } from '../utils/theme';
 
-const STEPS: { title: string; body: string }[] = [
+const STEPS: { title: Loc; body: Loc }[] = [
   {
-    title: 'Willkommen',
-    body: 'Du führst eine Fondsgesellschaft über 20 Jahre. Jeder Monat ist eine neue „Ausgabe". Mit „Nächste Ausgabe ▸" oben rückst du die Zeit vor — danach erscheint ein Monatsbericht mit allen Veränderungen.',
+    title: { de: 'Willkommen', en: 'Welcome' },
+    body: {
+      de: 'Du führst eine Fondsgesellschaft über 20 Jahre. Jeder Monat ist eine neue „Ausgabe". Mit „Nächste Ausgabe ▸" oben rückst du die Zeit vor — danach erscheint ein Monatsbericht mit allen Veränderungen.',
+      en: 'You run a fund management firm over 20 years. Each month is a new "edition". Use "Next edition ▸" at the top to advance time — after that, a monthly report appears with all the changes.',
+    },
   },
   {
-    title: '§ Übersicht',
-    body: 'Dein Cockpit: Unternehmenswert, Fonds & GP-Firma, Reputation und deine Stufe, die Rangliste gegen Konkurrenzfonds und das Ereignis-Log. Hier behältst du den Überblick.',
+    title: { de: '§ Übersicht', en: '§ Overview' },
+    body: {
+      de: 'Dein Cockpit: Unternehmenswert, Fonds & GP-Firma, Reputation und deine Stufe, die Rangliste gegen Konkurrenzfonds und das Ereignis-Log. Hier behältst du den Überblick.',
+      en: 'Your cockpit: enterprise value, fund & GP firm, reputation and your tier, the leaderboard against rival funds, and the event log. This is where you keep the big picture.',
+    },
   },
   {
-    title: '$ Markt',
-    body: 'Handle Aktien, Anleihen, FX, Rohstoffe & Optionen — Long oder Short, mit Hebel. Wichtig: Aktien haben einen fairen Wert. Kaufe, was UNTERbewertet ist, und meide Teures. Die Research-Tipps deines Teams helfen.',
+    title: { de: '$ Markt', en: '$ Markets' },
+    body: {
+      de: 'Handle Aktien, Anleihen, FX, Rohstoffe & Optionen — Long oder Short, mit Hebel. Wichtig: Aktien haben einen fairen Wert. Kaufe, was UNTERbewertet ist, und meide Teures. Die Research-Tipps deines Teams helfen.',
+      en: 'Trade equities, bonds, FX, commodities & options — long or short, with leverage. Important: stocks have a fair value. Buy what is UNDERvalued, and avoid expensive names. Your team’s research tips will help.',
+    },
   },
   {
-    title: '¶ Firma',
-    body: 'Stelle Analysten, Trader, Quants & mehr ein und baue Infrastruktur aus. Dein Team erzeugt Alpha, senkt Kosten und verhindert Margin Calls. Bessere Reputation lockt bessere Bewerber.',
+    title: { de: '¶ Firma', en: '¶ Firm' },
+    body: {
+      de: 'Stelle Analysten, Trader, Quants & mehr ein und baue Infrastruktur aus. Dein Team erzeugt Alpha, senkt Kosten und verhindert Margin Calls. Bessere Reputation lockt bessere Bewerber.',
+      en: 'Hire analysts, traders, quants & more, and build out your infrastructure. Your team generates alpha, lowers costs and prevents margin calls. Better reputation attracts better candidates.',
+    },
   },
   {
-    title: '‡ Fonds & ◇ Startups',
-    body: 'Im Fonds verwaltest du LP-Kapital (Capital Calls), Gebühren/Carry, Mandate und Liquidität — bei schwacher Performance ziehen LPs Geld ab! Bei Startups investierst du in junge Firmen, unterstützt sie und erntest IPO/M&A-Exits.',
+    title: { de: '‡ Fonds & ◇ Startups', en: '‡ Fund & ◇ Startups' },
+    body: {
+      de: 'Im Fonds verwaltest du LP-Kapital (Capital Calls), Gebühren/Carry, Mandate und Liquidität — bei schwacher Performance ziehen LPs Geld ab! Bei Startups investierst du in junge Firmen, unterstützt sie und erntest IPO/M&A-Exits.',
+      en: 'In the fund you manage LP capital (capital calls), fees/carry, mandates and liquidity — when performance is weak, LPs pull their money! In Startups you invest in young companies, support them, and reap IPO/M&A exits.',
+    },
   },
   {
-    title: '† Risiko & Stufen',
-    body: 'Behalte VaR, Drawdown und Stress-Szenarien im Blick und kaufe vor Krisen eine Absicherung. Deine Reputation schaltet höheren Hebel, Optionshandel und bessere LP-Typen frei. Jagd nach Auszeichnungen!',
+    title: { de: '† Risiko & Stufen', en: '† Risk & Tiers' },
+    body: {
+      de: 'Behalte VaR, Drawdown und Stress-Szenarien im Blick und kaufe vor Krisen eine Absicherung. Deine Reputation schaltet höheren Hebel, Optionshandel und bessere LP-Typen frei. Jagd nach Auszeichnungen!',
+      en: 'Keep an eye on VaR, drawdown and stress scenarios, and buy a hedge before crises hit. Your reputation unlocks higher leverage, options trading and better LP types. Go hunt for awards!',
+    },
   },
   {
-    title: 'Bereit?',
-    body: 'Diese Einführung und ein ausführlicher Leitfaden sind jederzeit über das Zahnrad ⚙ oben rechts erreichbar. Viel Erfolg, Allocator!',
+    title: { de: 'Bereit?', en: 'Ready?' },
+    body: {
+      de: 'Diese Einführung und ein ausführlicher Leitfaden sind jederzeit über das Zahnrad ⚙ oben rechts erreichbar. Viel Erfolg, Allocator!',
+      en: 'This onboarding and a detailed guide are always available via the gear ⚙ in the top right. Good luck, allocator!',
+    },
   },
 ];
 
 export function OnboardingModal() {
+  const t = useTr();
   const show = useSimStore((s) => s.showOnboarding);
   const game = useSimStore((s) => s.game);
   const complete = useSimStore((s) => s.completeOnboarding);
@@ -52,10 +75,10 @@ export function OnboardingModal() {
       <View style={styles.backdrop}>
         <View style={styles.panel}>
           <Rule double />
-          <Text style={styles.kicker}>EINFÜHRUNG · {step + 1}/{STEPS.length}</Text>
-          <Text style={styles.title}>{s.title}</Text>
+          <Text style={styles.kicker}>{t({ de: 'EINFÜHRUNG', en: 'ONBOARDING' })} · {step + 1}/{STEPS.length}</Text>
+          <Text style={styles.title}>{t(s.title)}</Text>
           <Rule />
-          <Text style={styles.body}>{s.body}</Text>
+          <Text style={styles.body}>{t(s.body)}</Text>
 
           <View style={styles.dots}>
             {STEPS.map((_, i) => (
@@ -64,14 +87,14 @@ export function OnboardingModal() {
           </View>
 
           <View style={styles.row}>
-            {step > 0 ? <Button title="Zurück" variant="secondary" onPress={() => setStep(step - 1)} style={styles.btn} /> : <View style={styles.btn} />}
+            {step > 0 ? <Button title={t({ de: 'Zurück', en: 'Back' })} variant="secondary" onPress={() => setStep(step - 1)} style={styles.btn} /> : <View style={styles.btn} />}
             {last ? (
-              <Button title="Los geht's ▸" variant="primary" onPress={close} style={styles.btn} />
+              <Button title={t({ de: "Los geht's ▸", en: "Let's go ▸" })} variant="primary" onPress={close} style={styles.btn} />
             ) : (
-              <Button title="Weiter ▸" variant="primary" onPress={() => setStep(step + 1)} style={styles.btn} />
+              <Button title={t({ de: 'Weiter ▸', en: 'Next ▸' })} variant="primary" onPress={() => setStep(step + 1)} style={styles.btn} />
             )}
           </View>
-          <Text style={styles.skip} onPress={close}>Überspringen</Text>
+          <Text style={styles.skip} onPress={close}>{t({ de: 'Überspringen', en: 'Skip' })}</Text>
         </View>
       </View>
     </Modal>

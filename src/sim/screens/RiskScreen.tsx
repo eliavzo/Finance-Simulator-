@@ -4,16 +4,18 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSimStore } from '../store';
 import { portfolioNav, exposures } from '../portfolio';
 import { computeRisk, STRESS_SCENARIOS, stressPnl } from '../risk';
-import { CRISIS_DESC, HEDGE_MONTHLY_PREMIUM } from '../crises';
+import { CRISIS_DESC, CRISIS_LABEL, HEDGE_MONTHLY_PREMIUM } from '../crises';
 import { SimHeader } from './SimHeader';
 import { TabTip } from '../../components/TabTip';
 import { notify } from '../../utils/notify';
+import { useTr } from '../../i18n';
 import { Button, Card, Pill, SectionTitle, StatTile } from '../../components/ui';
 import { AmountStepper, Segmented } from '../../components/controls';
 import { colors, fonts, spacing } from '../../utils/theme';
 import { fmtMoney, fmtNum, fmtPct } from '../../utils/format';
 
 export function RiskScreen() {
+  const t = useTr();
   const game = useSimStore((s) => s.game)!;
   const buyHedge = useSimStore((s) => s.buyHedge);
   const [hedgeNotional, setHedgeNotional] = useState(5_000_000);
@@ -27,59 +29,59 @@ export function RiskScreen() {
 
   return (
     <View style={styles.container}>
-      <SimHeader title="Risiko" />
+      <SimHeader title={t({ de: 'Risiko', en: 'Risk' })} />
       <ScrollView contentContainerStyle={styles.scroll}>
-        <TabTip tipKey="risiko" text="Prüfe VaR, Drawdown & Stress-Szenarien — und kaufe vor Krisen eine Absicherung, die in Crashs und Krisen auszahlt." />
+        <TabTip tipKey="risiko" text={t({ de: 'Prüfe VaR, Drawdown & Stress-Szenarien — und kaufe vor Krisen eine Absicherung, die in Crashs und Krisen auszahlt.', en: 'Check VaR, drawdown & stress scenarios — and buy a hedge before crises that pays out in crashes and crises.' })} />
         {game.crisis ? (
           <View style={styles.crisisBanner}>
-            <Text style={styles.crisisTitle}>⚠ {game.crisis.label} · noch {game.crisis.monthsRemaining} Monate</Text>
-            <Text style={styles.crisisDesc}>{CRISIS_DESC[game.crisis.type]}</Text>
+            <Text style={styles.crisisTitle}>⚠ {t(CRISIS_LABEL[game.crisis.type])} · {t({ de: 'noch', en: 'still' })} {game.crisis.monthsRemaining} {t({ de: 'Monate', en: 'months' })}</Text>
+            <Text style={styles.crisisDesc}>{t(CRISIS_DESC[game.crisis.type])}</Text>
           </View>
         ) : null}
 
         <Card>
-          <SectionTitle>Absicherung (Tail-Hedge)</SectionTitle>
+          <SectionTitle>{t({ de: 'Absicherung (Tail-Hedge)', en: 'Hedge (tail hedge)' })}</SectionTitle>
           {game.hedge ? (
             <>
               <View style={styles.statRow}>
-                <StatTile label="Gedeckt" value={fmtMoney(game.hedge.notional)} />
-                <StatTile label="Läuft noch" value={`${game.hedge.monthsRemaining} Mon.`} />
-                <StatTile label="Prämie/M" value={fmtMoney(game.hedge.notional * HEDGE_MONTHLY_PREMIUM)} valueColor={colors.negative} />
+                <StatTile label={t({ de: 'Gedeckt', en: 'Covered' })} value={fmtMoney(game.hedge.notional)} />
+                <StatTile label={t({ de: 'Läuft noch', en: 'Remaining' })} value={`${game.hedge.monthsRemaining} ${t({ de: 'Mon.', en: 'mo.' })}`} />
+                <StatTile label={t({ de: 'Prämie/M', en: 'Premium/mo' })} value={fmtMoney(game.hedge.notional * HEDGE_MONTHLY_PREMIUM)} valueColor={colors.negative} />
               </View>
-              <Text style={styles.note}>Zahlt bei Black Swans & Krisen aus. Du kannst sie durch einen neuen Kauf ersetzen.</Text>
+              <Text style={styles.note}>{t({ de: 'Zahlt bei Black Swans & Krisen aus. Du kannst sie durch einen neuen Kauf ersetzen.', en: 'Pays out on black swans & crises. You can replace it with a new purchase.' })}</Text>
             </>
           ) : (
-            <Text style={styles.note}>Kein aktiver Hedge. Versicherung kostet Rendite, rettet aber in Crashs.</Text>
+            <Text style={styles.note}>{t({ de: 'Kein aktiver Hedge. Versicherung kostet Rendite, rettet aber in Crashs.', en: 'No active hedge. Insurance costs return but saves you in crashes.' })}</Text>
           )}
-          <Text style={styles.label}>Deckungssumme (Prämie {fmtMoney(hedgeNotional * HEDGE_MONTHLY_PREMIUM)}/Monat)</Text>
+          <Text style={styles.label}>{t({ de: 'Deckungssumme', en: 'Coverage' })} ({t({ de: 'Prämie', en: 'premium' })} {fmtMoney(hedgeNotional * HEDGE_MONTHLY_PREMIUM)}/{t({ de: 'Monat', en: 'month' })})</Text>
           <AmountStepper value={hedgeNotional} onChange={setHedgeNotional} step={1_000_000} min={1_000_000} max={200_000_000} />
-          <Text style={styles.label}>Laufzeit</Text>
+          <Text style={styles.label}>{t({ de: 'Laufzeit', en: 'Maturity' })}</Text>
           <Segmented<string>
             value={String(hedgeMonths)}
             onChange={(v) => setHedgeMonths(parseInt(v, 10))}
             options={[{ label: '3 M', value: '3' }, { label: '6 M', value: '6' }, { label: '12 M', value: '12' }]}
           />
           <Button
-            title="Absicherung kaufen"
+            title={t({ de: 'Absicherung kaufen', en: 'Buy hedge' })}
             variant="secondary"
-            onPress={() => { const r = buyHedge(hedgeNotional, hedgeMonths); if (!r.ok) notify('Nicht möglich', r.error ?? ''); }}
+            onPress={() => { const r = buyHedge(hedgeNotional, hedgeMonths); if (!r.ok) notify(t({ de: 'Nicht möglich', en: 'Not possible' }), r.error ?? ''); }}
             style={{ marginTop: spacing.md }}
           />
         </Card>
 
         <Card>
-          <SectionTitle>Value at Risk (1 Monat)</SectionTitle>
+          <SectionTitle>{t({ de: 'Value at Risk (1 Monat)', en: 'Value at Risk (1 month)' })}</SectionTitle>
           <View style={styles.statRow}>
-            <StatTile label="VaR 95%" value={fmtMoney(risk.var95)} valueColor={colors.warning} hint={nav > 0 ? fmtPct(risk.var95 / nav) + ' des NAV' : undefined} />
-            <StatTile label="VaR 99%" value={fmtMoney(risk.var99)} valueColor={colors.negative} hint={nav > 0 ? fmtPct(risk.var99 / nav) + ' des NAV' : undefined} />
+            <StatTile label="VaR 95%" value={fmtMoney(risk.var95)} valueColor={colors.warning} hint={nav > 0 ? fmtPct(risk.var95 / nav) + t({ de: ' des NAV', en: ' of NAV' }) : undefined} />
+            <StatTile label="VaR 99%" value={fmtMoney(risk.var99)} valueColor={colors.negative} hint={nav > 0 ? fmtPct(risk.var99 / nav) + t({ de: ' des NAV', en: ' of NAV' }) : undefined} />
           </View>
         </Card>
 
         <Card>
-          <SectionTitle>Exposure & Hebel</SectionTitle>
+          <SectionTitle>{t({ de: 'Exposure & Hebel', en: 'Exposure & Leverage' })}</SectionTitle>
           <View style={styles.statRow}>
-            <StatTile label="Brutto" value={fmtMoney(exp.gross)} hint={`${fmtNum(grossLeverage)}x NAV`} />
-            <StatTile label="Netto" value={fmtMoney(exp.net)} hint={`${fmtNum(netLeverage)}x NAV`} />
+            <StatTile label={t({ de: 'Brutto', en: 'Gross' })} value={fmtMoney(exp.gross)} hint={`${fmtNum(grossLeverage)}x NAV`} />
+            <StatTile label={t({ de: 'Netto', en: 'Net' })} value={fmtMoney(exp.net)} hint={`${fmtNum(netLeverage)}x NAV`} />
           </View>
           <View style={styles.statRow}>
             <StatTile label="Longs" value={fmtMoney(exp.longs)} valueColor={colors.positive} />
@@ -89,9 +91,9 @@ export function RiskScreen() {
         </Card>
 
         <Card>
-          <SectionTitle>Stress-Szenarien (Buch-P&L)</SectionTitle>
+          <SectionTitle>{t({ de: 'Stress-Szenarien (Buch-P&L)', en: 'Stress scenarios (book P&L)' })}</SectionTitle>
           {game.portfolio.positions.length === 0 ? (
-            <Text style={styles.empty}>Keine Positionen — kein Risiko zu stressen.</Text>
+            <Text style={styles.empty}>{t({ de: 'Keine Positionen — kein Risiko zu stressen.', en: 'No positions — no risk to stress.' })}</Text>
           ) : (
             STRESS_SCENARIOS.map((sc) => {
               const pnl = stressPnl(sc, game.portfolio, game.instruments, game.economy);
@@ -110,11 +112,12 @@ export function RiskScreen() {
         </Card>
 
         <Card>
-          <SectionTitle>Hinweis</SectionTitle>
+          <SectionTitle>{t({ de: 'Hinweis', en: 'Note' })}</SectionTitle>
           <Text style={styles.note}>
-            VaR ist ein 1-Faktor-Parametermodell (Markt-Beta + idiosynkratische Vola). Ein starkes Risk-Management-Team
-            (Firma-Tab) senkt Margin-Call-Risiken und gibt mehr Puffer. Hoher Hebel multipliziert sowohl Alpha als auch
-            Drawdowns.
+            {t({
+              de: 'VaR ist ein 1-Faktor-Parametermodell (Markt-Beta + idiosynkratische Vola). Ein starkes Risk-Management-Team (Firma-Tab) senkt Margin-Call-Risiken und gibt mehr Puffer. Hoher Hebel multipliziert sowohl Alpha als auch Drawdowns.',
+              en: 'VaR is a single-factor parametric model (market beta + idiosyncratic vol). A strong risk-management team (Firm tab) lowers margin-call risk and gives more buffer. High leverage multiplies both alpha and drawdowns.',
+            })}
           </Text>
         </Card>
       </ScrollView>

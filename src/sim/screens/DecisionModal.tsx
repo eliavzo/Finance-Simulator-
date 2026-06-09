@@ -6,18 +6,20 @@ import { DecisionEffect } from '../types';
 import { Rule } from '../../components/ui';
 import { colors, fonts, spacing } from '../../utils/theme';
 import { fmtMoney } from '../../utils/format';
+import { useTr, Loc } from '../../i18n';
 
-function effectSummary(e: DecisionEffect): string {
+function effectSummary(e: DecisionEffect, t: (l: Loc) => string): string {
   const parts: string[] = [];
-  if (e.cash) parts.push(`GP-Cash ${e.cash >= 0 ? '+' : ''}${fmtMoney(e.cash)}`);
-  if (e.fundCash) parts.push(`Fonds ${e.fundCash >= 0 ? '+' : ''}${fmtMoney(e.fundCash)}`);
-  if (e.committed) parts.push(`Commitment +${fmtMoney(e.committed)}`);
-  if (e.reputation) parts.push(`Reputation ${e.reputation >= 0 ? '+' : ''}${e.reputation}`);
-  if (e.morale) parts.push(`Moral ${e.morale >= 0 ? '+' : ''}${e.morale}`);
-  return parts.join(' · ') || 'Keine direkten Folgen';
+  if (e.cash) parts.push(`${t({ de: 'GP-Cash', en: 'GP cash' })} ${e.cash >= 0 ? '+' : ''}${fmtMoney(e.cash)}`);
+  if (e.fundCash) parts.push(`${t({ de: 'Fonds', en: 'Fund' })} ${e.fundCash >= 0 ? '+' : ''}${fmtMoney(e.fundCash)}`);
+  if (e.committed) parts.push(`${t({ de: 'Commitment', en: 'Commitment' })} +${fmtMoney(e.committed)}`);
+  if (e.reputation) parts.push(`${t({ de: 'Reputation', en: 'Reputation' })} ${e.reputation >= 0 ? '+' : ''}${e.reputation}`);
+  if (e.morale) parts.push(`${t({ de: 'Moral', en: 'Morale' })} ${e.morale >= 0 ? '+' : ''}${e.morale}`);
+  return parts.join(' · ') || t({ de: 'Keine direkten Folgen', en: 'No direct consequences' });
 }
 
 export function DecisionModal() {
+  const t = useTr();
   const game = useSimStore((s) => s.game);
   const resolve = useSimStore((s) => s.resolveDecision);
   const card = game?.pendingDecision;
@@ -29,7 +31,7 @@ export function DecisionModal() {
         <View style={styles.panel}>
           <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
             <Rule double />
-            <Text style={styles.kicker}>EXTRABLATT</Text>
+            <Text style={styles.kicker}>{t({ de: 'EXTRABLATT', en: 'SPECIAL EDITION' })}</Text>
             <Text style={styles.title}>{card.title}</Text>
             <Rule />
             <Text style={styles.body}>{card.body}</Text>
@@ -38,10 +40,10 @@ export function DecisionModal() {
               <TouchableOpacity key={i} style={styles.choice} onPress={() => resolve(i)} activeOpacity={0.7}>
                 <Text style={styles.choiceLabel}>{choice.label}</Text>
                 <Text style={styles.choiceDesc}>{choice.description}</Text>
-                <Text style={styles.choiceEffect}>{effectSummary(choice.effect)}</Text>
+                <Text style={styles.choiceEffect}>{effectSummary(choice.effect, t)}</Text>
               </TouchableOpacity>
             ))}
-            <Text style={styles.colophon}>Eine Entscheidung ist zu treffen.</Text>
+            <Text style={styles.colophon}>{t({ de: 'Eine Entscheidung ist zu treffen.', en: 'A decision must be made.' })}</Text>
           </ScrollView>
         </View>
       </View>

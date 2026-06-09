@@ -7,22 +7,35 @@
  * Black-Swan months.
  */
 import { Crisis, CrisisType, EconomyState } from './types';
+import { Loc, g } from '../i18n/lang';
 import { Rng } from '../engine/rng';
 
 const TENORS = [0.25, 1, 2, 5, 10, 30];
 
-export const CRISIS_LABEL: Record<CrisisType, string> = {
-  creditCrunch: 'Kreditklemme',
-  liquidityFreeze: 'Liquiditätsschock',
-  shortSqueeze: 'Short Squeeze',
-  ratesShock: 'Zinsschock',
+export const CRISIS_LABEL: Record<CrisisType, Loc> = {
+  creditCrunch: { de: 'Kreditklemme', en: 'Credit Crunch' },
+  liquidityFreeze: { de: 'Liquiditätsschock', en: 'Liquidity Freeze' },
+  shortSqueeze: { de: 'Short Squeeze', en: 'Short Squeeze' },
+  ratesShock: { de: 'Zinsschock', en: 'Rates Shock' },
 };
 
-export const CRISIS_DESC: Record<CrisisType, string> = {
-  creditCrunch: 'Kredit trocknet aus: Spreads explodieren, Aktien fallen, Finanzierung wird teuer.',
-  liquidityFreeze: 'Märkte frieren ein: Notverkäufe sind teuer, LPs werden nervös.',
-  shortSqueeze: 'Eine brutale Rally jagt Short-Seller aus ihren Positionen.',
-  ratesShock: 'Zinsen schießen nach oben: Anleihen und Wachstumsaktien leiden.',
+export const CRISIS_DESC: Record<CrisisType, Loc> = {
+  creditCrunch: {
+    de: 'Kredit trocknet aus: Spreads explodieren, Aktien fallen, Finanzierung wird teuer.',
+    en: 'Credit dries up: spreads blow out, equities fall, financing gets expensive.',
+  },
+  liquidityFreeze: {
+    de: 'Märkte frieren ein: Notverkäufe sind teuer, LPs werden nervös.',
+    en: 'Markets freeze: forced sales are costly, LPs grow nervous.',
+  },
+  shortSqueeze: {
+    de: 'Eine brutale Rally jagt Short-Seller aus ihren Positionen.',
+    en: 'A brutal rally forces short-sellers out of their positions.',
+  },
+  ratesShock: {
+    de: 'Zinsen schießen nach oben: Anleihen und Wachstumsaktien leiden.',
+    en: 'Rates spike: bonds and growth equities suffer.',
+  },
 };
 
 /** Try to start a crisis this month (only one at a time). */
@@ -34,7 +47,7 @@ export function maybeTriggerCrisis(econ: EconomyState, hasActive: boolean, rng: 
   const type = rng.pick(types);
   return {
     type,
-    label: CRISIS_LABEL[type],
+    label: g(CRISIS_LABEL[type]),
     monthsRemaining: rng.int(3, 6),
     severity: rng.range(0.5, 1),
   };

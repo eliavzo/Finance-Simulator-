@@ -7,6 +7,7 @@
  * access to more demanding (larger) LP types.
  */
 import { LPType } from './types';
+import { Loc, g } from '../i18n/lang';
 
 export type Tier = 'boutique' | 'rising' | 'established' | 'titan';
 
@@ -19,11 +20,11 @@ export const TIER_THRESHOLD: Record<Tier, number> = {
   titan: 85,
 };
 
-export const TIER_LABEL: Record<Tier, string> = {
-  boutique: 'Boutique',
-  rising: 'Aufstrebend',
-  established: 'Etabliert',
-  titan: 'Titan',
+export const TIER_LABEL: Record<Tier, Loc> = {
+  boutique: { de: 'Boutique', en: 'Boutique' },
+  rising: { de: 'Aufstrebend', en: 'Emerging' },
+  established: { de: 'Etabliert', en: 'Established' },
+  titan: { de: 'Titan', en: 'Titan' },
 };
 
 export interface TierPerks {
@@ -59,7 +60,7 @@ export function tierPerks(peakReputation: number): TierPerks {
   const nextTier = idx < TIER_ORDER.length - 1 ? TIER_ORDER[idx + 1] : undefined;
   return {
     tier,
-    label: TIER_LABEL[tier],
+    label: g(TIER_LABEL[tier]),
     ...PERKS[tier],
     nextTier,
     nextAt: nextTier ? TIER_THRESHOLD[nextTier] : undefined,

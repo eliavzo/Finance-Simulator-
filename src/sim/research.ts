@@ -11,6 +11,8 @@
 import { EconomyState, Instrument, ResearchSignal } from './types';
 import { expectedAnnualReturn } from './market';
 import { FirmCapabilities } from './firm';
+import { Lang, Loc, tr, getLang } from '../i18n/lang';
+import { SECTOR_LABEL } from './labels';
 import { Rng } from '../engine/rng';
 
 export function generateSignals(
@@ -50,24 +52,37 @@ export function generateSignals(
       symbol: inst.symbol,
       stance,
       conviction,
-      note: noteFor(inst, stance, conviction),
+      note: researchNote(inst, stance, conviction, getLang()),
     } as ResearchSignal;
   });
 }
 
-function noteFor(inst: Instrument, stance: 'overweight' | 'underweight', conviction: number): string {
-  const strength = conviction > 0.66 ? 'Hohe Überzeugung' : conviction > 0.4 ? 'Mittlere Überzeugung' : 'Vorsichtig';
-  const dir = stance === 'overweight' ? 'attraktives Aufwärtspotenzial' : 'erhöhtes Abwärtsrisiko';
+/** Build a localised research note (re-derivable at render for live language). */
+export function researchNote(inst: Instrument, stance: 'overweight' | 'underweight', conviction: number, lang: Lang): string {
+  const strength = tr(
+    lang,
+    conviction > 0.66
+      ? { de: 'Hohe Überzeugung', en: 'High conviction' }
+      : conviction > 0.4
+        ? { de: 'Mittlere Überzeugung', en: 'Medium conviction' }
+        : { de: 'Vorsichtig', en: 'Cautious' },
+  );
+  const dir = tr(
+    lang,
+    stance === 'overweight'
+      ? { de: 'attraktives Aufwärtspotenzial', en: 'attractive upside potential' }
+      : { de: 'erhöhtes Abwärtsrisiko', en: 'elevated downside risk' },
+  );
   const ctx =
     inst.kind === 'equity'
-      ? `${inst.sector}`
+      ? tr(lang, SECTOR_LABEL[inst.sector])
       : inst.kind === 'commodity'
-        ? 'Rohstoff'
-        : 'Devisen';
+        ? tr(lang, { de: 'Rohstoff', en: 'Commodity' })
+        : tr(lang, { de: 'Devisen', en: 'FX' });
   return `${strength} · ${ctx}: ${dir}.`;
 }
 
-export const STANCE_LABEL: Record<ResearchSignal['stance'], string> = {
-  overweight: 'Übergewichten',
-  underweight: 'Untergewichten',
+export const STANCE_LABEL: Record<ResearchSignal['stance'], Loc> = {
+  overweight: { de: 'Übergewichten', en: 'Overweight' },
+  underweight: { de: 'Untergewichten', en: 'Underweight' },
 };

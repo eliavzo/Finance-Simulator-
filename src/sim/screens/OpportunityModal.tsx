@@ -6,8 +6,10 @@ import { Button, Rule } from '../../components/ui';
 import { AmountStepper } from '../../components/controls';
 import { colors, fonts, spacing } from '../../utils/theme';
 import { fmtMoney } from '../../utils/format';
+import { useTr } from '../../i18n';
 
 export function OpportunityModal() {
+  const t = useTr();
   const game = useSimStore((s) => s.game);
   const accept = useSimStore((s) => s.acceptOpportunity);
   const decline = useSimStore((s) => s.declineOpportunity);
@@ -28,18 +30,18 @@ export function OpportunityModal() {
         <View style={styles.panel}>
           <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
             <Rule double />
-            <Text style={styles.kicker}>GELEGENHEIT</Text>
+            <Text style={styles.kicker}>{t({ de: 'GELEGENHEIT', en: 'OPPORTUNITY' })}</Text>
             <Text style={styles.title}>{opp.title}</Text>
             <Rule />
             <Text style={styles.body}>{opp.body}</Text>
-            <Text style={styles.meta}>Profil: {opp.expected} · Bindung ~{opp.resolveMonths} Monate</Text>
+            <Text style={styles.meta}>{t({ de: 'Profil', en: 'Profile' })}: {opp.expected} · {t({ de: 'Bindung', en: 'Lock-up' })} ~{opp.resolveMonths} {t({ de: 'Monate', en: 'months' })}</Text>
 
-            <Text style={styles.label}>Investitionsbetrag (max {fmtMoney(opp.maxInvest)})</Text>
+            <Text style={styles.label}>{t({ de: 'Investitionsbetrag', en: 'Investment amount' })} ({t({ de: 'max', en: 'max' })} {fmtMoney(opp.maxInvest)})</Text>
             <AmountStepper value={amount} onChange={setAmount} step={500_000} min={opp.minInvest} max={Math.max(opp.minInvest, maxAffordable)} />
-            <Text style={styles.cash}>Fonds-Cash: {fmtMoney(cash)}</Text>
+            <Text style={styles.cash}>{t({ de: 'Fonds-Cash', en: 'Fund cash' })}: {fmtMoney(cash)}</Text>
 
-            <Button title="Investieren" variant="positive" onPress={() => accept(amount)} style={{ marginTop: spacing.md }} />
-            <Button title="Ablehnen" variant="secondary" onPress={decline} style={{ marginTop: spacing.sm }} />
+            <Button title={t({ de: 'Investieren', en: 'Invest' })} variant="positive" onPress={() => accept(amount)} style={{ marginTop: spacing.md }} />
+            <Button title={t({ de: 'Ablehnen', en: 'Decline' })} variant="secondary" onPress={decline} style={{ marginTop: spacing.sm }} />
           </ScrollView>
         </View>
       </View>

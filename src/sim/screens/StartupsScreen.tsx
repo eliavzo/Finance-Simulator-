@@ -4,9 +4,11 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSimStore } from '../store';
 import { vcMetrics, holdingValue } from '../vc';
 import { Startup, StartupDeal } from '../types';
+import { SECTOR_LABEL, STAGE_LABEL } from '../labels';
 import { SimHeader } from './SimHeader';
 import { TabTip } from '../../components/TabTip';
 import { notify } from '../../utils/notify';
+import { useTr } from '../../i18n';
 import { Button, Card, Pill, ProgressBar, SectionTitle, StatTile } from '../../components/ui';
 import { AmountStepper } from '../../components/controls';
 import { colors, fonts, spacing } from '../../utils/theme';
@@ -17,6 +19,7 @@ function healthColor(h: number) {
 }
 
 export function StartupsScreen() {
+  const t = useTr();
   const game = useSimStore((s) => s.game)!;
   const metrics = useMemo(() => vcMetrics(game.vc, game.month), [game.vc, game.month]);
   const active = game.vc.portfolio.filter((s) => s.status === 'active');
@@ -24,25 +27,25 @@ export function StartupsScreen() {
 
   return (
     <View style={styles.container}>
-      <SimHeader title="Startups" />
+      <SimHeader title={t({ de: 'Startups', en: 'Startups' })} />
       <ScrollView contentContainerStyle={styles.scroll}>
-        <TabTip tipKey="startups" text="Investiere in junge Firmen, unterstütze sie operativ und zieh bei neuen Runden pro-rata mit. Wenige werden Raketen (IPO/M&A), viele scheitern." />
+        <TabTip tipKey="startups" text={t({ de: 'Investiere in junge Firmen, unterstütze sie operativ und zieh bei neuen Runden pro-rata mit. Wenige werden Raketen (IPO/M&A), viele scheitern.', en: 'Invest in young companies, support them operationally and follow on pro-rata in new rounds. A few become rockets (IPO/M&A), many fail.' })} />
         <Card>
-          <SectionTitle>VC-Portfolio</SectionTitle>
+          <SectionTitle>{t({ de: 'VC-Portfolio', en: 'VC portfolio' })}</SectionTitle>
           <Text style={styles.big}>{fmtMoney(metrics.residual)}</Text>
           <View style={styles.statRow}>
             <StatTile label="IRR" value={fmtPct(metrics.irr)} valueColor={metrics.irr >= 0 ? colors.positive : colors.negative} />
             <StatTile label="TVPI" value={fmtMultiple(metrics.tvpi)} />
-            <StatTile label="Investiert" value={fmtMoney(metrics.paidIn)} />
-            <StatTile label="Realisiert" value={fmtMoney(metrics.distributions)} />
+            <StatTile label={t({ de: 'Investiert', en: 'Invested' })} value={fmtMoney(metrics.paidIn)} />
+            <StatTile label={t({ de: 'Realisiert', en: 'Realised' })} value={fmtMoney(metrics.distributions)} />
           </View>
-          <Text style={styles.hint}>Fonds-Cash für neue Deals: {fmtMoney(game.portfolio.cash)}</Text>
+          <Text style={styles.hint}>{t({ de: 'Fonds-Cash für neue Deals', en: 'Fund cash for new deals' })}: {fmtMoney(game.portfolio.cash)}</Text>
         </Card>
 
         <Card>
-          <SectionTitle ornament>Dein Portfolio ({active.length} aktiv)</SectionTitle>
+          <SectionTitle ornament>{t({ de: 'Dein Portfolio', en: 'Your portfolio' })} ({active.length} {t({ de: 'aktiv', en: 'active' })})</SectionTitle>
           {active.length === 0 ? (
-            <Text style={styles.empty}>Noch keine Beteiligungen. Investiere unten in einen Deal.</Text>
+            <Text style={styles.empty}>{t({ de: 'Noch keine Beteiligungen. Investiere unten in einen Deal.', en: 'No holdings yet. Invest in a deal below.' })}</Text>
           ) : (
             active.map((s) => <StartupCard key={s.id} s={s} />)
           )}
@@ -50,12 +53,12 @@ export function StartupsScreen() {
 
         {closed.length > 0 ? (
           <Card>
-            <SectionTitle>Realisiert ({closed.length})</SectionTitle>
+            <SectionTitle>{t({ de: 'Realisiert', en: 'Realised' })} ({closed.length})</SectionTitle>
             {closed.map((s) => (
               <View key={s.id} style={styles.closedRow}>
                 <Text style={styles.closedName}>{s.name}</Text>
                 <Pill
-                  text={s.exit ? `${s.exit.type} · ${fmtMoney(s.exit.proceeds)}` : 'gescheitert'}
+                  text={s.exit ? `${s.exit.type} · ${fmtMoney(s.exit.proceeds)}` : t({ de: 'gescheitert', en: 'failed' })}
                   color={s.status === 'exited' ? colors.positive : colors.negative}
                 />
               </View>
@@ -64,7 +67,7 @@ export function StartupsScreen() {
         ) : null}
 
         <Card>
-          <SectionTitle ornament>Deal-Flow</SectionTitle>
+          <SectionTitle ornament>{t({ de: 'Deal-Flow', en: 'Deal flow' })}</SectionTitle>
           {game.vc.deals.map((d) => (
             <DealRow key={d.id} d={d} cash={game.portfolio.cash} />
           ))}
@@ -75,6 +78,7 @@ export function StartupsScreen() {
 }
 
 function StartupCard({ s }: { s: Startup }) {
+  const t = useTr();
   const support = useSimStore((st) => st.supportStartup);
   const followOn = useSimStore((st) => st.followOnStartup);
   const value = holdingValue(s);
@@ -85,17 +89,17 @@ function StartupCard({ s }: { s: Startup }) {
     <View style={styles.su}>
       <View style={styles.suHead}>
         <Text style={styles.suName}>{s.name}</Text>
-        {s.raising ? <Pill text="RAISING" color={colors.warning} /> : <Pill text={s.stage} color={colors.textMuted} />}
+        {s.raising ? <Pill text="RAISING" color={colors.warning} /> : <Pill text={t(STAGE_LABEL[s.stage])} color={colors.textMuted} />}
       </View>
       <View style={styles.statRow}>
-        <StatTile label="Anteil" value={fmtPct(s.ownership, 1)} />
-        <StatTile label="Bewertung" value={fmtMoney(s.postMoney)} />
-        <StatTile label="Wert" value={fmtMoney(value)} hint={`${fmtMultiple(moic)} MOIC`} />
+        <StatTile label={t({ de: 'Anteil', en: 'Stake' })} value={fmtPct(s.ownership, 1)} />
+        <StatTile label={t({ de: 'Bewertung', en: 'Valuation' })} value={fmtMoney(s.postMoney)} />
+        <StatTile label={t({ de: 'Wert', en: 'Value' })} value={fmtMoney(value)} hint={`${fmtMultiple(moic)} MOIC`} />
       </View>
       <View style={styles.statRow}>
-        <StatTile label="Umsatz" value={fmtMoney(s.revenue)} />
-        <StatTile label="Wachstum" value={fmtPct(s.growthRate)} />
-        <StatTile label="Runway" value={`${runwayMonths.toFixed(0)} Mon.`} valueColor={runwayMonths < 4 ? colors.negative : colors.text} />
+        <StatTile label={t({ de: 'Umsatz', en: 'Revenue' })} value={fmtMoney(s.revenue)} />
+        <StatTile label={t({ de: 'Wachstum', en: 'Growth' })} value={fmtPct(s.growthRate)} />
+        <StatTile label="Runway" value={`${runwayMonths.toFixed(0)} ${t({ de: 'Mon.', en: 'mo.' })}`} valueColor={runwayMonths < 4 ? colors.negative : colors.text} />
       </View>
       <View style={styles.healthRow}>
         <Text style={styles.healthLabel}>Health</Text>
@@ -103,9 +107,9 @@ function StartupCard({ s }: { s: Startup }) {
         <Text style={styles.supportLabel}>Support {(s.support * 100).toFixed(0)}%</Text>
       </View>
       <View style={styles.btnRow}>
-        <Button title="Unterstützen" variant="secondary" onPress={() => { const r = support(s.id); if (!r.ok) notify('Nicht möglich', r.error ?? ''); }} style={styles.smallBtn} />
+        <Button title={t({ de: 'Unterstützen', en: 'Support' })} variant="secondary" onPress={() => { const r = support(s.id); if (!r.ok) notify(t({ de: 'Nicht möglich', en: 'Not possible' }), r.error ?? ''); }} style={styles.smallBtn} />
         {s.raising ? (
-          <Button title={`Folge-Inv. ${fmtMoney(s.raising.proRata)}`} variant="positive" onPress={() => { const r = followOn(s.id); if (!r.ok) notify('Nicht möglich', r.error ?? ''); }} style={styles.smallBtn} />
+          <Button title={`${t({ de: 'Folge-Inv.', en: 'Follow-on' })} ${fmtMoney(s.raising.proRata)}`} variant="positive" onPress={() => { const r = followOn(s.id); if (!r.ok) notify(t({ de: 'Nicht möglich', en: 'Not possible' }), r.error ?? ''); }} style={styles.smallBtn} />
         ) : null}
       </View>
     </View>
@@ -113,6 +117,7 @@ function StartupCard({ s }: { s: Startup }) {
 }
 
 function DealRow({ d, cash }: { d: StartupDeal; cash: number }) {
+  const t = useTr();
   const invest = useSimStore((s) => s.investStartup);
   const postMoney = d.preMoney + d.roundSize;
   const maxInvest = Math.min(d.roundSize, Math.floor(cash / 100_000) * 100_000);
@@ -123,16 +128,16 @@ function DealRow({ d, cash }: { d: StartupDeal; cash: number }) {
     <View style={styles.deal}>
       <View style={styles.suHead}>
         <Text style={styles.suName}>{d.name}</Text>
-        <Pill text={`${d.stage} · ${d.sector}`} color={colors.textMuted} />
+        <Pill text={`${t(STAGE_LABEL[d.stage])} · ${t(SECTOR_LABEL[d.sector])}`} color={colors.textMuted} />
       </View>
       <Text style={styles.dealMeta}>
-        Pre-Money {fmtMoney(d.preMoney)} · Runde {fmtMoney(d.roundSize)} · Umsatz {fmtMoney(d.revenue)} · Wachstum {fmtPct(d.growthRate)} · Team {(d.quality * 100).toFixed(0)}
+        Pre-Money {fmtMoney(d.preMoney)} · {t({ de: 'Runde', en: 'Round' })} {fmtMoney(d.roundSize)} · {t({ de: 'Umsatz', en: 'Revenue' })} {fmtMoney(d.revenue)} · {t({ de: 'Wachstum', en: 'Growth' })} {fmtPct(d.growthRate)} · Team {(d.quality * 100).toFixed(0)}
       </Text>
       <AmountStepper value={amount} onChange={setAmount} step={250_000} min={250_000} max={Math.max(250_000, maxInvest)} />
       <Button
-        title={`Investieren · ${fmtPct(ownership, 1)} Anteil`}
+        title={`${t({ de: 'Investieren', en: 'Invest' })} · ${fmtPct(ownership, 1)} ${t({ de: 'Anteil', en: 'stake' })}`}
         variant="positive"
-        onPress={() => { const r = invest(d.id, amount); if (!r.ok) notify('Nicht möglich', r.error ?? ''); }}
+        onPress={() => { const r = invest(d.id, amount); if (!r.ok) notify(t({ de: 'Nicht möglich', en: 'Not possible' }), r.error ?? ''); }}
         style={{ marginTop: spacing.sm }}
       />
     </View>

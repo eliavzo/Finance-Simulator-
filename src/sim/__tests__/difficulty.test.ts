@@ -1,4 +1,5 @@
 import { difficultyParams, presetLabel, PRESETS, DEFAULT_DIFFICULTY, computeUnlocks, levelUnlocked, presetUnlocked, UNLOCK_AT } from '../difficulty';
+import { tr } from '../../i18n/lang';
 import { createSimGame, advanceMonth, enterpriseEquity } from '../engine';
 import { DifficultyConfig } from '../types';
 
@@ -35,9 +36,13 @@ describe('difficulty params', () => {
 });
 
 describe('presets', () => {
-  it('round-trip to their labels, deviations become Eigene', () => {
-    for (const p of PRESETS) expect(presetLabel(p.config)).toBe(p.label);
-    expect(presetLabel(cfg({ market: 1 }))).toBe('Eigene');
+  it('round-trip to their labels, deviations become Custom', () => {
+    for (const p of PRESETS) {
+      expect(presetLabel(p.config, 'de')).toBe(tr('de', p.label));
+      expect(presetLabel(p.config, 'en')).toBe(tr('en', p.label));
+    }
+    expect(presetLabel(cfg({ market: 1 }), 'de')).toBe('Eigene');
+    expect(presetLabel(cfg({ market: 1 }), 'en')).toBe('Custom');
   });
 });
 

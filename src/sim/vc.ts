@@ -9,7 +9,14 @@
  */
 import { EconomyState, FundingStage, Sector, Startup, StartupDeal, VCState } from './types';
 import { irr } from '../engine/finance';
+import { g } from '../i18n/lang';
 import { Rng } from '../engine/rng';
+
+/** A localised venture note plus a stable kind so the engine can categorise it. */
+export interface VCNote {
+  kind: 'exit' | 'fail' | 'round';
+  text: string;
+}
 
 const FIRST = ['Nimbus', 'Vertex', 'Lumen', 'Cobalt', 'Aether', 'Strato', 'Pulse', 'Quanta', 'Helix', 'Orbit', 'Synth', 'Atlas', 'Echo', 'Vela', 'Flux', 'Nova', 'Cortex', 'Sol'];
 const LAST = ['AI', 'Bio', 'Labs', 'Health', 'Pay', 'Grid', 'Logistics', 'Robotics', 'Cloud', 'Foods', 'Energy', 'Security', 'Analytics', 'Mobility', 'Works', 'Data'];
@@ -87,9 +94,9 @@ export interface InvestResult {
 /** Invest `amount` into a deal (co-investing in its round). */
 export function investInDeal(vc: VCState, dealId: string, amount: number, month: number): InvestResult {
   const deal = vc.deals.find((d) => d.id === dealId);
-  if (!deal) return { ok: false, error: 'Deal nicht mehr verfügbar.' };
-  if (amount <= 0) return { ok: false, error: 'Betrag muss positiv sein.' };
-  if (amount > deal.roundSize) return { ok: false, error: 'Mehr als die Rundengröße.' };
+  if (!deal) return { ok: false, error: g({ de: 'Deal nicht mehr verfügbar.', en: 'Deal no longer available.' }) };
+  if (amount <= 0) return { ok: false, error: g({ de: 'Betrag muss positiv sein.', en: 'Amount must be positive.' }) };
+  if (amount > deal.roundSize) return { ok: false, error: g({ de: 'Mehr als die Rundengröße.', en: 'More than the round size.' }) };
 
   const postMoney = deal.preMoney + deal.roundSize;
   const ownership = amount / postMoney;
@@ -130,7 +137,7 @@ export interface StartupStepOutcome {
   startup: Startup;
   /** Cash returned to the fund this month (exit proceeds). */
   proceeds: number;
-  note?: string;
+  note?: VCNote;
 }
 
 function nextStage(stage: FundingStage): FundingStage {
@@ -166,14 +173,14 @@ export function stepStartup(s: Startup, econ: EconomyState, month: number, rng: 
     return {
       startup: { ...base, status: 'exited', postMoney: exitValuation, exit: { type: ipo ? 'IPO' : 'M&A', month, proceeds } },
       proceeds,
-      note: `${s.name}: ${ipo ? 'IPO' : 'M&A'}-Exit für $${(proceeds / 1e6).toFixed(1)}M.`,
+      note: { kind: 'exit', text: g({ de: `${s.name}: ${ipo ? 'IPO' : 'M&A'}-Exit für $${(proceeds / 1e6).toFixed(1)}M.`, en: `${s.name}: ${ipo ? 'IPO' : 'M&A'} exit for $${(proceeds / 1e6).toFixed(1)}M.` }) },
     };
   }
 
   // --- Failure check ---
   const failBase = 0.015 + Math.max(0, 0.5 - health) * 0.25 + (runwayCash <= 0 ? 0.25 : 0) + (econ.regime === 'contraction' ? 0.02 : 0);
   if (rng.chance(failBase)) {
-    return { startup: { ...base, status: 'failed', postMoney: 0, health: 0, exit: undefined }, proceeds: 0, note: `${s.name} ist gescheitert (Totalverlust).` };
+    return { startup: { ...base, status: 'failed', postMoney: 0, health: 0, exit: undefined }, proceeds: 0, note: { kind: 'fail', text: g({ de: `${s.name} ist gescheitert (Totalverlust).`, en: `${s.name} has failed (total loss).` }) } };
   }
 
   // --- New financing round when runway is low ---
@@ -197,7 +204,7 @@ export function stepStartup(s: Startup, econ: EconomyState, month: number, rng: 
         raising: { proRata, ownershipIfFollow, stage: newStage },
       },
       proceeds: 0,
-      note: `${s.name} raised ${newStage} — Verwässerung ${(dilution * 100).toFixed(0)}% (Folge-Investment möglich).`,
+      note: { kind: 'round', text: g({ de: `${s.name} hat eine ${newStage}-Runde aufgenommen — Verwässerung ${(dilution * 100).toFixed(0)}% (Folge-Investment möglich).`, en: `${s.name} raised a ${newStage} round — dilution ${(dilution * 100).toFixed(0)}% (follow-on available).` }) },
     };
   }
 
@@ -207,12 +214,12 @@ export function stepStartup(s: Startup, econ: EconomyState, month: number, rng: 
 export interface VCStepResult {
   vc: VCState;
   proceeds: number;
-  notes: string[];
+  notes: VCNote[];
 }
 
 /** Advance the whole venture book one month. `scale` sizes new deal flow. */
 export function stepVC(vc: VCState, econ: EconomyState, month: number, rng: Rng, reputation: number, scale = 1): VCStepResult {
-  const notes: string[] = [];
+  const notes: VCNote[] = [];
   let proceeds = 0;
   const cashflows = [...vc.cashflows];
 
@@ -251,7 +258,7 @@ export interface ActionResult {
 /** Follow on pro-rata while a startup is raising, to keep your ownership. */
 export function followOn(vc: VCState, startupId: string, month: number): ActionResult {
   const s = vc.portfolio.find((x) => x.id === startupId);
-  if (!s || !s.raising) return { ok: false, error: 'Keine offene Runde.' };
+  if (!s || !s.raising) return { ok: false, error: g({ de: 'Keine offene Runde.', en: 'No open round.' }) };
   const cost = s.raising.proRata;
   const updated: Startup = {
     ...s,
@@ -275,8 +282,8 @@ export function followOn(vc: VCState, startupId: string, month: number): ActionR
 /** Operational support: boosts growth & survival for a cost. */
 export function supportStartup(vc: VCState, startupId: string, month: number): ActionResult {
   const s = vc.portfolio.find((x) => x.id === startupId);
-  if (!s || s.status !== 'active') return { ok: false, error: 'Startup nicht aktiv.' };
-  if (s.support >= 1) return { ok: false, error: 'Maximale Unterstützung erreicht.' };
+  if (!s || s.status !== 'active') return { ok: false, error: g({ de: 'Startup nicht aktiv.', en: 'Startup not active.' }) };
+  if (s.support >= 1) return { ok: false, error: g({ de: 'Maximale Unterstützung erreicht.', en: 'Maximum support reached.' }) };
   const cost = Math.max(250_000, s.postMoney * 0.01);
   const updated: Startup = { ...s, support: Math.min(1, s.support + 0.15), health: Math.min(1, s.health + 0.05), totalInvested: s.totalInvested + cost };
   return {

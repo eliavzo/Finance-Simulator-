@@ -7,22 +7,43 @@
  * whole config; tweaking any knob makes it "Eigene".
  */
 import { DifficultyConfig, DifficultyLevel } from './types';
+import { Lang, Loc, tr } from '../i18n/lang';
 
 export type ModifierKey = 'market' | 'capital' | 'fees' | 'rivals';
 
-export const MODIFIER_LABEL: Record<ModifierKey, string> = {
-  market: 'Markt & Krisen',
-  capital: 'Kapital & Kosten',
-  fees: 'Gebühren',
-  rivals: 'Konkurrenz',
+export const MODIFIER_LABEL: Record<ModifierKey, Loc> = {
+  market: { de: 'Markt & Krisen', en: 'Market & Crises' },
+  capital: { de: 'Kapital & Kosten', en: 'Capital & Costs' },
+  fees: { de: 'Gebühren', en: 'Fees' },
+  rivals: { de: 'Konkurrenz', en: 'Rivals' },
 };
 
 /** Level labels per modifier (index -1..2 → 0..3). */
-export const LEVEL_LABEL: Record<ModifierKey, [string, string, string, string]> = {
-  market: ['Ruhig', 'Normal', 'Rau', 'Brutal'],
-  capital: ['Üppig', 'Normal', 'Knapp', 'Notlage'],
-  fees: ['Großzügig', 'Normal', 'Mager', 'Minimal'],
-  rivals: ['Schwach', 'Normal', 'Scharf', 'Elite'],
+export const LEVEL_LABEL: Record<ModifierKey, [Loc, Loc, Loc, Loc]> = {
+  market: [
+    { de: 'Ruhig', en: 'Calm' },
+    { de: 'Normal', en: 'Normal' },
+    { de: 'Rau', en: 'Rough' },
+    { de: 'Brutal', en: 'Brutal' },
+  ],
+  capital: [
+    { de: 'Üppig', en: 'Ample' },
+    { de: 'Normal', en: 'Normal' },
+    { de: 'Knapp', en: 'Tight' },
+    { de: 'Notlage', en: 'Distress' },
+  ],
+  fees: [
+    { de: 'Großzügig', en: 'Generous' },
+    { de: 'Normal', en: 'Normal' },
+    { de: 'Mager', en: 'Lean' },
+    { de: 'Minimal', en: 'Minimal' },
+  ],
+  rivals: [
+    { de: 'Schwach', en: 'Weak' },
+    { de: 'Normal', en: 'Normal' },
+    { de: 'Scharf', en: 'Sharp' },
+    { de: 'Elite', en: 'Elite' },
+  ],
 };
 
 /** Heat points contributed by a level (-1 mild … 2 brutal). */
@@ -30,11 +51,31 @@ const LEVEL_HEAT: Record<DifficultyLevel, number> = { '-1': -2, '0': 0, '1': 3, 
 
 export const DEFAULT_DIFFICULTY: DifficultyConfig = { market: 0, capital: 0, fees: 0, rivals: 0, ironman: false };
 
-export const PRESETS: { id: string; label: string; blurb: string; config: DifficultyConfig }[] = [
-  { id: 'erbe', label: 'Erbe', blurb: 'Viel Startkapital, ruhige Märkte, schwache Rivalen. Zum Reinkommen.', config: { market: -1, capital: -1, fees: -1, rivals: -1, ironman: false } },
-  { id: 'aufsteiger', label: 'Aufsteiger', blurb: 'Ausgewogen — das Standard-Erlebnis.', config: { market: 0, capital: 0, fees: 0, rivals: 0, ironman: false } },
-  { id: 'selfmade', label: 'Selfmade', blurb: 'Knappes Kapital, magere Gebühren, raue Märkte, scharfe Konkurrenz.', config: { market: 1, capital: 1, fees: 1, rivals: 1, ironman: false } },
-  { id: 'albtraum', label: 'Albtraum', blurb: 'Alles brutal — plus Ironman: kein Zurücksetzen, sofortiges Aus bei Pleite.', config: { market: 2, capital: 2, fees: 2, rivals: 2, ironman: true } },
+export const PRESETS: { id: string; label: Loc; blurb: Loc; config: DifficultyConfig }[] = [
+  {
+    id: 'erbe',
+    label: { de: 'Erbe', en: 'Heir' },
+    blurb: { de: 'Viel Startkapital, ruhige Märkte, schwache Rivalen. Zum Reinkommen.', en: 'Plenty of starting capital, calm markets, weak rivals. To ease in.' },
+    config: { market: -1, capital: -1, fees: -1, rivals: -1, ironman: false },
+  },
+  {
+    id: 'aufsteiger',
+    label: { de: 'Aufsteiger', en: 'Climber' },
+    blurb: { de: 'Ausgewogen — das Standard-Erlebnis.', en: 'Balanced — the standard experience.' },
+    config: { market: 0, capital: 0, fees: 0, rivals: 0, ironman: false },
+  },
+  {
+    id: 'selfmade',
+    label: { de: 'Selfmade', en: 'Self-Made' },
+    blurb: { de: 'Knappes Kapital, magere Gebühren, raue Märkte, scharfe Konkurrenz.', en: 'Tight capital, lean fees, rough markets, sharp competition.' },
+    config: { market: 1, capital: 1, fees: 1, rivals: 1, ironman: false },
+  },
+  {
+    id: 'albtraum',
+    label: { de: 'Albtraum', en: 'Nightmare' },
+    blurb: { de: 'Alles brutal — plus Ironman: kein Zurücksetzen, sofortiges Aus bei Pleite.', en: 'Everything brutal — plus Ironman: no reset, instant game over on insolvency.' },
+    config: { market: 2, capital: 2, fees: 2, rivals: 2, ironman: true },
+  },
 ];
 
 export interface DifficultyParams {
@@ -74,9 +115,9 @@ export function difficultyParams(cfg: DifficultyConfig): DifficultyParams {
   };
 }
 
-/** Name of the preset matching a config, or 'Eigene'. */
-export function presetLabel(cfg: DifficultyConfig): string {
-  const match = PRESETS.find(
+/** The preset matching a config, or undefined ("custom"). */
+export function presetMatch(cfg: DifficultyConfig) {
+  return PRESETS.find(
     (p) =>
       p.config.market === cfg.market &&
       p.config.capital === cfg.capital &&
@@ -84,16 +125,21 @@ export function presetLabel(cfg: DifficultyConfig): string {
       p.config.rivals === cfg.rivals &&
       p.config.ironman === cfg.ironman,
   );
-  return match ? match.label : 'Eigene';
 }
 
-export function heatLabel(heat: number): string {
-  if (heat >= 24) return 'Höllisch';
-  if (heat >= 14) return 'Brutal';
-  if (heat >= 6) return 'Hart';
-  if (heat >= 1) return 'Fordernd';
-  if (heat <= -4) return 'Entspannt';
-  return 'Ausgewogen';
+/** Localised name of the preset matching a config, or "Custom". */
+export function presetLabel(cfg: DifficultyConfig, lang: Lang): string {
+  const match = presetMatch(cfg);
+  return match ? tr(lang, match.label) : tr(lang, { de: 'Eigene', en: 'Custom' });
+}
+
+export function heatLabel(heat: number, lang: Lang): string {
+  if (heat >= 24) return tr(lang, { de: 'Höllisch', en: 'Hellish' });
+  if (heat >= 14) return tr(lang, { de: 'Brutal', en: 'Brutal' });
+  if (heat >= 6) return tr(lang, { de: 'Hart', en: 'Hard' });
+  if (heat >= 1) return tr(lang, { de: 'Fordernd', en: 'Demanding' });
+  if (heat <= -4) return tr(lang, { de: 'Entspannt', en: 'Relaxed' });
+  return tr(lang, { de: 'Ausgewogen', en: 'Balanced' });
 }
 
 /* --------------------------- Meta progression ---------------------------- */
@@ -141,12 +187,12 @@ export function presetUnlocked(cfg: DifficultyConfig, u: Unlocks): boolean {
 }
 
 /** Short text describing what's still needed to unlock the next thing. */
-export function nextUnlockHint(meta: MetaProgress): string {
+export function nextUnlockHint(meta: MetaProgress, lang: Lang): string {
   const m = meta ?? DEFAULT_META;
-  if (m.renommee < UNLOCK_AT.hard) return `„Hart" ab ${UNLOCK_AT.hard} Renommee`;
-  if (m.renommee < UNLOCK_AT.brutal) return `„Brutal" ab ${UNLOCK_AT.brutal} Renommee`;
+  if (m.renommee < UNLOCK_AT.hard) return tr(lang, { de: `„Hart" ab ${UNLOCK_AT.hard} Renommee`, en: `“Hard” at ${UNLOCK_AT.hard} renown` });
+  if (m.renommee < UNLOCK_AT.brutal) return tr(lang, { de: `„Brutal" ab ${UNLOCK_AT.brutal} Renommee`, en: `“Brutal” at ${UNLOCK_AT.brutal} renown` });
   if (m.renommee < UNLOCK_AT.ironman || m.horizonFinishes < 1)
-    return `Ironman ab ${UNLOCK_AT.ironman} Renommee + 1 abgeschlossenem Lauf`;
-  return 'Alles freigeschaltet';
+    return tr(lang, { de: `Ironman ab ${UNLOCK_AT.ironman} Renommee + 1 abgeschlossenem Lauf`, en: `Ironman at ${UNLOCK_AT.ironman} renown + 1 completed run` });
+  return tr(lang, { de: 'Alles freigeschaltet', en: 'Everything unlocked' });
 }
 

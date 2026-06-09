@@ -3,19 +3,25 @@ import React, { useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSimStore, useCapabilities } from '../store';
 import { Employee, Infrastructure, Role } from '../types';
-import { ROLE_LABEL, monthlyPayroll, infraMonthlyOpex, upgradeCost, MAX_TIER } from '../firm';
+import { monthlyPayroll, infraMonthlyOpex, upgradeCost, MAX_TIER } from '../firm';
+import { ROLE_LABEL } from '../labels';
 import { THESES } from '../thesis';
 import { SimHeader } from './SimHeader';
 import { TabTip } from '../../components/TabTip';
 import { notify } from '../../utils/notify';
+import { useTr } from '../../i18n';
+import { Loc } from '../../i18n/lang';
 import { Button, Card, Pill, ProgressBar, SectionTitle, StatTile } from '../../components/ui';
 import { Segmented } from '../../components/controls';
 import { colors, fonts, spacing } from '../../utils/theme';
 import { fmtMoney, fmtPct } from '../../utils/format';
 
 const ROLES: Role[] = ['Analyst', 'Trader', 'PortfolioManager', 'Quant', 'RiskManager', 'InvestorRelations', 'COO'];
-const INFRA_LABEL: Record<keyof Infrastructure, string> = {
-  dataTier: 'Daten & Research', primeBrokerTier: 'Prime Broker', quantTier: 'Quant/Tech', officeTier: 'Office & Ops',
+const INFRA_LABEL: Record<keyof Infrastructure, Loc> = {
+  dataTier: { de: 'Daten & Research', en: 'Data & Research' },
+  primeBrokerTier: { de: 'Prime Broker', en: 'Prime Broker' },
+  quantTier: { de: 'Quant/Tech', en: 'Quant/Tech' },
+  officeTier: { de: 'Office & Ops', en: 'Office & Ops' },
 };
 
 function moraleColor(m: number) {
@@ -23,6 +29,7 @@ function moraleColor(m: number) {
 }
 
 export function FirmScreen() {
+  const t = useTr();
   const game = useSimStore((s) => s.game)!;
   const caps = useCapabilities()!;
   const refreshCandidates = useSimStore((s) => s.refreshCandidates);
@@ -40,63 +47,63 @@ export function FirmScreen() {
 
   return (
     <View style={styles.container}>
-      <SimHeader title="Firma" />
+      <SimHeader title={t({ de: 'Firma', en: 'Firm' })} />
       <ScrollView contentContainerStyle={styles.scroll}>
-        <TabTip tipKey="firma" text="Stelle Analysten, Trader & Quants ein und rüste Infrastruktur auf — dein Team erzeugt Alpha, senkt Kosten und verhindert Margin Calls." />
+        <TabTip tipKey="firma" text={t({ de: 'Stelle Analysten, Trader & Quants ein und rüste Infrastruktur auf — dein Team erzeugt Alpha, senkt Kosten und verhindert Margin Calls.', en: 'Hire analysts, traders & quants and upgrade infrastructure — your team generates alpha, cuts costs and prevents margin calls.' })} />
         <Card>
-          <SectionTitle>{game.firm.name} · {THESES[game.thesis].label}</SectionTitle>
+          <SectionTitle>{game.firm.name} · {t(THESES[game.thesis].label)}</SectionTitle>
           <Text style={styles.big}>{fmtMoney(firm.cash)}</Text>
           <View style={styles.statRow}>
-            <StatTile label="Gehälter/M" value={fmtMoney(payroll)} valueColor={colors.negative} />
-            <StatTile label="Infra/M" value={fmtMoney(opex)} valueColor={colors.negative} />
-            <StatTile label="Burn/M" value={fmtMoney(payroll + opex)} valueColor={colors.negative} />
+            <StatTile label={t({ de: 'Gehälter/M', en: 'Salaries/mo' })} value={fmtMoney(payroll)} valueColor={colors.negative} />
+            <StatTile label={t({ de: 'Infra/M', en: 'Infra/mo' })} value={fmtMoney(opex)} valueColor={colors.negative} />
+            <StatTile label={t({ de: 'Burn/M', en: 'Burn/mo' })} value={fmtMoney(payroll + opex)} valueColor={colors.negative} />
           </View>
         </Card>
 
         <Card>
-          <SectionTitle>Fähigkeiten (Team + Infrastruktur)</SectionTitle>
-          <CapBar label="Research-Edge" value={caps.research} />
-          <CapBar label="Execution" value={caps.execution} />
-          <CapBar label="Risk Control" value={caps.risk} />
-          <CapBar label="Fundraising" value={caps.fundraising} />
-          <Text style={styles.hint}>Monatliches Alpha: {fmtPct(caps.monthlyAlpha, 2)} · Kapazität: {caps.capacityPositions} Positionen</Text>
+          <SectionTitle>{t({ de: 'Fähigkeiten (Team + Infrastruktur)', en: 'Capabilities (Team + Infrastructure)' })}</SectionTitle>
+          <CapBar label={t({ de: 'Research-Edge', en: 'Research Edge' })} value={caps.research} />
+          <CapBar label={t({ de: 'Execution', en: 'Execution' })} value={caps.execution} />
+          <CapBar label={t({ de: 'Risk Control', en: 'Risk Control' })} value={caps.risk} />
+          <CapBar label={t({ de: 'Fundraising', en: 'Fundraising' })} value={caps.fundraising} />
+          <Text style={styles.hint}>{t({ de: 'Monatliches Alpha', en: 'Monthly alpha' })}: {fmtPct(caps.monthlyAlpha, 2)} · {t({ de: 'Kapazität', en: 'Capacity' })}: {caps.capacityPositions} {t({ de: 'Positionen', en: 'positions' })}</Text>
         </Card>
 
         <Card>
-          <SectionTitle ornament>Team-Beitrag · Letzter Monat</SectionTitle>
+          <SectionTitle ornament>{t({ de: 'Team-Beitrag · Letzter Monat', en: 'Team contribution · Last month' })}</SectionTitle>
           <View style={styles.statRow}>
-            <StatTile label="Alpha (P&L)" value={fmtMoney(game.lastContribution.alphaPnl)} valueColor={game.lastContribution.alphaPnl >= 0 ? colors.positive : colors.negative} />
-            <StatTile label="Finanz. gespart" value={fmtMoney(game.lastContribution.financingSaved)} valueColor={colors.positive} />
+            <StatTile label={t({ de: 'Alpha (P&L)', en: 'Alpha (P&L)' })} value={fmtMoney(game.lastContribution.alphaPnl)} valueColor={game.lastContribution.alphaPnl >= 0 ? colors.positive : colors.negative} />
+            <StatTile label={t({ de: 'Finanz. gespart', en: 'Financing saved' })} value={fmtMoney(game.lastContribution.financingSaved)} valueColor={colors.positive} />
           </View>
           <View style={styles.statRow}>
-            <StatTile label="MC vermieden" value={`${game.lastContribution.marginCallsPrevented}`} />
-            <StatTile label="Kapital geraist" value={fmtMoney(game.lastContribution.capitalRaised)} />
+            <StatTile label={t({ de: 'MC vermieden', en: 'MCs avoided' })} value={`${game.lastContribution.marginCallsPrevented}`} />
+            <StatTile label={t({ de: 'Kapital geraist', en: 'Capital raised' })} value={fmtMoney(game.lastContribution.capitalRaised)} />
           </View>
           <Text style={styles.hint}>
-            Die Wirkung des Teams entsteht am offenen Buch: mehr Positionen & Hebel ⇒ mehr Alpha und mehr gesparte Finanzierung.
+            {t({ de: 'Die Wirkung des Teams entsteht am offenen Buch: mehr Positionen & Hebel ⇒ mehr Alpha und mehr gesparte Finanzierung.', en: 'The team\'s impact comes from the open book: more positions & leverage ⇒ more alpha and more financing saved.' })}
           </Text>
         </Card>
 
         <Card>
-          <SectionTitle>Team ({firm.employees.length})</SectionTitle>
-          {firm.employees.length === 0 ? <Text style={styles.empty}>Kein Personal. Stelle jemanden ein.</Text> : null}
+          <SectionTitle>{t({ de: 'Team', en: 'Team' })} ({firm.employees.length})</SectionTitle>
+          {firm.employees.length === 0 ? <Text style={styles.empty}>{t({ de: 'Kein Personal. Stelle jemanden ein.', en: 'No staff. Hire someone.' })}</Text> : null}
           {firm.employees.map((e) => (
             <View key={e.id} style={styles.empRow}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.empName}>{e.name}</Text>
-                <Text style={styles.empMeta}>{ROLE_LABEL[e.role]} · Skill {e.skill} · {fmtMoney(e.salary)}/J</Text>
+                <Text style={styles.empMeta}>{t(ROLE_LABEL[e.role])} · Skill {e.skill} · {fmtMoney(e.salary)}/{t({ de: 'J', en: 'yr' })}</Text>
                 <View style={styles.moraleRow}>
-                  <Text style={styles.moraleLabel}>Moral</Text>
+                  <Text style={styles.moraleLabel}>{t({ de: 'Moral', en: 'Morale' })}</Text>
                   <View style={{ flex: 1 }}><ProgressBar value={e.morale / 100} color={moraleColor(e.morale)} /></View>
                 </View>
               </View>
-              <Button title="Entlassen" variant="secondary" onPress={() => fire(e.id)} style={styles.smallBtn} />
+              <Button title={t({ de: 'Entlassen', en: 'Fire' })} variant="secondary" onPress={() => fire(e.id)} style={styles.smallBtn} />
             </View>
           ))}
         </Card>
 
         <Card>
-          <SectionTitle>Einstellen</SectionTitle>
+          <SectionTitle>{t({ de: 'Einstellen', en: 'Hire' })}</SectionTitle>
           <Segmented<Role>
             value={role}
             onChange={setRole}
@@ -108,27 +115,27 @@ export function FirmScreen() {
             options={ROLES.slice(4).map((r) => ({ label: r === 'InvestorRelations' ? 'IR' : r, value: r }))}
           />
           <Button
-            title={searchedThisMonth ? 'Diesen Monat bereits gesucht' : 'Kandidaten suchen'}
+            title={searchedThisMonth ? t({ de: 'Diesen Monat bereits gesucht', en: 'Already searched this month' }) : t({ de: 'Kandidaten suchen', en: 'Search candidates' })}
             variant="secondary"
             disabled={searchedThisMonth}
             onPress={() => refreshCandidates(role)}
             style={{ marginTop: spacing.sm }}
           />
-          <Text style={styles.hint}>Niveau der Kandidaten steigt mit deiner Reputation. Eine Suche pro Rolle und Monat.</Text>
+          <Text style={styles.hint}>{t({ de: 'Niveau der Kandidaten steigt mit deiner Reputation. Eine Suche pro Rolle und Monat.', en: 'Candidate quality rises with your reputation. One search per role and month.' })}</Text>
           {(candidates[role] ?? []).map((c: Employee) => (
             <View key={c.id} style={styles.candRow}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.empName}>{c.name}</Text>
-                <Text style={styles.empMeta}>{ROLE_LABEL[c.role]} · Skill {c.skill} · {fmtMoney(c.salary)}/J</Text>
-                <Text style={styles.hint}>Einstellungsgebühr {fmtMoney(c.salary * 0.2)}</Text>
+                <Text style={styles.empMeta}>{t(ROLE_LABEL[c.role])} · Skill {c.skill} · {fmtMoney(c.salary)}/{t({ de: 'J', en: 'yr' })}</Text>
+                <Text style={styles.hint}>{t({ de: 'Einstellungsgebühr', en: 'Hiring fee' })} {fmtMoney(c.salary * 0.2)}</Text>
               </View>
-              <Button title="Einstellen" variant="positive" onPress={() => { const r = hire(c); if (!r.ok) notify('Nicht möglich', r.error ?? ''); }} style={styles.smallBtn} />
+              <Button title={t({ de: 'Einstellen', en: 'Hire' })} variant="positive" onPress={() => { const r = hire(c); if (!r.ok) notify(t({ de: 'Nicht möglich', en: 'Not possible' }), r.error ?? ''); }} style={styles.smallBtn} />
             </View>
           ))}
         </Card>
 
         <Card>
-          <SectionTitle>Infrastruktur</SectionTitle>
+          <SectionTitle>{t({ de: 'Infrastruktur', en: 'Infrastructure' })}</SectionTitle>
           {(Object.keys(INFRA_LABEL) as (keyof Infrastructure)[]).map((track) => {
             const tier = firm.infrastructure[track];
             const maxed = tier >= MAX_TIER;
@@ -136,13 +143,13 @@ export function FirmScreen() {
             return (
               <View key={track} style={styles.infraRow}>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.empName}>{INFRA_LABEL[track]}</Text>
-                  <Text style={styles.empMeta}>Stufe {tier}/{MAX_TIER}</Text>
+                  <Text style={styles.empName}>{t(INFRA_LABEL[track])}</Text>
+                  <Text style={styles.empMeta}>{t({ de: 'Stufe', en: 'Tier' })} {tier}/{MAX_TIER}</Text>
                 </View>
                 {maxed ? (
                   <Pill text="MAX" color={colors.positive} />
                 ) : (
-                  <Button title={`Upgrade ${fmtMoney(cost)}`} variant="secondary" onPress={() => { const r = upgrade(track); if (!r.ok) notify('Nicht möglich', r.error ?? ''); }} style={styles.smallBtn} />
+                  <Button title={`Upgrade ${fmtMoney(cost)}`} variant="secondary" onPress={() => { const r = upgrade(track); if (!r.ok) notify(t({ de: 'Nicht möglich', en: 'Not possible' }), r.error ?? ''); }} style={styles.smallBtn} />
                 )}
               </View>
             );

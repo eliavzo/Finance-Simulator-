@@ -6,17 +6,21 @@ import { useSimStore } from '../store';
 import { portfolioNav } from '../portfolio';
 import { fundMetrics, uncalledCapital } from '../fund';
 import { trailingReturn } from '../rivals';
-import { metricValue, objectiveProgress, formatMetric } from '../objectives';
+import { metricValue, objectiveProgress, formatMetric, localizedObjective } from '../objectives';
+import { LP_TYPE_LABEL } from '../labels';
 import { Objective } from '../types';
 import { SimHeader } from './SimHeader';
 import { TabTip } from '../../components/TabTip';
 import { notify } from '../../utils/notify';
+import { useTr, useLang, Lang } from '../../i18n';
 import { Button, Card, Pill, ProgressBar, SectionTitle, StatTile } from '../../components/ui';
 import { AmountStepper } from '../../components/controls';
 import { colors, fonts, spacing } from '../../utils/theme';
 import { fmtMoney, fmtMultiple, fmtPct } from '../../utils/format';
 
 export function FundScreen() {
+  const t = useTr();
+  const lang = useLang();
   const game = useSimStore((s) => s.game)!;
   const callLpCapital = useSimStore((s) => s.callLpCapital);
 
@@ -30,14 +34,14 @@ export function FundScreen() {
 
   return (
     <View style={styles.container}>
-      <SimHeader title="Fonds" />
+      <SimHeader title={t({ de: 'Fonds', en: 'Fund' })} />
       <ScrollView contentContainerStyle={styles.scroll}>
-        <TabTip tipKey="fonds" text="Rufe LP-Kapital ab für Dry Powder, erfülle Mandate für Reputation & frisches Kapital, und halte einen Cash-Puffer gegen Mittelabzüge." />
+        <TabTip tipKey="fonds" text={t({ de: 'Rufe LP-Kapital ab für Dry Powder, erfülle Mandate für Reputation & frisches Kapital, und halte einen Cash-Puffer gegen Mittelabzüge.', en: 'Call LP capital for dry powder, fulfil mandates for reputation & fresh capital, and keep a cash buffer against redemptions.' })} />
         <Card>
-          <SectionTitle>Fonds-Kennzahlen</SectionTitle>
+          <SectionTitle>{t({ de: 'Fonds-Kennzahlen', en: 'Fund metrics' })}</SectionTitle>
           <Text style={styles.big}>{fmtMoney(fundNav)}</Text>
           <View style={styles.statRow}>
-            <StatTile label="Netto-IRR" value={fmtPct(metrics.netIrr)} valueColor={metrics.netIrr >= 0 ? colors.positive : colors.negative} />
+            <StatTile label={t({ de: 'Netto-IRR', en: 'Net IRR' })} value={fmtPct(metrics.netIrr)} valueColor={metrics.netIrr >= 0 ? colors.positive : colors.negative} />
             <StatTile label="TVPI" value={fmtMultiple(metrics.tvpi)} />
             <StatTile label="DPI" value={fmtMultiple(metrics.dpi)} />
             <StatTile label="RVPI" value={fmtMultiple(metrics.rvpi)} />
@@ -59,18 +63,18 @@ export function FundScreen() {
           const elevated = !lockup && (drawdown > 0.1 || (Number.isFinite(trailing) && trailing < 0.05));
           return (
             <Card>
-              <SectionTitle>Liquidität & Abzugsrisiko</SectionTitle>
+              <SectionTitle>{t({ de: 'Liquidität & Abzugsrisiko', en: 'Liquidity & redemption risk' })}</SectionTitle>
               <View style={styles.statRow}>
-                <StatTile label="Fonds-Cash" value={fmtMoney(game.portfolio.cash)} />
-                <StatTile label="Cash-Quote" value={fmtPct(cashQuote, 0)} valueColor={cashQuote < 0.1 ? colors.negative : colors.text} />
+                <StatTile label={t({ de: 'Fonds-Cash', en: 'Fund cash' })} value={fmtMoney(game.portfolio.cash)} />
+                <StatTile label={t({ de: 'Cash-Quote', en: 'Cash ratio' })} value={fmtPct(cashQuote, 0)} valueColor={cashQuote < 0.1 ? colors.negative : colors.text} />
                 <StatTile label="Drawdown" value={fmtPct(drawdown)} valueColor={drawdown > 0.1 ? colors.negative : colors.text} />
               </View>
               <Text style={[styles.hint, { color: elevated ? colors.negative : colors.textMuted }]}>
                 {lockup
-                  ? 'Lockup aktiv — vorerst keine Mittelabzüge.'
+                  ? t({ de: 'Lockup aktiv — vorerst keine Mittelabzüge.', en: 'Lockup active — no redemptions for now.' })
                   : elevated
-                    ? '⚠ Erhöhtes Abzugsrisiko: schwache Performance/Drawdown. Halte Cash-Puffer, sonst drohen Notverkäufe.'
-                    : 'Abzugsrisiko gering. Ein Cash-Puffer schützt vor Zwangsverkäufen in Krisen.'}
+                    ? t({ de: '⚠ Erhöhtes Abzugsrisiko: schwache Performance/Drawdown. Halte Cash-Puffer, sonst drohen Notverkäufe.', en: '⚠ Elevated redemption risk: weak performance/drawdown. Keep a cash buffer or face forced sales.' })
+                    : t({ de: 'Abzugsrisiko gering. Ein Cash-Puffer schützt vor Zwangsverkäufen in Krisen.', en: 'Redemption risk low. A cash buffer protects against forced sales in crises.' })}
               </Text>
             </Card>
           );
@@ -78,69 +82,69 @@ export function FundScreen() {
 
         {(game.specialHoldings ?? []).length > 0 ? (
           <Card>
-            <SectionTitle ornament>Sondersituationen</SectionTitle>
+            <SectionTitle ornament>{t({ de: 'Sondersituationen', en: 'Special situations' })}</SectionTitle>
             {(game.specialHoldings ?? []).map((h) => (
               <View key={h.id} style={styles.lpRow}>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.lpName}>{h.title}</Text>
-                  <Text style={styles.lpMeta}>Investiert {fmtMoney(h.invested)} · löst sich in {Math.max(0, h.resolveMonth - game.month)} Mon. auf</Text>
+                  <Text style={styles.lpMeta}>{t({ de: 'Investiert', en: 'Invested' })} {fmtMoney(h.invested)} · {t({ de: 'löst sich in', en: 'resolves in' })} {Math.max(0, h.resolveMonth - game.month)} {t({ de: 'Mon. auf', en: 'mo.' })}</Text>
                 </View>
-                <Pill text="gebunden" color={colors.warning} />
+                <Pill text={t({ de: 'gebunden', en: 'locked' })} color={colors.warning} />
               </View>
             ))}
           </Card>
         ) : null}
 
         <Card>
-          <SectionTitle ornament>Mandate & Ziele der LPs</SectionTitle>
+          <SectionTitle ornament>{t({ de: 'Mandate & Ziele der LPs', en: 'Mandates & LP objectives' })}</SectionTitle>
           {game.objectives.filter((o) => o.status === 'active').length === 0 ? (
-            <Text style={styles.empty}>Derzeit keine offenen Mandate.</Text>
+            <Text style={styles.empty}>{t({ de: 'Derzeit keine offenen Mandate.', en: 'No open mandates right now.' })}</Text>
           ) : (
             game.objectives
               .filter((o) => o.status === 'active')
-              .map((obj) => <ObjectiveRow key={obj.id} obj={obj} value={metricValue(game, obj.metric)} monthsLeft={obj.deadlineMonth - game.month} />)
+              .map((obj) => <ObjectiveRow key={obj.id} obj={obj} value={metricValue(game, obj.metric)} monthsLeft={obj.deadlineMonth - game.month} lang={lang} />)
           )}
         </Card>
 
         <Card>
-          <SectionTitle>Kapital abrufen (Dry Powder)</SectionTitle>
-          <Text style={styles.hint}>Abrufbar: {fmtMoney(uncalled)} · Konditionen: {fmtPct(game.fund.mgmtFeeRate, 0)} Fee / {fmtPct(game.fund.carryRate, 0)} Carry über {fmtPct(game.fund.hurdleRate, 0)} Hurdle</Text>
+          <SectionTitle>{t({ de: 'Kapital abrufen (Dry Powder)', en: 'Call capital (dry powder)' })}</SectionTitle>
+          <Text style={styles.hint}>{t({ de: 'Abrufbar', en: 'Available' })}: {fmtMoney(uncalled)} · {t({ de: 'Konditionen', en: 'Terms' })}: {fmtPct(game.fund.mgmtFeeRate, 0)} Fee / {fmtPct(game.fund.carryRate, 0)} Carry {t({ de: 'über', en: 'over' })} {fmtPct(game.fund.hurdleRate, 0)} Hurdle</Text>
           {uncalled <= 0 ? (
-            <Text style={styles.empty}>Kein abrufbares Kapital. Raise mehr LP-Commitments über Track-Record & IR.</Text>
+            <Text style={styles.empty}>{t({ de: 'Kein abrufbares Kapital. Raise mehr LP-Commitments über Track-Record & IR.', en: 'No callable capital. Raise more LP commitments via track record & IR.' })}</Text>
           ) : (
             <>
               <AmountStepper value={callAmt} onChange={setCallAmt} step={1_000_000} min={500_000} max={uncalled} />
-              <Button title="Capital Call" onPress={() => { const r = callLpCapital(callAmt); if (!r.ok) notify('Nicht möglich', r.error ?? ''); }} style={{ marginTop: spacing.md }} />
+              <Button title="Capital Call" onPress={() => { const r = callLpCapital(callAmt); if (!r.ok) notify(t({ de: 'Nicht möglich', en: 'Not possible' }), r.error ?? ''); }} style={{ marginTop: spacing.md }} />
             </>
           )}
         </Card>
 
         {is ? (
           <Card>
-            <SectionTitle>GP-Erfolgsrechnung (Monat)</SectionTitle>
+            <SectionTitle>{t({ de: 'GP-Erfolgsrechnung (Monat)', en: 'GP income statement (month)' })}</SectionTitle>
             <Line label="Management Fees" value={is.mgmtFeeRevenue} />
             <Line label="Carried Interest" value={is.carryRevenue} />
-            <Line label="Gehälter" value={-is.salaries} />
-            <Line label="Infrastruktur" value={-is.infraOpex} />
-            <Line label="Steuern" value={-is.tax} />
+            <Line label={t({ de: 'Gehälter', en: 'Salaries' })} value={-is.salaries} />
+            <Line label={t({ de: 'Infrastruktur', en: 'Infrastructure' })} value={-is.infraOpex} />
+            <Line label={t({ de: 'Steuern', en: 'Taxes' })} value={-is.tax} />
             <View style={styles.divider} />
-            <Line label="Nettoergebnis" value={is.netIncome} bold />
+            <Line label={t({ de: 'Nettoergebnis', en: 'Net income' })} value={is.netIncome} bold />
           </Card>
         ) : null}
 
         {bs ? (
           <Card>
-            <SectionTitle>Bilanz (konsolidiert)</SectionTitle>
-            <Line label="Fonds-Cash" value={bs.fundCash} plain />
-            <Line label="GP-Cash" value={bs.firmCash} plain />
-            <Line label="Positionen (Equity)" value={bs.positionsValue} plain />
+            <SectionTitle>{t({ de: 'Bilanz (konsolidiert)', en: 'Balance sheet (consolidated)' })}</SectionTitle>
+            <Line label={t({ de: 'Fonds-Cash', en: 'Fund cash' })} value={bs.fundCash} plain />
+            <Line label={t({ de: 'GP-Cash', en: 'GP cash' })} value={bs.firmCash} plain />
+            <Line label={t({ de: 'Positionen (Equity)', en: 'Positions (equity)' })} value={bs.positionsValue} plain />
             <View style={styles.divider} />
-            <Line label="Summe Aktiva" value={bs.totalAssets} bold plain />
-            <Line label="Carry-Verbindlichkeit" value={-bs.accruedCarry} plain />
+            <Line label={t({ de: 'Summe Aktiva', en: 'Total assets' })} value={bs.totalAssets} bold plain />
+            <Line label={t({ de: 'Carry-Verbindlichkeit', en: 'Carry liability' })} value={-bs.accruedCarry} plain />
             <View style={styles.divider} />
-            <Line label="LP-Kapital" value={bs.lpCapital} plain />
-            <Line label="GP-Eigenkapital" value={bs.gpEquity} plain />
-            <Line label="Eigenkapital gesamt" value={bs.totalEquity} bold plain />
+            <Line label={t({ de: 'LP-Kapital', en: 'LP capital' })} value={bs.lpCapital} plain />
+            <Line label={t({ de: 'GP-Eigenkapital', en: 'GP equity' })} value={bs.gpEquity} plain />
+            <Line label={t({ de: 'Eigenkapital gesamt', en: 'Total equity' })} value={bs.totalEquity} bold plain />
           </Card>
         ) : null}
 
@@ -150,7 +154,7 @@ export function FundScreen() {
             <View key={lp.id} style={styles.lpRow}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.lpName}>{lp.name}</Text>
-                <Text style={styles.lpMeta}>{lp.type} · committed {fmtMoney(lp.committed)} · called {fmtMoney(lp.called)}</Text>
+                <Text style={styles.lpMeta}>{t(LP_TYPE_LABEL[lp.type])} · committed {fmtMoney(lp.committed)} · called {fmtMoney(lp.called)}</Text>
               </View>
               {lp.redeemed ? <Pill text="Redeemed" color={colors.negative} /> : <Pill text={fmtPct(lp.expectedReturn, 0)} color={colors.textMuted} />}
             </View>
@@ -161,18 +165,20 @@ export function FundScreen() {
   );
 }
 
-function ObjectiveRow({ obj, value, monthsLeft }: { obj: Objective; value: number; monthsLeft: number }) {
+function ObjectiveRow({ obj, value, monthsLeft, lang }: { obj: Objective; value: number; monthsLeft: number; lang: Lang }) {
+  const t = useTr();
   const progress = objectiveProgress(obj, value);
   const onTrack = progress >= 1;
+  const loc = localizedObjective(obj, lang);
   return (
     <View style={styles.objRow}>
       <View style={styles.objHead}>
-        <Text style={styles.objTitle}>{obj.title} · {obj.description}</Text>
-        <Pill text={onTrack ? 'Im Plan' : 'Offen'} color={onTrack ? colors.positive : colors.warning} />
+        <Text style={styles.objTitle}>{loc.title} · {loc.description}</Text>
+        <Pill text={onTrack ? t({ de: 'Im Plan', en: 'On track' }) : t({ de: 'Offen', en: 'Open' })} color={onTrack ? colors.positive : colors.warning} />
       </View>
       <ProgressBar value={progress} color={onTrack ? colors.positive : colors.primary} />
       <Text style={styles.objMeta}>
-        Aktuell {formatMetric(obj.metric, value)} · noch {Math.max(0, monthsLeft)} Mon. · Belohnung +{obj.rewardReputation} Rep
+        {t({ de: 'Aktuell', en: 'Current' })} {formatMetric(obj.metric, value)} · {t({ de: 'noch', en: 'in' })} {Math.max(0, monthsLeft)} {t({ de: 'Mon.', en: 'mo.' })} · {t({ de: 'Belohnung', en: 'Reward' })} +{obj.rewardReputation} Rep
         {obj.rewardCapital > 0 ? ` / +$${(obj.rewardCapital / 1e6).toFixed(0)}M` : ''}
       </Text>
     </View>

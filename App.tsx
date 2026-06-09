@@ -13,6 +13,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
 import { useSimStore } from './src/sim/store';
+import { useTr } from './src/i18n';
 import { useNewspaperFonts } from './src/utils/fonts';
 import { Loading } from './src/components/ui';
 import { SimStartScreen } from './src/sim/screens/SimStartScreen';
@@ -50,6 +51,7 @@ function TabGlyph({ glyph, color }: { glyph: string; color: string }) {
 }
 
 export default function App() {
+  const t = useTr();
   const fontsReady = useNewspaperFonts();
   const hydrated = useSimStore((s) => s.hydrated);
   const game = useSimStore((s) => s.game);
@@ -57,7 +59,7 @@ export default function App() {
   if (!fontsReady || !hydrated) {
     return (
       <SafeAreaProvider>
-        <Loading />
+        <Loading label={t({ de: 'Die Ausgabe wird gesetzt …', en: 'Setting the edition …' })} />
         <StatusBar style="dark" />
       </SafeAreaProvider>
     );
@@ -79,12 +81,12 @@ export default function App() {
                 tabBarLabelStyle: { fontFamily: fonts.serifBold, fontSize: 10, letterSpacing: 0.5, textTransform: 'uppercase' },
               }}
             >
-              <Tab.Screen name="Übersicht" component={SimDashboardScreen} options={{ tabBarIcon: ({ color }) => <TabGlyph glyph="§" color={color} /> }} />
-              <Tab.Screen name="Markt" component={MarketsScreen} options={{ tabBarIcon: ({ color }) => <TabGlyph glyph="$" color={color} /> }} />
-              <Tab.Screen name="Firma" component={FirmScreen} options={{ tabBarIcon: ({ color }) => <TabGlyph glyph="¶" color={color} /> }} />
-              <Tab.Screen name="Fonds" component={FundScreen} options={{ tabBarIcon: ({ color }) => <TabGlyph glyph="‡" color={color} /> }} />
-              <Tab.Screen name="Startups" component={StartupsScreen} options={{ tabBarIcon: ({ color }) => <TabGlyph glyph="◇" color={color} /> }} />
-              <Tab.Screen name="Risiko" component={RiskScreen} options={{ tabBarIcon: ({ color }) => <TabGlyph glyph="†" color={color} /> }} />
+              <Tab.Screen name="Übersicht" component={SimDashboardScreen} options={{ tabBarLabel: t({ de: 'Übersicht', en: 'Overview' }), tabBarIcon: ({ color }) => <TabGlyph glyph="§" color={color} /> }} />
+              <Tab.Screen name="Markt" component={MarketsScreen} options={{ tabBarLabel: t({ de: 'Markt', en: 'Markets' }), tabBarIcon: ({ color }) => <TabGlyph glyph="$" color={color} /> }} />
+              <Tab.Screen name="Firma" component={FirmScreen} options={{ tabBarLabel: t({ de: 'Firma', en: 'Firm' }), tabBarIcon: ({ color }) => <TabGlyph glyph="¶" color={color} /> }} />
+              <Tab.Screen name="Fonds" component={FundScreen} options={{ tabBarLabel: t({ de: 'Fonds', en: 'Fund' }), tabBarIcon: ({ color }) => <TabGlyph glyph="‡" color={color} /> }} />
+              <Tab.Screen name="Startups" component={StartupsScreen} options={{ tabBarLabel: t({ de: 'Startups', en: 'Startups' }), tabBarIcon: ({ color }) => <TabGlyph glyph="◇" color={color} /> }} />
+              <Tab.Screen name="Risiko" component={RiskScreen} options={{ tabBarLabel: t({ de: 'Risiko', en: 'Risk' }), tabBarIcon: ({ color }) => <TabGlyph glyph="†" color={color} /> }} />
             </Tab.Navigator>
             <MonthReportModal />
             <DecisionModal />

@@ -15,11 +15,13 @@ import {
   TOTAL_MONTHS,
 } from './types';
 import { Rng } from '../engine/rng';
+import { g, getLang } from '../i18n/lang';
+import { ROLE_LABEL, LP_TYPE_LABEL } from './labels';
 import { REGIME_LABEL, stepEconomy } from './economy';
 import { createInstruments, stepMarket } from './market';
 import { THESES } from './thesis';
 import { scenarioEconomy, applyScenarioToInstruments } from './scenarios';
-import { generateObjective, metricValue, isMet, computeScore } from './objectives';
+import { generateObjective, metricValue, isMet, computeScore, localizedObjective } from './objectives';
 import { createRivals, stepRivals, buildLeague, trailingReturn, playerRankFraction } from './rivals';
 import { maybeDecision } from './decisions';
 import { maybeOpportunity, payoffMultiple, OPP_LABEL } from './opportunities';
@@ -138,8 +140,11 @@ export function createSimGame(
     events: [
       ev(0, {
         type: 'info',
-        title: `${firm.name} gegründet`,
-        description: `GP-Runway $${(GP_RUNWAY / 1e6).toFixed(1)}M · Fund committed $${(committed / 1e6).toFixed(0)}M (davon $${(called / 1e6).toFixed(0)}M abgerufen). Baue Track-Record auf, um mehr LP-Kapital zu raisen.`,
+        title: g({ de: `${firm.name} gegründet`, en: `${firm.name} founded` }),
+        description: g({
+          de: `GP-Runway $${(GP_RUNWAY / 1e6).toFixed(1)}M · Fund committed $${(committed / 1e6).toFixed(0)}M (davon $${(called / 1e6).toFixed(0)}M abgerufen). Baue Track-Record auf, um mehr LP-Kapital zu raisen.`,
+          en: `GP runway $${(GP_RUNWAY / 1e6).toFixed(1)}M · Fund committed $${(committed / 1e6).toFixed(0)}M (of which $${(called / 1e6).toFixed(0)}M called). Build a track record to raise more LP capital.`,
+        }),
       }),
     ],
     rngState: rng.getState(),
@@ -186,22 +191,25 @@ export function advanceMonth(state: SimState): SimState {
   if (regimeChanged) {
     events.push(ev(month, {
       type: 'economy',
-      title: `Konjunkturwende: ${REGIME_LABEL[stepped.economy.regime]}`,
-      description: `BIP ${(stepped.economy.gdpGrowth * 100).toFixed(1)}%, Leitzins ${(stepped.economy.policyRate * 100).toFixed(1)}%.`,
+      title: g({ de: `Konjunkturwende: ${g(REGIME_LABEL[stepped.economy.regime])}`, en: `Regime shift: ${g(REGIME_LABEL[stepped.economy.regime])}` }),
+      description: g({
+        de: `BIP ${(stepped.economy.gdpGrowth * 100).toFixed(1)}%, Leitzins ${(stepped.economy.policyRate * 100).toFixed(1)}%.`,
+        en: `GDP ${(stepped.economy.gdpGrowth * 100).toFixed(1)}%, policy rate ${(stepped.economy.policyRate * 100).toFixed(1)}%.`,
+      }),
     }));
   }
 
   // 1b. Crisis lifecycle -----------------------------------------------------
   let crisis = state.crisis ? { ...state.crisis, monthsRemaining: state.crisis.monthsRemaining - 1 } : undefined;
   if (crisis && crisis.monthsRemaining <= 0) {
-    events.push(ev(month, { type: 'economy', title: `${crisis.label} überstanden`, description: 'Die Märkte beruhigen sich.' }));
+    events.push(ev(month, { type: 'economy', title: g({ de: `${crisis.label} überstanden`, en: `${crisis.label} weathered` }), description: g({ de: 'Die Märkte beruhigen sich.', en: 'Markets are calming down.' }) }));
     crisis = undefined;
   }
   if (!crisis) {
     const newCrisis = maybeTriggerCrisis(stepped.economy, false, rng, dp.crisisProbMult);
     if (newCrisis) {
       crisis = newCrisis;
-      events.push(ev(month, { type: 'blackswan', title: `⚠ ${crisis.label} (${crisis.monthsRemaining} Monate)`, description: CRISIS_DESC[crisis.type] }));
+      events.push(ev(month, { type: 'blackswan', title: g({ de: `⚠ ${crisis.label} (${crisis.monthsRemaining} Monate)`, en: `⚠ ${crisis.label} (${crisis.monthsRemaining} months)` }), description: g(CRISIS_DESC[crisis.type]) }));
     }
   }
   // Difficulty already raised the vol *target* in stepEconomy (stable, mean-
@@ -211,7 +219,7 @@ export function advanceMonth(state: SimState): SimState {
   // 2. Market ----------------------------------------------------------------
   const { instruments, blackSwan } = stepMarket(state.instruments, economy, month, rng, crisisEquityShock(crisis), dp.swanProbMult);
   if (blackSwan) {
-    events.push(ev(month, { type: 'blackswan', title: '🦢 Black Swan', description: 'Ein extremer Schock erschüttert die Märkte – gehebelte Positionen sind in Gefahr.' }));
+    events.push(ev(month, { type: 'blackswan', title: g({ de: '🦢 Black Swan', en: '🦢 Black Swan' }), description: g({ de: 'Ein extremer Schock erschüttert die Märkte – gehebelte Positionen sind in Gefahr.', en: 'An extreme shock rocks the markets — leveraged positions are at risk.' }) }));
   }
 
   // 3. Trading book ----------------------------------------------------------
@@ -227,7 +235,7 @@ export function advanceMonth(state: SimState): SimState {
   if (pStep.financingCost) post('financingCost', -pStep.financingCost);
   if (pStep.income) post('couponIncome', pStep.income);
   if (pStep.marginCalled.length > 0) {
-    events.push(ev(month, { type: 'risk', title: 'Margin Call', description: `Zwangsliquidation: ${pStep.marginCalled.join(', ')}.` }));
+    events.push(ev(month, { type: 'risk', title: g({ de: 'Margin Call', en: 'Margin Call' }), description: g({ de: `Zwangsliquidation: ${pStep.marginCalled.join(', ')}.`, en: `Forced liquidation: ${pStep.marginCalled.join(', ')}.` }) }));
   }
 
   // 3b. Hedge: pay the monthly premium, collect a payout in crashes/crises ----
@@ -238,7 +246,7 @@ export function advanceMonth(state: SimState): SimState {
     const payout = hedgePayout(hedge.notional, blackSwan, crisis);
     if (payout > 0) {
       cash += payout;
-      events.push(ev(month, { type: 'risk', title: 'Absicherung greift', description: `Hedge zahlt $${(payout / 1e6).toFixed(1)}M aus.` }));
+      events.push(ev(month, { type: 'risk', title: g({ de: 'Absicherung greift', en: 'Hedge pays out' }), description: g({ de: `Hedge zahlt $${(payout / 1e6).toFixed(1)}M aus.`, en: `Hedge pays $${(payout / 1e6).toFixed(1)}M.` }) }));
     }
     portfolio = { ...portfolio, cash };
     const rem = hedge.monthsRemaining - 1;
@@ -256,7 +264,7 @@ export function advanceMonth(state: SimState): SimState {
       cashAdd += proceeds;
       events.push(ev(month, {
         type: 'fund',
-        title: `${OPP_LABEL[h.type]} realisiert`,
+        title: g({ de: `${g(OPP_LABEL[h.type])} realisiert`, en: `${g(OPP_LABEL[h.type])} realised` }),
         description: `${h.title}: $${(h.invested / 1e6).toFixed(1)}M → $${(proceeds / 1e6).toFixed(1)}M (${mult.toFixed(2)}×).`,
       }));
     }
@@ -273,9 +281,13 @@ export function advanceMonth(state: SimState): SimState {
     portfolio = { ...portfolio, cash: portfolio.cash + vcStep.proceeds };
   }
   for (const note of vcStep.notes) {
-    const isExit = note.includes('Exit');
-    const isFail = note.includes('gescheitert');
-    events.push(ev(month, { type: 'fund', title: isExit ? 'Startup-Exit' : isFail ? 'Startup gescheitert' : 'Finanzierungsrunde', description: note }));
+    const title =
+      note.kind === 'exit'
+        ? g({ de: 'Startup-Exit', en: 'Startup Exit' })
+        : note.kind === 'fail'
+          ? g({ de: 'Startup gescheitert', en: 'Startup Failed' })
+          : g({ de: 'Finanzierungsrunde', en: 'Funding Round' });
+    events.push(ev(month, { type: 'fund', title, description: note.text }));
   }
 
   let fundNav = portfolioNav(portfolio, instruments);
@@ -295,7 +307,7 @@ export function advanceMonth(state: SimState): SimState {
     portfolio = { ...portfolio, cash: portfolio.cash - carryRes.carry };
     firm = { ...firm, cash: firm.cash + carryRes.carry, carryEarned: firm.carryEarned + carryRes.carry };
     post('carryRevenue', carryRes.carry);
-    events.push(ev(month, { type: 'fund', title: 'Carry kristallisiert', description: `Performance-Fee von $${(carryRes.carry / 1e6).toFixed(2)}M an die GP ausgeschüttet.` }));
+    events.push(ev(month, { type: 'fund', title: g({ de: 'Carry kristallisiert', en: 'Carry Crystallised' }), description: g({ de: `Performance-Fee von $${(carryRes.carry / 1e6).toFixed(2)}M an die GP ausgeschüttet.`, en: `Performance fee of $${(carryRes.carry / 1e6).toFixed(2)}M distributed to the GP.` }) }));
   }
   fundNav = portfolioNav(portfolio, instruments);
 
@@ -343,8 +355,11 @@ export function advanceMonth(state: SimState): SimState {
       fundNav = portfolioNav(portfolio, instruments);
       events.push(ev(month, {
         type: 'fund',
-        title: 'Mittelabzug',
-        description: `${redeemedCount} LP(s) ziehen $${(paid / 1e6).toFixed(1)}M ab${fireSaleLoss > 1000 ? ` · Notverkäufe kosten $${(fireSaleLoss / 1e6).toFixed(1)}M` : ''}.`,
+        title: g({ de: 'Mittelabzug', en: 'Redemption' }),
+        description: g({
+          de: `${redeemedCount} LP(s) ziehen $${(paid / 1e6).toFixed(1)}M ab${fireSaleLoss > 1000 ? ` · Notverkäufe kosten $${(fireSaleLoss / 1e6).toFixed(1)}M` : ''}.`,
+          en: `${redeemedCount} LP(s) withdraw $${(paid / 1e6).toFixed(1)}M${fireSaleLoss > 1000 ? ` · forced sales cost $${(fireSaleLoss / 1e6).toFixed(1)}M` : ''}.`,
+        }),
       }));
     }
   }
@@ -360,10 +375,10 @@ export function advanceMonth(state: SimState): SimState {
   post('salaries', -payroll);
   post('infraOpex', -infraOpex);
   for (const dep of firmStep.departures) {
-    events.push(ev(month, { type: 'firm', title: 'Kündigung', description: `${dep.name} (${dep.role}) verlässt die Firma (Moral ${dep.morale.toFixed(0)}).` }));
+    events.push(ev(month, { type: 'firm', title: g({ de: 'Kündigung', en: 'Resignation' }), description: g({ de: `${dep.name} (${g(ROLE_LABEL[dep.role])}) verlässt die Firma (Moral ${dep.morale.toFixed(0)}).`, en: `${dep.name} (${g(ROLE_LABEL[dep.role])}) is leaving the firm (morale ${dep.morale.toFixed(0)}).` }) }));
   }
   if (firm.cash < 0) {
-    events.push(ev(month, { type: 'firm', title: '⚠️ GP-Liquidität negativ', description: 'Die Management-Gesellschaft verbrennt Cash. Hebe Gebühren über mehr AUM oder reduziere Kosten.' }));
+    events.push(ev(month, { type: 'firm', title: g({ de: '⚠️ GP-Liquidität negativ', en: '⚠️ GP liquidity negative' }), description: g({ de: 'Die Management-Gesellschaft verbrennt Cash. Hebe Gebühren über mehr AUM oder reduziere Kosten.', en: 'The management company is burning cash. Raise fees via more AUM or cut costs.' }) }));
   }
 
   // 6. Tax on GP net income (monthly, on positive pre-tax) -------------------
@@ -381,7 +396,7 @@ export function advanceMonth(state: SimState): SimState {
   const newLP = tryRaiseCapital(fund, metrics, capabilities.fundraising, state.reputation, rng, allowedLpTypes);
   if (newLP) {
     fund = { ...fund, committed: fund.committed + newLP.committed, lps: [...fund.lps, newLP] };
-    events.push(ev(month, { type: 'fund', title: 'Neues LP-Commitment', description: `${newLP.name} (${newLP.type}) committed $${(newLP.committed / 1e6).toFixed(1)}M.` }));
+    events.push(ev(month, { type: 'fund', title: g({ de: 'Neues LP-Commitment', en: 'New LP Commitment' }), description: g({ de: `${newLP.name} (${g(LP_TYPE_LABEL[newLP.type])}) committed $${(newLP.committed / 1e6).toFixed(1)}M.`, en: `${newLP.name} (${g(LP_TYPE_LABEL[newLP.type])}) commits $${(newLP.committed / 1e6).toFixed(1)}M.` }) }));
   }
 
   // 8. Reputation ------------------------------------------------------------
@@ -414,15 +429,20 @@ export function advanceMonth(state: SimState): SimState {
         const lp = createLP('Endowment', obj.rewardCapital, rng);
         fund = { ...fund, committed: fund.committed + lp.committed, lps: [...fund.lps, lp] };
       }
+      const lo = localizedObjective(obj, getLang());
       events.push(ev(month, {
         type: 'fund',
-        title: `Mandat erfüllt: ${obj.title}`,
-        description: `${obj.description} erreicht. +${obj.rewardReputation} Reputation${obj.rewardCapital > 0 ? `, +$${(obj.rewardCapital / 1e6).toFixed(0)}M Commitment` : ''}.`,
+        title: g({ de: `Mandat erfüllt: ${lo.title}`, en: `Mandate met: ${lo.title}` }),
+        description: g({
+          de: `${lo.description} erreicht. +${obj.rewardReputation} Reputation${obj.rewardCapital > 0 ? `, +$${(obj.rewardCapital / 1e6).toFixed(0)}M Commitment` : ''}.`,
+          en: `${lo.description} reached. +${obj.rewardReputation} reputation${obj.rewardCapital > 0 ? `, +$${(obj.rewardCapital / 1e6).toFixed(0)}M commitment` : ''}.`,
+        }),
       }));
       return { ...obj, status: 'succeeded' as const };
     }
     reputation = Math.max(0, reputation - obj.penaltyReputation);
-    events.push(ev(month, { type: 'fund', title: `Mandat verfehlt: ${obj.title}`, description: `${obj.description} nicht erreicht. −${obj.penaltyReputation} Reputation.` }));
+    const loFail = localizedObjective(obj, getLang());
+    events.push(ev(month, { type: 'fund', title: g({ de: `Mandat verfehlt: ${loFail.title}`, en: `Mandate missed: ${loFail.title}` }), description: g({ de: `${loFail.description} nicht erreicht. −${obj.penaltyReputation} Reputation.`, en: `${loFail.description} not reached. −${obj.penaltyReputation} reputation.` }) }));
     return { ...obj, status: 'failed' as const };
   });
   let activeCount = objectives.filter((o) => o.status === 'active').length;
@@ -430,7 +450,8 @@ export function advanceMonth(state: SimState): SimState {
     const fresh = generateObjective(rng, month, reputation);
     objectives.push(fresh);
     activeCount += 1;
-    events.push(ev(month, { type: 'fund', title: `Neues LP-Mandat: ${fresh.title}`, description: `${fresh.description} bis Monat ${fresh.deadlineMonth + 1}.` }));
+    const loFresh = localizedObjective(fresh, getLang());
+    events.push(ev(month, { type: 'fund', title: g({ de: `Neues LP-Mandat: ${loFresh.title}`, en: `New LP mandate: ${loFresh.title}` }), description: g({ de: `${loFresh.description} bis Monat ${fresh.deadlineMonth + 1}.`, en: `${loFresh.description} by month ${fresh.deadlineMonth + 1}.` }) }));
   }
 
   // 9. Research desk & team-contribution feedback ----------------------------
@@ -447,9 +468,9 @@ export function advanceMonth(state: SimState): SimState {
   if (materialAlpha > 15_000 || contribution.marginCallsPrevented > 0) {
     const parts: string[] = [];
     if (Math.abs(contribution.alphaPnl) >= 1_000) parts.push(`Alpha ${contribution.alphaPnl >= 0 ? '+' : ''}$${(contribution.alphaPnl / 1e3).toFixed(0)}K`);
-    if (contribution.financingSaved >= 1_000) parts.push(`Finanzierung −$${(contribution.financingSaved / 1e3).toFixed(0)}K`);
-    if (contribution.marginCallsPrevented > 0) parts.push(`${contribution.marginCallsPrevented} Margin Call(s) vermieden`);
-    events.push(ev(month, { type: 'firm', title: 'Team-Beitrag', description: parts.join(' · ') }));
+    if (contribution.financingSaved >= 1_000) parts.push(g({ de: `Finanzierung −$${(contribution.financingSaved / 1e3).toFixed(0)}K`, en: `Financing −$${(contribution.financingSaved / 1e3).toFixed(0)}K` }));
+    if (contribution.marginCallsPrevented > 0) parts.push(g({ de: `${contribution.marginCallsPrevented} Margin Call(s) vermieden`, en: `${contribution.marginCallsPrevented} margin call(s) avoided` }));
+    events.push(ev(month, { type: 'firm', title: g({ de: 'Team-Beitrag', en: 'Team Contribution' }), description: parts.join(' · ') }));
   }
 
   // 10. Statements -----------------------------------------------------------
@@ -509,7 +530,7 @@ export function advanceMonth(state: SimState): SimState {
   );
   const achievements = [...(state.achievements ?? []), ...newlyUnlocked.map((a) => ({ id: a.id, month }))];
   for (const a of newlyUnlocked) {
-    events.push(ev(month, { type: 'info', title: `🏅 Auszeichnung: ${a.title}`, description: a.description }));
+    events.push(ev(month, { type: 'info', title: g({ de: `🏅 Auszeichnung: ${g(a.title)}`, en: `🏅 Achievement: ${g(a.title)}` }), description: g(a.description) }));
   }
 
   const enterpriseStart = state.equityHistory[state.equityHistory.length - 1] ?? enterprise;
@@ -560,13 +581,20 @@ export function advanceMonth(state: SimState): SimState {
     const sc = computeScore(endState);
     finalScore = sc.score;
     finalGrade = sc.grade;
-    const title = gameOverReason === 'horizon' ? 'Spielende' : gameOverReason === 'insolvency' ? 'GP zahlungsunfähig' : 'Vertrauen verspielt';
-    const desc =
+    const title = g(
       gameOverReason === 'horizon'
-        ? `Nach 20 Jahren: Unternehmenswert $${(enterprise / 1e6).toFixed(1)}M. Note ${finalGrade} (${finalScore}).`
+        ? { de: 'Spielende', en: 'Game Over' }
         : gameOverReason === 'insolvency'
-          ? 'Die Management-Gesellschaft ist pleite. Das Haus schließt.'
-          : 'Die Reputation ist auf null gefallen — die LPs ziehen ab.';
+          ? { de: 'GP zahlungsunfähig', en: 'GP Insolvent' }
+          : { de: 'Vertrauen verspielt', en: 'Trust Lost' },
+    );
+    const desc = g(
+      gameOverReason === 'horizon'
+        ? { de: `Nach 20 Jahren: Unternehmenswert $${(enterprise / 1e6).toFixed(1)}M. Note ${finalGrade} (${finalScore}).`, en: `After 20 years: enterprise value $${(enterprise / 1e6).toFixed(1)}M. Grade ${finalGrade} (${finalScore}).` }
+        : gameOverReason === 'insolvency'
+          ? { de: 'Die Management-Gesellschaft ist pleite. Das Haus schließt.', en: 'The management company is bankrupt. The house closes.' }
+          : { de: 'Die Reputation ist auf null gefallen — die LPs ziehen ab.', en: 'Reputation has fallen to zero — the LPs withdraw.' },
+    );
     events.push(ev(month, { type: 'info', title, description: desc }));
   }
 

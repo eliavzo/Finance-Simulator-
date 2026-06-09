@@ -11,14 +11,24 @@ import { maxDrawdown } from '../engine/finance';
 import { difficultyParams, DEFAULT_DIFFICULTY } from './difficulty';
 import { fundMetrics } from './fund';
 import { portfolioNav } from './portfolio';
+import { Lang, Loc, tr, getLang } from '../i18n/lang';
 import { Rng } from '../engine/rng';
 
-export const METRIC_LABEL: Record<ObjectiveMetric, string> = {
-  netIrr: 'Netto-IRR',
-  tvpi: 'TVPI',
-  aum: 'Fonds-NAV',
-  maxDrawdown: 'Max Drawdown',
-  reputation: 'Reputation',
+export const METRIC_LABEL: Record<ObjectiveMetric, Loc> = {
+  netIrr: { de: 'Netto-IRR', en: 'Net IRR' },
+  tvpi: { de: 'TVPI', en: 'TVPI' },
+  aum: { de: 'Fonds-NAV', en: 'Fund NAV' },
+  maxDrawdown: { de: 'Max Drawdown', en: 'Max Drawdown' },
+  reputation: { de: 'Reputation', en: 'Reputation' },
+};
+
+/** Mandate title by metric (titles map 1:1 to a metric). */
+export const OBJECTIVE_TITLE: Record<ObjectiveMetric, Loc> = {
+  netIrr: { de: 'Renditeziel', en: 'Return Target' },
+  aum: { de: 'Wachstumsziel', en: 'Growth Target' },
+  tvpi: { de: 'Multiple-Ziel', en: 'Multiple Target' },
+  maxDrawdown: { de: 'Risiko-Limit', en: 'Risk Limit' },
+  reputation: { de: 'Standing-Ziel', en: 'Standing Target' },
 };
 
 let objCounter = 0;
@@ -29,15 +39,14 @@ interface Template {
   /** target generator given difficulty 0..1 */
   target: (d: number) => number;
   months: number;
-  title: string;
 }
 
 const TEMPLATES: Template[] = [
-  { metric: 'netIrr', comparator: 'gte', target: (d) => 0.08 + d * 0.08, months: 36, title: 'Renditeziel' },
-  { metric: 'aum', comparator: 'gte', target: (d) => 20_000_000 + d * 40_000_000, months: 48, title: 'Wachstumsziel' },
-  { metric: 'tvpi', comparator: 'gte', target: (d) => 1.3 + d * 0.5, months: 48, title: 'Multiple-Ziel' },
-  { metric: 'maxDrawdown', comparator: 'lte', target: (d) => 0.25 - d * 0.1, months: 36, title: 'Risiko-Limit' },
-  { metric: 'reputation', comparator: 'gte', target: (d) => 60 + d * 25, months: 36, title: 'Standing-Ziel' },
+  { metric: 'netIrr', comparator: 'gte', target: (d) => 0.08 + d * 0.08, months: 36 },
+  { metric: 'aum', comparator: 'gte', target: (d) => 20_000_000 + d * 40_000_000, months: 48 },
+  { metric: 'tvpi', comparator: 'gte', target: (d) => 1.3 + d * 0.5, months: 48 },
+  { metric: 'maxDrawdown', comparator: 'lte', target: (d) => 0.25 - d * 0.1, months: 36 },
+  { metric: 'reputation', comparator: 'gte', target: (d) => 60 + d * 25, months: 36 },
 ];
 
 /** Build a fresh mandate, scaled by reputation (higher rep ⇒ tougher asks). */
@@ -52,8 +61,8 @@ export function generateObjective(rng: Rng, month: number, reputation: number): 
 
   return {
     id: `obj-${month}-${objCounter}`,
-    title: tpl.title,
-    description: describe(tpl.metric, tpl.comparator, target),
+    title: tr(getLang(), OBJECTIVE_TITLE[tpl.metric]),
+    description: describe(tpl.metric, tpl.comparator, target, getLang()),
     metric: tpl.metric,
     target,
     comparator: tpl.comparator,
@@ -65,9 +74,17 @@ export function generateObjective(rng: Rng, month: number, reputation: number): 
   };
 }
 
-function describe(metric: ObjectiveMetric, comparator: 'gte' | 'lte', target: number): string {
+function describe(metric: ObjectiveMetric, comparator: 'gte' | 'lte', target: number, lang: Lang): string {
   const v = formatMetric(metric, target);
-  return comparator === 'gte' ? `${METRIC_LABEL[metric]} ≥ ${v}` : `${METRIC_LABEL[metric]} ≤ ${v}`;
+  return comparator === 'gte' ? `${tr(lang, METRIC_LABEL[metric])} ≥ ${v}` : `${tr(lang, METRIC_LABEL[metric])} ≤ ${v}`;
+}
+
+/** Localised title & description for an objective (re-derivable at render). */
+export function localizedObjective(obj: Objective, lang: Lang): { title: string; description: string } {
+  return {
+    title: tr(lang, OBJECTIVE_TITLE[obj.metric]),
+    description: describe(obj.metric, obj.comparator, obj.target, lang),
+  };
 }
 
 export function formatMetric(metric: ObjectiveMetric, value: number): string {

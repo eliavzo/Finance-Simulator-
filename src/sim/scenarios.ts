@@ -6,18 +6,34 @@
  * opens on the eve of a crisis or in a tech mania.
  */
 import { EconomyState, Instrument, Scenario, YieldCurveKnot } from './types';
+import { Loc } from '../i18n/lang';
 
 export interface ScenarioProfile {
-  label: string;
-  blurb: string;
+  label: Loc;
+  blurb: Loc;
 }
 
 export const SCENARIOS: Record<Scenario, ScenarioProfile> = {
-  normal: { label: 'Normaler Start', blurb: 'Ausgewogene Expansion. Der klassische Einstieg.' },
-  boom: { label: 'Hausse', blurb: 'Euphorie: niedrige Zinsen, hohe Stimmung — aber alles ist teuer.' },
-  precrisis: { label: 'Am Vorabend der Krise', blurb: 'Überhitzung: hohe Zinsen, inverse Kurve, Crash-Gefahr.' },
-  dotcom: { label: 'Tech-Manie', blurb: 'Tech-Aktien sind heiß gelaufen. Reitest du die Blase — oder shortest du sie?' },
-  stagflation: { label: 'Stagflation', blurb: 'Hohe Inflation, schwaches Wachstum, Rohstoffe im Aufwind.' },
+  normal: {
+    label: { de: 'Normaler Start', en: 'Normal Start' },
+    blurb: { de: 'Ausgewogene Expansion. Der klassische Einstieg.', en: 'A balanced expansion. The classic opening.' },
+  },
+  boom: {
+    label: { de: 'Hausse', en: 'Boom' },
+    blurb: { de: 'Euphorie: niedrige Zinsen, hohe Stimmung — aber alles ist teuer.', en: 'Euphoria: low rates, high sentiment — but everything is expensive.' },
+  },
+  precrisis: {
+    label: { de: 'Am Vorabend der Krise', en: 'On the Eve of Crisis' },
+    blurb: { de: 'Überhitzung: hohe Zinsen, inverse Kurve, Crash-Gefahr.', en: 'Overheating: high rates, an inverted curve, crash risk.' },
+  },
+  dotcom: {
+    label: { de: 'Tech-Manie', en: 'Tech Mania' },
+    blurb: { de: 'Tech-Aktien sind heiß gelaufen. Reitest du die Blase — oder shortest du sie?', en: 'Tech stocks have run hot. Do you ride the bubble — or short it?' },
+  },
+  stagflation: {
+    label: { de: 'Stagflation', en: 'Stagflation' },
+    blurb: { de: 'Hohe Inflation, schwaches Wachstum, Rohstoffe im Aufwind.', en: 'High inflation, weak growth, commodities on the rise.' },
+  },
 };
 
 export const SCENARIO_ORDER: Scenario[] = ['normal', 'boom', 'precrisis', 'dotcom', 'stagflation'];

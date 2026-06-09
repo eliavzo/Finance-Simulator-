@@ -5,12 +5,15 @@ import { useSimStore } from '../store';
 import { analyzeRun, Finding } from '../analysis';
 import { Button, Rule } from '../../components/ui';
 import { colors, fonts, spacing } from '../../utils/theme';
+import { useTr, useLang } from '../../i18n';
 
 export function AnalysisModal() {
+  const t = useTr();
+  const lang = useLang();
   const show = useSimStore((s) => s.showAnalysis);
   const close = useSimStore((s) => s.closeAnalysis);
   const game = useSimStore((s) => s.game);
-  const report = useMemo(() => (game ? analyzeRun(game) : null), [game, show]);
+  const report = useMemo(() => (game ? analyzeRun(game, lang) : null), [game, show, lang]);
   if (!show || !game || !report) return null;
 
   return (
@@ -19,8 +22,8 @@ export function AnalysisModal() {
         <View style={styles.panel}>
           <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
             <Rule double />
-            <Text style={styles.title}>Spielanalyse</Text>
-            <Text style={styles.dateline}>DIE NACHLESE</Text>
+            <Text style={styles.title}>{t({ de: 'Spielanalyse', en: 'Game Analysis' })}</Text>
+            <Text style={styles.dateline}>{t({ de: 'DIE NACHLESE', en: 'THE POST-MORTEM' })}</Text>
             <Rule double />
 
             <Text style={styles.profile}>{report.profile}</Text>
@@ -29,12 +32,12 @@ export function AnalysisModal() {
 
             {report.failure ? (
               <View style={styles.failBox}>
-                <Text style={styles.failTitle}>Warum es endete</Text>
+                <Text style={styles.failTitle}>{t({ de: 'Warum es endete', en: 'Why it ended' })}</Text>
                 <Text style={styles.failText}>{report.failure}</Text>
               </View>
             ) : null}
 
-            <SectionRule label="Verhaltens-Kennzahlen" />
+            <SectionRule label={t({ de: 'Verhaltens-Kennzahlen', en: 'Behavioral metrics' })} />
             <View style={styles.metrics}>
               {report.metrics.map((mt) => (
                 <View key={mt.label} style={styles.metric}>
@@ -44,22 +47,22 @@ export function AnalysisModal() {
               ))}
             </View>
 
-            <SectionRule label="Das lief gut" />
+            <SectionRule label={t({ de: 'Das lief gut', en: 'What went well' })} />
             {report.strengths.length === 0 ? (
-              <Text style={styles.empty}>Wenig Positives zu vermelden — Zeit, das Ruder herumzureißen.</Text>
+              <Text style={styles.empty}>{t({ de: 'Wenig Positives zu vermelden — Zeit, das Ruder herumzureißen.', en: 'Little to celebrate — time to turn things around.' })}</Text>
             ) : (
               report.strengths.map((f, i) => <FindingRow key={i} f={f} />)
             )}
 
-            <SectionRule label="Verbesserungswürdig" />
+            <SectionRule label={t({ de: 'Verbesserungswürdig', en: 'Room for improvement' })} />
             {report.weaknesses.length === 0 ? (
-              <Text style={styles.empty}>Keine groben Fehler erkennbar — stark gespielt!</Text>
+              <Text style={styles.empty}>{t({ de: 'Keine groben Fehler erkennbar — stark gespielt!', en: 'No major mistakes spotted — strong play!' })}</Text>
             ) : (
               report.weaknesses.map((f, i) => <FindingRow key={i} f={f} />)
             )}
 
-            <Button title="Schließen" variant="secondary" onPress={close} style={{ marginTop: spacing.lg }} />
-            <Text style={styles.colophon}>Alpha &amp; Carry · Die Finanz-Chronik</Text>
+            <Button title={t({ de: 'Schließen', en: 'Close' })} variant="secondary" onPress={close} style={{ marginTop: spacing.lg }} />
+            <Text style={styles.colophon}>{t({ de: 'Alpha & Carry · Die Finanz-Chronik', en: 'Alpha & Carry · The Financial Chronicle' })}</Text>
           </ScrollView>
         </View>
       </View>

@@ -5,14 +5,16 @@ import { useSimStore } from '../sim/store';
 import { ACHIEVEMENTS } from '../sim/achievements';
 import { Button, Rule } from './ui';
 import { colors, fonts, spacing } from '../utils/theme';
+import { useTr, Loc } from '../i18n';
 
-function earnedLabel(month: number): string {
+function earnedLabel(month: number, t: (l: Loc) => string): string {
   const year = Math.floor(month / 12) + 1;
   const m = (month % 12) + 1;
-  return `Jahr ${year}, Monat ${String(m).padStart(2, '0')}`;
+  return `${t({ de: 'Jahr', en: 'Year' })} ${year}, ${t({ de: 'Monat', en: 'Month' })} ${String(m).padStart(2, '0')}`;
 }
 
 export function AchievementsModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+  const t = useTr();
   const game = useSimStore((s) => s.game);
   const unlocked = new Map((game?.achievements ?? []).map((a) => [a.id, a.month]));
   const count = unlocked.size;
@@ -23,8 +25,8 @@ export function AchievementsModal({ visible, onClose }: { visible: boolean; onCl
         <View style={styles.panel}>
           <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
             <Rule double />
-            <Text style={styles.title}>Auszeichnungen</Text>
-            <Text style={styles.dateline}>{`${count} VON ${ACHIEVEMENTS.length} ERRUNGEN`}</Text>
+            <Text style={styles.title}>{t({ de: 'Auszeichnungen', en: 'Achievements' })}</Text>
+            <Text style={styles.dateline}>{`${count} ${t({ de: 'VON', en: 'OF' })} ${ACHIEVEMENTS.length} ${t({ de: 'ERRUNGEN', en: 'EARNED' })}`}</Text>
             <Rule double />
 
             {ACHIEVEMENTS.map((a) => {
@@ -33,16 +35,16 @@ export function AchievementsModal({ visible, onClose }: { visible: boolean; onCl
                 <View key={a.id} style={styles.row}>
                   <Text style={[styles.mark, { color: has ? colors.warning : colors.ruleSoft }]}>{has ? '🏅' : '○'}</Text>
                   <View style={{ flex: 1 }}>
-                    <Text style={[styles.rowTitle, !has && styles.locked]}>{a.title}</Text>
-                    <Text style={styles.rowDesc}>{a.description}</Text>
-                    {has ? <Text style={styles.earned}>Errungen: {earnedLabel(unlocked.get(a.id)!)}</Text> : null}
+                    <Text style={[styles.rowTitle, !has && styles.locked]}>{t(a.title)}</Text>
+                    <Text style={styles.rowDesc}>{t(a.description)}</Text>
+                    {has ? <Text style={styles.earned}>{t({ de: 'Errungen', en: 'Earned' })}: {earnedLabel(unlocked.get(a.id)!, t)}</Text> : null}
                   </View>
                 </View>
               );
             })}
 
-            <Button title="Schließen" variant="secondary" onPress={onClose} style={{ marginTop: spacing.lg }} />
-            <Text style={styles.colophon}>Alpha &amp; Carry · Die Finanz-Chronik</Text>
+            <Button title={t({ de: 'Schließen', en: 'Close' })} variant="secondary" onPress={onClose} style={{ marginTop: spacing.lg }} />
+            <Text style={styles.colophon}>{t({ de: 'Alpha & Carry · Die Finanz-Chronik', en: 'Alpha & Carry · The Financial Chronicle' })}</Text>
           </ScrollView>
         </View>
       </View>

@@ -9,6 +9,7 @@ import {
   View,
   ViewStyle,
 } from 'react-native';
+import { useTr } from '../i18n';
 import { colors, fonts, spacing } from '../utils/theme';
 
 /** A bordered "column" box. */
@@ -127,12 +128,13 @@ export function ProgressBar({ value, color }: { value: number; color: string }) 
 }
 
 export function Loading({ label }: { label?: string }) {
+  const t = useTr();
   return (
     <View style={styles.loading}>
       <Text style={styles.loadingTitle}>Alpha &amp; Carry</Text>
       <View style={styles.loadingRule} />
       <ActivityIndicator color={colors.primary} />
-      <Text style={styles.loadingText}>{label ?? 'Die Ausgabe wird gesetzt …'}</Text>
+      <Text style={styles.loadingText}>{label ?? t({ de: 'Die Ausgabe wird gesetzt …', en: 'Setting the edition …' })}</Text>
     </View>
   );
 }

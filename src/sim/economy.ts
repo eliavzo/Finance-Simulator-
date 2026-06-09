@@ -7,6 +7,7 @@
  * an implied-vol index and risk sentiment.
  */
 import { EconomyState, Regime, YieldCurveKnot } from './types';
+import { Loc } from '../i18n/lang';
 import { Rng } from '../engine/rng';
 
 const TENORS = [0.25, 1, 2, 5, 10, 30];
@@ -108,16 +109,28 @@ export function stepEconomy(econ: EconomyState, rng: Rng, volTargetMult = 1): Ec
   };
 }
 
-export const REGIME_LABEL: Record<Regime, string> = {
-  expansion: 'Expansion',
-  peak: 'Hochkonjunktur',
-  contraction: 'Kontraktion',
-  trough: 'Rezession',
+export const REGIME_LABEL: Record<Regime, Loc> = {
+  expansion: { de: 'Expansion', en: 'Expansion' },
+  peak: { de: 'Hochkonjunktur', en: 'Peak' },
+  contraction: { de: 'Kontraktion', en: 'Contraction' },
+  trough: { de: 'Rezession', en: 'Trough' },
 };
 
-export const REGIME_DESC: Record<Regime, string> = {
-  expansion: 'Wachstum, Risikoappetit, steile Zinskurve, günstige Finanzierung.',
-  peak: 'Überhitzung: hohe Zinsen, flache/inverse Kurve, Crash-Risiko steigt.',
-  contraction: 'Abschwung: fallende Märkte, weite Spreads, hohe Vola.',
-  trough: 'Bodenbildung: niedrige Zinsen, günstige Einstiege, schwache Stimmung.',
+export const REGIME_DESC: Record<Regime, Loc> = {
+  expansion: {
+    de: 'Wachstum, Risikoappetit, steile Zinskurve, günstige Finanzierung.',
+    en: 'Growth, risk appetite, a steep yield curve, cheap financing.',
+  },
+  peak: {
+    de: 'Überhitzung: hohe Zinsen, flache/inverse Kurve, Crash-Risiko steigt.',
+    en: 'Overheating: high rates, a flat/inverted curve, rising crash risk.',
+  },
+  contraction: {
+    de: 'Abschwung: fallende Märkte, weite Spreads, hohe Vola.',
+    en: 'Downturn: falling markets, wide spreads, high volatility.',
+  },
+  trough: {
+    de: 'Bodenbildung: niedrige Zinsen, günstige Einstiege, schwache Stimmung.',
+    en: 'Bottoming out: low rates, cheap entries, weak sentiment.',
+  },
 };

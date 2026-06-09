@@ -12,14 +12,17 @@ import { difficultyParams, presetLabel, heatLabel } from '../difficulty';
 import { Button, Rule, StatTile } from '../../components/ui';
 import { colors, fonts, spacing } from '../../utils/theme';
 import { fmtMoney, fmtMultiple, fmtPct } from '../../utils/format';
+import { useTr, useLang, Loc } from '../../i18n';
 
-const REASON_HEADLINE: Record<string, string> = {
-  horizon: 'Zwanzig Jahre — die Schlussbilanz',
-  insolvency: 'Das Haus ist gefallen',
-  reputation: 'Die LPs haben das Vertrauen verloren',
+const REASON_HEADLINE: Record<string, Loc> = {
+  horizon: { de: 'Zwanzig Jahre — die Schlussbilanz', en: 'Twenty years — the final reckoning' },
+  insolvency: { de: 'Das Haus ist gefallen', en: 'The house has fallen' },
+  reputation: { de: 'Die LPs haben das Vertrauen verloren', en: 'The LPs have lost trust' },
 };
 
 export function EndGameModal() {
+  const t = useTr();
+  const lang = useLang();
   const game = useSimStore((s) => s.game);
   const resetGame = useSimStore((s) => s.resetGame);
   const openAnalysis = useSimStore((s) => s.openAnalysis);
@@ -48,46 +51,46 @@ export function EndGameModal() {
         <View style={styles.panel}>
           <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
             <Rule double />
-            <Text style={styles.masthead}>Schlussbilanz</Text>
-            <Text style={styles.dateline}>{`${game.firm.name.toUpperCase()} · LETZTE AUSGABE`}</Text>
+            <Text style={styles.masthead}>{t({ de: 'Schlussbilanz', en: 'Final Reckoning' })}</Text>
+            <Text style={styles.dateline}>{`${game.firm.name.toUpperCase()} · ${t({ de: 'LETZTE AUSGABE', en: 'FINAL EDITION' })}`}</Text>
             <Rule double />
 
-            <Text style={styles.headline}>{REASON_HEADLINE[reason]}</Text>
+            <Text style={styles.headline}>{t(REASON_HEADLINE[reason])}</Text>
 
             <View style={styles.gradeWrap}>
               <Text style={styles.grade}>{game.finalGrade ?? '—'}</Text>
-              <Text style={styles.score}>{game.finalScore ?? 0} Punkte</Text>
+              <Text style={styles.score}>{game.finalScore ?? 0} {t({ de: 'Punkte', en: 'points' })}</Text>
               <Text style={styles.diffLine}>
-                {presetLabel(game.difficulty)} · Härtegrad {heatLabel(difficultyParams(game.difficulty).heat)} · Score ×{difficultyParams(game.difficulty).scoreMult.toFixed(2)}
+                {presetLabel(game.difficulty, lang)} · {t({ de: 'Härtegrad', en: 'Heat' })} {heatLabel(difficultyParams(game.difficulty).heat, lang)} · Score ×{difficultyParams(game.difficulty).scoreMult.toFixed(2)}
               </Text>
             </View>
 
             <Rule />
             <View style={styles.statRow}>
-              <StatTile label="Unternehmenswert" value={fmtMoney(enterprise)} />
-              <StatTile label="Gesamtrendite" value={fmtPct(enterprise / start - 1)} valueColor={enterprise >= start ? colors.positive : colors.negative} />
+              <StatTile label={t({ de: 'Unternehmenswert', en: 'Enterprise value' })} value={fmtMoney(enterprise)} />
+              <StatTile label={t({ de: 'Gesamtrendite', en: 'Total return' })} value={fmtPct(enterprise / start - 1)} valueColor={enterprise >= start ? colors.positive : colors.negative} />
             </View>
             <View style={styles.statRow}>
-              <StatTile label="Netto-IRR" value={fmtPct(metrics.netIrr)} />
+              <StatTile label={t({ de: 'Netto-IRR', en: 'Net IRR' })} value={fmtPct(metrics.netIrr)} />
               <StatTile label="TVPI" value={fmtMultiple(metrics.tvpi)} />
             </View>
             <View style={styles.statRow}>
-              <StatTile label="Reputation" value={game.reputation.toFixed(0)} />
-              <StatTile label="Max Drawdown" value={fmtPct(dd)} valueColor={colors.negative} />
+              <StatTile label={t({ de: 'Reputation', en: 'Reputation' })} value={game.reputation.toFixed(0)} />
+              <StatTile label={t({ de: 'Max Drawdown', en: 'Max Drawdown' })} value={fmtPct(dd)} valueColor={colors.negative} />
             </View>
             <View style={styles.statRow}>
-              <StatTile label="Mandate erfüllt" value={`${objSucceeded}/${objTotal}`} />
-              <StatTile label="Auszeichnungen" value={`${(game.achievements ?? []).length}/${ACHIEVEMENTS.length}`} />
+              <StatTile label={t({ de: 'Mandate erfüllt', en: 'Mandates fulfilled' })} value={`${objSucceeded}/${objTotal}`} />
+              <StatTile label={t({ de: 'Auszeichnungen', en: 'Achievements' })} value={`${(game.achievements ?? []).length}/${ACHIEVEMENTS.length}`} />
             </View>
             <View style={styles.statRow}>
               <StatTile label="Committed" value={fmtMoney(game.fund.committed)} />
-              <StatTile label="Stufe" value={tierPerks(game.peakReputation ?? game.reputation).label} />
+              <StatTile label={t({ de: 'Stufe', en: 'Tier' })} value={tierPerks(game.peakReputation ?? game.reputation).label} />
             </View>
 
-            <Button title="Spielanalyse ansehen" onPress={openAnalysis} variant="primary" style={{ marginTop: spacing.lg }} />
-            <Button title="Neues Spiel" onPress={resetGame} variant="secondary" style={{ marginTop: spacing.sm }} />
-            <Button title="Bücher ansehen" onPress={() => setDismissed(true)} variant="secondary" style={{ marginTop: spacing.sm }} />
-            <Text style={styles.colophon}>Alpha &amp; Carry · Die Finanz-Chronik</Text>
+            <Button title={t({ de: 'Spielanalyse ansehen', en: 'View game analysis' })} onPress={openAnalysis} variant="primary" style={{ marginTop: spacing.lg }} />
+            <Button title={t({ de: 'Neues Spiel', en: 'New game' })} onPress={resetGame} variant="secondary" style={{ marginTop: spacing.sm }} />
+            <Button title={t({ de: 'Bücher ansehen', en: 'View the books' })} onPress={() => setDismissed(true)} variant="secondary" style={{ marginTop: spacing.sm }} />
+            <Text style={styles.colophon}>{t({ de: 'Alpha & Carry · Die Finanz-Chronik', en: 'Alpha & Carry · The Financial Chronicle' })}</Text>
           </ScrollView>
         </View>
       </View>

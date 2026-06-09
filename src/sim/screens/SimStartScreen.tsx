@@ -8,23 +8,27 @@ import { PRESETS, DEFAULT_DIFFICULTY, UNLOCK_AT, difficultyParams, presetLabel, 
 import { DifficultyConfig, DifficultyLevel, FundThesis, Scenario } from '../types';
 import { Button, Masthead, Rule } from '../../components/ui';
 import { Segmented } from '../../components/controls';
+import { useLang, useTr, Lang, tr, LANGS, LANG_LABEL } from '../../i18n';
 import { colors, fonts, spacing } from '../../utils/theme';
 
 const MOD_KEYS: ModifierKey[] = ['market', 'capital', 'fees', 'rivals'];
 
-function presetRequirement(cfg: DifficultyConfig, u: Unlocks): string {
+function presetRequirement(cfg: DifficultyConfig, u: Unlocks, lang: Lang): string {
   const parts: string[] = [];
   const needsBrutal = MOD_KEYS.some((k) => cfg[k] === 2);
   const needsHard = MOD_KEYS.some((k) => cfg[k] >= 1);
-  if (needsBrutal && !u.brutal) parts.push(`„Brutal" (${UNLOCK_AT.brutal} Renommee)`);
-  else if (needsHard && !u.hard) parts.push(`„Hart" (${UNLOCK_AT.hard} Renommee)`);
-  if (cfg.ironman && !u.ironman) parts.push(`Ironman (${UNLOCK_AT.ironman} Renommee + 1 Lauf)`);
-  return `🔒 Benötigt ${parts.join(' + ')}`;
+  if (needsBrutal && !u.brutal) parts.push(tr(lang, { de: `„Brutal" (${UNLOCK_AT.brutal} Renommee)`, en: `“Brutal” (${UNLOCK_AT.brutal} renown)` }));
+  else if (needsHard && !u.hard) parts.push(tr(lang, { de: `„Hart" (${UNLOCK_AT.hard} Renommee)`, en: `“Hard” (${UNLOCK_AT.hard} renown)` }));
+  if (cfg.ironman && !u.ironman) parts.push(tr(lang, { de: `Ironman (${UNLOCK_AT.ironman} Renommee + 1 Lauf)`, en: `Ironman (${UNLOCK_AT.ironman} renown + 1 run)` }));
+  return tr(lang, { de: `🔒 Benötigt ${parts.join(' + ')}`, en: `🔒 Requires ${parts.join(' + ')}` });
 }
 
 export function SimStartScreen() {
   const newGame = useSimStore((s) => s.newGame);
   const meta = useSimStore((s) => s.meta);
+  const lang = useLang();
+  const setLang = useSimStore((s) => s.setLang);
+  const t = useTr();
   const unlocks = computeUnlocks(meta);
   const [officeName, setOfficeName] = useState('');
   const [thesis, setThesis] = useState<FundThesis>('multistrat');
@@ -40,97 +44,107 @@ export function SimStartScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.inner}>
-      <Masthead title="Alpha & Carry" dateline="Die Finanz-Chronik · Gegründet im Jahr I · Preis 2 / 20" />
+      <Masthead title="Alpha & Carry" dateline={t({ de: 'Die Finanz-Chronik · Gegründet im Jahr I · Preis 2 / 20', en: 'The Financial Chronicle · Founded in Year I · Price 2 / 20' })} />
 
-      <Text style={styles.headline}>Gründe deinen Fonds</Text>
+      <View style={styles.langRow}>
+        <Segmented<string>
+          value={lang}
+          onChange={(v) => setLang(v as Lang)}
+          options={LANGS.map((l) => ({ label: LANG_LABEL[l], value: l }))}
+        />
+      </View>
+
+      <Text style={styles.headline}>{t({ de: 'Gründe deinen Fonds', en: 'Found Your Fund' })}</Text>
       <Text style={styles.standfirst}>
-        Gib deinem Haus einen Namen, wähle Strategie und Marktumfeld. Alles prägt, wie sich die nächsten
-        zwanzig Jahre spielen.
+        {t({
+          de: 'Gib deinem Haus einen Namen, wähle Strategie und Marktumfeld. Alles prägt, wie sich die nächsten zwanzig Jahre spielen.',
+          en: 'Give your house a name, pick a strategy and market backdrop. Everything shapes how the next twenty years play out.',
+        })}
       </Text>
 
-      <SectionLabel text="Name des Hauses" />
+      <SectionLabel text={t({ de: 'Name des Hauses', en: 'Name of the House' })} />
       <TextInput
         style={styles.nameInput}
         value={officeName}
         onChangeText={setOfficeName}
-        placeholder="z. B. Nordstern Capital"
+        placeholder={t({ de: 'z. B. Nordstern Capital', en: 'e.g. Nordstern Capital' })}
         placeholderTextColor={colors.textMuted}
         maxLength={32}
         returnKeyType="done"
       />
 
-      <SectionLabel text="Strategie des Hauses" />
+      <SectionLabel text={t({ de: 'Strategie des Hauses', en: 'House Strategy' })} />
       {THESIS_ORDER.map((key) => (
         <SelectRow
           key={key}
-          label={THESES[key].label}
-          blurb={THESES[key].blurb}
+          label={t(THESES[key].label)}
+          blurb={t(THESES[key].blurb)}
           selected={thesis === key}
           onPress={() => setThesis(key)}
         />
       ))}
 
       <View style={{ height: spacing.md }} />
-      <SectionLabel text="Startszenario" />
+      <SectionLabel text={t({ de: 'Startszenario', en: 'Starting Scenario' })} />
       {SCENARIO_ORDER.map((key) => (
         <SelectRow
           key={key}
-          label={SCENARIOS[key].label}
-          blurb={SCENARIOS[key].blurb}
+          label={t(SCENARIOS[key].label)}
+          blurb={t(SCENARIOS[key].blurb)}
           selected={scenario === key}
           onPress={() => setScenario(key)}
         />
       ))}
 
       <View style={{ height: spacing.md }} />
-      <SectionLabel text={`Schwierigkeit · ${presetLabel(difficulty)}`} />
-      <Text style={styles.renommee}>Renommee: {meta.renommee} · {nextUnlockHint(meta)}</Text>
+      <SectionLabel text={`${t({ de: 'Schwierigkeit', en: 'Difficulty' })} · ${presetLabel(difficulty, lang)}`} />
+      <Text style={styles.renommee}>{t({ de: 'Renommee', en: 'Renown' })}: {meta.renommee} · {nextUnlockHint(meta, lang)}</Text>
       {PRESETS.map((p) => {
         const locked = !presetUnlocked(p.config, unlocks);
         return (
           <SelectRow
             key={p.id}
-            label={p.label}
-            blurb={locked ? presetRequirement(p.config, unlocks) : p.blurb}
-            selected={presetLabel(difficulty) === p.label}
+            label={t(p.label)}
+            blurb={locked ? presetRequirement(p.config, unlocks, lang) : t(p.blurb)}
+            selected={presetLabel(difficulty, lang) === t(p.label)}
             locked={locked}
             onPress={() => !locked && setDifficulty(p.config)}
           />
         );
       })}
 
-      <Text style={styles.tuneLabel}>Feinjustierung</Text>
+      <Text style={styles.tuneLabel}>{t({ de: 'Feinjustierung', en: 'Fine-Tuning' })}</Text>
       {MOD_KEYS.map((key) => (
         <View key={key} style={styles.modRow}>
-          <Text style={styles.modName}>{MODIFIER_LABEL[key]}</Text>
+          <Text style={styles.modName}>{t(MODIFIER_LABEL[key])}</Text>
           <Segmented<string>
             value={String(difficulty[key])}
             onChange={(v) => setLevel(key, parseInt(v, 10) as DifficultyLevel)}
-            options={([-1, 0, 1, 2] as DifficultyLevel[]).map((lv) => ({ label: LEVEL_LABEL[key][lv + 1], value: String(lv), disabled: !levelUnlocked(lv, unlocks) }))}
+            options={([-1, 0, 1, 2] as DifficultyLevel[]).map((lv) => ({ label: t(LEVEL_LABEL[key][lv + 1]), value: String(lv), disabled: !levelUnlocked(lv, unlocks) }))}
           />
         </View>
       ))}
       <View style={styles.modRow}>
-        <Text style={styles.modName}>Ironman (kein Reset)</Text>
+        <Text style={styles.modName}>{t({ de: 'Ironman (kein Reset)', en: 'Ironman (no reset)' })}</Text>
         <Segmented<string>
           value={difficulty.ironman ? '1' : '0'}
           onChange={(v) => { if (v === '0' || unlocks.ironman) setDifficulty({ ...difficulty, ironman: v === '1' }); }}
-          options={[{ label: 'Aus', value: '0' }, { label: 'An', value: '1', disabled: !unlocks.ironman }]}
+          options={[{ label: t({ de: 'Aus', en: 'Off' }), value: '0' }, { label: t({ de: 'An', en: 'On' }), value: '1', disabled: !unlocks.ironman }]}
         />
       </View>
       <Text style={styles.heatLine}>
-        Härtegrad: {heatLabel(dp.heat)} ({dp.heat >= 0 ? '+' : ''}{dp.heat}) · Score ×{dp.scoreMult.toFixed(2)}
+        {t({ de: 'Härtegrad', en: 'Heat' })}: {heatLabel(dp.heat, lang)} ({dp.heat >= 0 ? '+' : ''}{dp.heat}) · Score ×{dp.scoreMult.toFixed(2)}
       </Text>
 
       <Rule />
       <Button
-        title={canStart ? 'Erste Ausgabe drucken' : 'Erst dem Haus einen Namen geben'}
+        title={canStart ? t({ de: 'Erste Ausgabe drucken', en: 'Print the First Edition' }) : t({ de: 'Erst dem Haus einen Namen geben', en: 'First give the house a name' })}
         onPress={() => newGame({ thesis, scenario, officeName: trimmedName, difficulty })}
         variant="primary"
         disabled={!canStart}
         style={styles.cta}
       />
-      <Text style={styles.disclaimer}>Sämtliche Märkte sind simuliert. Keine echten Daten, keine externen Dienste.</Text>
+      <Text style={styles.disclaimer}>{t({ de: 'Sämtliche Märkte sind simuliert. Keine echten Daten, keine externen Dienste.', en: 'All markets are simulated. No real data, no external services.' })}</Text>
     </ScrollView>
   );
 }
@@ -176,6 +190,7 @@ const styles = StyleSheet.create({
   rowLabelOn: { color: colors.paperText },
   rowBlurb: { color: colors.textMuted, fontFamily: fonts.serif, fontSize: 12, marginTop: 2, lineHeight: 17 },
   rowBlurbOn: { color: colors.paperText, opacity: 0.85 },
+  langRow: { marginTop: spacing.sm, marginBottom: spacing.xs },
   renommee: { color: colors.accent, fontFamily: fonts.serifBold, fontSize: 12, marginBottom: spacing.sm },
   rowLocked: { opacity: 0.55 },
   rowLockedText: { color: colors.textMuted },

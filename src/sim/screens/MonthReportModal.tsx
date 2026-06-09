@@ -11,10 +11,12 @@ import { MarketMover } from '../types';
 import { Button, Rule } from '../../components/ui';
 import { colors, fonts, spacing } from '../../utils/theme';
 import { fmtMoney, fmtPct, fmtPctSigned } from '../../utils/format';
+import { useTr } from '../../i18n';
 
 const BIG_MOVE = 0.1; // 10%+ is flagged as a major swing
 
 export function MonthReportModal() {
+  const t = useTr();
   const game = useSimStore((s) => s.game);
   const pending = useSimStore((s) => s.pendingReportMonth);
   const dismiss = useSimStore((s) => s.dismissReport);
@@ -35,55 +37,55 @@ export function MonthReportModal() {
         <View style={styles.panel}>
           <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
             <Rule double />
-            <Text style={styles.masthead}>Die Finanz-Chronik</Text>
-            <Text style={styles.dateline}>{`${(game?.firm.name ?? '').toUpperCase()} · JAHR ${year} · MONAT ${String(m).padStart(2, '0')} · ${REGIME_LABEL[report.regime].toUpperCase()}`}</Text>
+            <Text style={styles.masthead}>{t({ de: 'Die Finanz-Chronik', en: 'The Financial Chronicle' })}</Text>
+            <Text style={styles.dateline}>{`${(game?.firm.name ?? '').toUpperCase()} · ${t({ de: 'JAHR', en: 'YEAR' })} ${year} · ${t({ de: 'MONAT', en: 'MONTH' })} ${String(m).padStart(2, '0')} · ${t(REGIME_LABEL[report.regime]).toUpperCase()}`}</Text>
             <Rule double />
 
             {/* Lead story */}
             <Text style={[styles.headline, { color: up ? colors.positive : colors.negative }]}>
-              {up ? 'Unternehmenswert legt zu' : 'Unternehmenswert gibt nach'}
+              {up ? t({ de: 'Unternehmenswert legt zu', en: 'Enterprise value rises' }) : t({ de: 'Unternehmenswert gibt nach', en: 'Enterprise value slips' })}
             </Text>
             <Text style={styles.lead}>
-              Das Haus schließt den Monat bei <Text style={styles.bold}>{fmtMoney(report.enterpriseEnd)}</Text> —{' '}
+              {t({ de: 'Das Haus schließt den Monat bei', en: 'The house closes the month at' })} <Text style={styles.bold}>{fmtMoney(report.enterpriseEnd)}</Text> —{' '}
               <Text style={{ color: up ? colors.positive : colors.negative, fontFamily: fonts.serifBold }}>{fmtPctSigned(report.enterpriseChangePct)}</Text>{' '}
-              gegenüber dem Vormonat.
+              {t({ de: 'gegenüber dem Vormonat.', en: 'versus the prior month.' })}
             </Text>
 
             {report.regimeChanged ? (
-              <Banner text={`KONJUNKTURWENDE: ${REGIME_LABEL[report.regime].toUpperCase()}`} />
+              <Banner text={`${t({ de: 'KONJUNKTURWENDE', en: 'MACRO SHIFT' })}: ${t(REGIME_LABEL[report.regime]).toUpperCase()}`} />
             ) : null}
-            {report.blackSwan ? <Banner text="🦢 BLACK-SWAN-SCHOCK AN DEN MÄRKTEN" danger /> : null}
+            {report.blackSwan ? <Banner text={t({ de: '🦢 BLACK-SWAN-SCHOCK AN DEN MÄRKTEN', en: '🦢 BLACK-SWAN SHOCK ACROSS MARKETS' })} danger /> : null}
 
             {/* Market movers */}
-            <SectionRule label="Marktbewegungen" />
+            <SectionRule label={t({ de: 'Marktbewegungen', en: 'Market moves' })} />
             {bigMoves.length > 0 ? (
               <Text style={styles.alert}>
-                Große Ausschläge — prüfe deine Positionen und das Research im Markt-Tab.
+                {t({ de: 'Große Ausschläge — prüfe deine Positionen und das Research im Markt-Tab.', en: 'Large swings — review your positions and the research in the Market tab.' })}
               </Text>
             ) : null}
             <View style={styles.moverCols}>
-              <MoverColumn title="Gewinner" movers={report.gainers} positive />
-              <MoverColumn title="Verlierer" movers={report.losers} positive={false} />
+              <MoverColumn title={t({ de: 'Gewinner', en: 'Gainers' })} movers={report.gainers} positive />
+              <MoverColumn title={t({ de: 'Verlierer', en: 'Losers' })} movers={report.losers} positive={false} />
             </View>
 
             {/* Macro */}
-            <SectionRule label="Konjunktur" />
-            <Row label="Phase" value={REGIME_LABEL[report.regime]} highlight={report.regimeChanged} />
-            <Row label="Leitzins" value={fmtPct(report.policyRate)} />
-            <Row label="Vola-Index" value={report.volIndex.toFixed(0)} highlight={report.volIndex > 25} />
+            <SectionRule label={t({ de: 'Konjunktur', en: 'Macro' })} />
+            <Row label={t({ de: 'Phase', en: 'Phase' })} value={t(REGIME_LABEL[report.regime])} highlight={report.regimeChanged} />
+            <Row label={t({ de: 'Leitzins', en: 'Policy rate' })} value={fmtPct(report.policyRate)} />
+            <Row label={t({ de: 'Vola-Index', en: 'Volatility index' })} value={report.volIndex.toFixed(0)} highlight={report.volIndex > 25} />
 
             {/* Your house */}
-            <SectionRule label="Dein Haus" />
-            <Row label="Fonds-Rendite (Monat)" value={fmtPctSigned(report.fundReturnPct)} color={report.fundReturnPct >= 0 ? colors.positive : colors.negative} />
-            <Row label="Team-Alpha" value={fmtMoney(report.contribution.alphaPnl)} color={report.contribution.alphaPnl >= 0 ? colors.positive : colors.negative} />
-            <Row label="GP-Ergebnis" value={fmtMoney(report.gpNetIncome)} color={report.gpNetIncome >= 0 ? colors.positive : colors.negative} />
-            {report.contribution.capitalRaised > 0 ? <Row label="Kapital geraist" value={fmtMoney(report.contribution.capitalRaised)} /> : null}
-            <Row label="Reputation" value={`${report.reputationDelta >= 0 ? '+' : ''}${report.reputationDelta.toFixed(1)}`} color={report.reputationDelta >= 0 ? colors.positive : colors.negative} />
+            <SectionRule label={t({ de: 'Dein Haus', en: 'Your house' })} />
+            <Row label={t({ de: 'Fonds-Rendite (Monat)', en: 'Fund return (month)' })} value={fmtPctSigned(report.fundReturnPct)} color={report.fundReturnPct >= 0 ? colors.positive : colors.negative} />
+            <Row label={t({ de: 'Team-Alpha', en: 'Team alpha' })} value={fmtMoney(report.contribution.alphaPnl)} color={report.contribution.alphaPnl >= 0 ? colors.positive : colors.negative} />
+            <Row label={t({ de: 'GP-Ergebnis', en: 'GP result' })} value={fmtMoney(report.gpNetIncome)} color={report.gpNetIncome >= 0 ? colors.positive : colors.negative} />
+            {report.contribution.capitalRaised > 0 ? <Row label={t({ de: 'Kapital geraist', en: 'Capital raised' })} value={fmtMoney(report.contribution.capitalRaised)} /> : null}
+            <Row label={t({ de: 'Reputation', en: 'Reputation' })} value={`${report.reputationDelta >= 0 ? '+' : ''}${report.reputationDelta.toFixed(1)}`} color={report.reputationDelta >= 0 ? colors.positive : colors.negative} />
 
             {/* Headlines */}
             {report.headlines.length > 0 ? (
               <>
-                <SectionRule label="Meldungen" />
+                <SectionRule label={t({ de: 'Meldungen', en: 'Headlines' })} />
                 {report.headlines.map((h, i) => (
                   <View key={i} style={styles.headlineRow}>
                     <Text style={styles.hlTitle}>{h.title}</Text>
@@ -93,8 +95,8 @@ export function MonthReportModal() {
               </>
             ) : null}
 
-            <Button title="Gelesen ▸" onPress={dismiss} variant="primary" style={{ marginTop: spacing.lg }} />
-            <Text style={styles.colophon}>Alpha &amp; Carry · Die Finanz-Chronik</Text>
+            <Button title={t({ de: 'Gelesen ▸', en: 'Read ▸' })} onPress={dismiss} variant="primary" style={{ marginTop: spacing.lg }} />
+            <Text style={styles.colophon}>{t({ de: 'Alpha & Carry · Die Finanz-Chronik', en: 'Alpha & Carry · The Financial Chronicle' })}</Text>
           </ScrollView>
         </View>
       </View>

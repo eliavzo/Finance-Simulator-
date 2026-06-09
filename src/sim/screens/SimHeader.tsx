@@ -4,6 +4,7 @@ import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSimStore } from '../store';
 import { REGIME_LABEL } from '../economy';
 import { notify, confirmDestructive } from '../../utils/notify';
+import { useTr } from '../../i18n';
 import { Button, Rule } from '../../components/ui';
 import { GearIcon } from '../../components/GearIcon';
 import { SettingsModal } from '../../components/SettingsModal';
@@ -11,6 +12,7 @@ import { AchievementsModal } from '../../components/AchievementsModal';
 import { colors, fonts, spacing } from '../../utils/theme';
 
 export function SimHeader({ title }: { title: string }) {
+  const t = useTr();
   const game = useSimStore((s) => s.game);
   const nextMonth = useSimStore((s) => s.nextMonth);
   const resetGame = useSimStore((s) => s.resetGame);
@@ -23,28 +25,33 @@ export function SimHeader({ title }: { title: string }) {
 
   const year = Math.floor(game.month / 12) + 1;
   const m = (game.month % 12) + 1;
-  const dateline = `${game.firm.name} · Jahr ${year}, Monat ${String(m).padStart(2, '0')} · ${REGIME_LABEL[game.economy.regime]}`;
+  const dateline = `${game.firm.name} · ${t({ de: 'Jahr', en: 'Year' })} ${year}, ${t({ de: 'Monat', en: 'Month' })} ${String(m).padStart(2, '0')} · ${t(REGIME_LABEL[game.economy.regime])}`;
 
   const onReset = () =>
-    confirmDestructive('Spiel zurücksetzen?', 'Der aktuelle Lauf geht unwiderruflich verloren.', 'Zurücksetzen', () => {
-      setSettingsOpen(false);
-      resetGame();
-    });
+    confirmDestructive(
+      t({ de: 'Spiel zurücksetzen?', en: 'Reset game?' }),
+      t({ de: 'Der aktuelle Lauf geht unwiderruflich verloren.', en: 'The current run will be permanently lost.' }),
+      t({ de: 'Zurücksetzen', en: 'Reset' }),
+      () => {
+        setSettingsOpen(false);
+        resetGame();
+      },
+    );
 
   return (
     <View style={styles.wrap}>
       <Rule double />
       <View style={styles.row}>
         <Text style={styles.title} numberOfLines={1}>{title}</Text>
-        <TouchableOpacity style={styles.gear} onPress={() => setSettingsOpen(true)} accessibilityLabel="Einstellungen" activeOpacity={0.7}>
+        <TouchableOpacity style={styles.gear} onPress={() => setSettingsOpen(true)} accessibilityLabel={t({ de: 'Einstellungen', en: 'Settings' })} activeOpacity={0.7}>
           <GearIcon size={20} color={colors.text} />
         </TouchableOpacity>
       </View>
       <View style={styles.row}>
         <Text style={styles.dateline} numberOfLines={1}>{dateline.toUpperCase()}</Text>
         <Button
-          title={game.gameOver ? 'Ende' : 'Nächste Ausgabe ▸'}
-          onPress={() => (game.gameOver ? notify('Spielende', 'Die 20 Jahre sind vorbei.') : nextMonth())}
+          title={game.gameOver ? t({ de: 'Ende', en: 'End' }) : t({ de: 'Nächste Ausgabe ▸', en: 'Next edition ▸' })}
+          onPress={() => (game.gameOver ? notify(t({ de: 'Spielende', en: 'Game over' }), t({ de: 'Die 20 Jahre sind vorbei.', en: 'The 20 years are over.' })) : nextMonth())}
           variant={game.gameOver ? 'secondary' : 'primary'}
           style={styles.btn}
         />

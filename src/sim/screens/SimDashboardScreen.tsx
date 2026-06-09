@@ -7,12 +7,13 @@ import { portfolioNav } from '../portfolio';
 import { fundMetrics } from '../fund';
 import { computeRisk } from '../risk';
 import { buildLeague, trailingReturn } from '../rivals';
-import { tierPerks } from '../tiers';
+import { tierPerks, TIER_LABEL } from '../tiers';
 import { ACHIEVEMENTS } from '../achievements';
 import { REGIME_DESC, REGIME_LABEL } from '../economy';
 import { SimEventType } from '../types';
 import { SimHeader } from './SimHeader';
 import { TabTip } from '../../components/TabTip';
+import { useTr } from '../../i18n';
 import { Card, ProgressBar, SectionTitle, StatTile } from '../../components/ui';
 import { LineChart } from '../../components/LineChart';
 import { colors, fonts, spacing } from '../../utils/theme';
@@ -29,6 +30,7 @@ const EVENT_COLOR: Record<SimEventType, string> = {
 };
 
 export function SimDashboardScreen() {
+  const t = useTr();
   const game = useSimStore((s) => s.game)!;
   const caps = useCapabilities()!;
   const { width } = useWindowDimensions();
@@ -44,15 +46,15 @@ export function SimDashboardScreen() {
 
   return (
     <View style={styles.container}>
-      <SimHeader title="Übersicht" />
+      <SimHeader title={t({ de: 'Übersicht', en: 'Overview' })} />
       <ScrollView contentContainerStyle={styles.scroll}>
-        <TabTip tipKey="dashboard" text="Dein Cockpit. Mit „Nächste Ausgabe ▸“ oben rückst du einen Monat vor; danach kommt der Monatsbericht mit allen Veränderungen." />
+        <TabTip tipKey="dashboard" text={t({ de: 'Dein Cockpit. Mit „Nächste Ausgabe ▸“ oben rückst du einen Monat vor; danach kommt der Monatsbericht mit allen Veränderungen.', en: 'Your cockpit. Tap "Next edition ▸" above to advance a month; the monthly report then shows all the changes.' })} />
         <Card>
           <Text style={styles.officeName}>{game.firm.name}</Text>
-          <SectionTitle>Unternehmenswert (GP + Fonds-NAV)</SectionTitle>
+          <SectionTitle>{t({ de: 'Unternehmenswert (GP + Fonds-NAV)', en: 'Enterprise value (GP + Fund NAV)' })}</SectionTitle>
           <Text style={styles.big}>{fmtMoney(enterprise)}</Text>
           <Text style={[styles.sub, { color: totalRet >= 0 ? colors.positive : colors.negative }]}>
-            {fmtPctSigned(totalRet)} seit Start
+            {fmtPctSigned(totalRet)} {t({ de: 'seit Start', en: 'since start' })}
           </Text>
           <View style={styles.chartWrap}>
             <LineChart data={hist} width={width - spacing.lg * 4} height={110} baseline={start} color={totalRet >= 0 ? colors.positive : colors.negative} />
@@ -61,14 +63,14 @@ export function SimDashboardScreen() {
 
         <View style={styles.twoCol}>
           <Card style={styles.col}>
-            <SectionTitle>Fonds</SectionTitle>
+            <SectionTitle>{t({ de: 'Fonds', en: 'Fund' })}</SectionTitle>
             <Text style={styles.colVal}>{fmtMoney(fundNav)}</Text>
-            <Text style={styles.hint}>Netto-IRR {fmtPct(metrics.netIrr)}</Text>
+            <Text style={styles.hint}>{t({ de: 'Netto-IRR', en: 'Net IRR' })} {fmtPct(metrics.netIrr)}</Text>
             <Text style={styles.hint}>TVPI {fmtMultiple(metrics.tvpi)} · DPI {fmtMultiple(metrics.dpi)}</Text>
             <Text style={styles.hint}>Committed {fmtMoney(game.fund.committed)}</Text>
           </Card>
           <Card style={styles.col}>
-            <SectionTitle>GP-Firma</SectionTitle>
+            <SectionTitle>{t({ de: 'GP-Firma', en: 'GP firm' })}</SectionTitle>
             <Text style={styles.colVal}>{fmtMoney(game.firm.cash)}</Text>
             <Text style={styles.hint}>Fees {fmtMoney(game.firm.feesEarned)}</Text>
             <Text style={styles.hint}>Carry {fmtMoney(game.firm.carryEarned)}</Text>
@@ -77,17 +79,17 @@ export function SimDashboardScreen() {
         </View>
 
         <Card>
-          <SectionTitle>Risiko & Buch</SectionTitle>
+          <SectionTitle>{t({ de: 'Risiko & Buch', en: 'Risk & book' })}</SectionTitle>
           <View style={styles.statRow}>
             <StatTile label="VaR₉₅ (1M)" value={fmtMoney(risk.var95)} valueColor={colors.warning} />
-            <StatTile label="Brutto-Exp." value={fmtMoney(risk.grossExposure)} />
+            <StatTile label={t({ de: 'Brutto-Exp.', en: 'Gross exp.' })} value={fmtMoney(risk.grossExposure)} />
             <StatTile label="Netto-β" value={fmtNum(risk.netBeta / Math.max(1, fundNav), 2)} />
-            <StatTile label="Positionen" value={`${game.portfolio.positions.length}/${caps.capacityPositions}`} valueColor={game.portfolio.positions.length > caps.capacityPositions ? colors.negative : colors.text} />
+            <StatTile label={t({ de: 'Positionen', en: 'Positions' })} value={`${game.portfolio.positions.length}/${caps.capacityPositions}`} valueColor={game.portfolio.positions.length > caps.capacityPositions ? colors.negative : colors.text} />
           </View>
         </Card>
 
         <Card>
-          <SectionTitle ornament>Rangliste · 12-Monats-Rendite</SectionTitle>
+          <SectionTitle ornament>{t({ de: 'Rangliste · 12-Monats-Rendite', en: 'League table · 12-month return' })}</SectionTitle>
           {buildLeague(game.rivals, game.firm.name, trailingReturn(game.portfolio.returnHistory), fundNav).map((e) => (
             <View key={e.name} style={[styles.leagueRow, e.isPlayer && styles.leagueMe]}>
               <Text style={[styles.leagueRank, e.isPlayer && styles.leagueMeText]}>{e.rank}</Text>
@@ -99,30 +101,30 @@ export function SimDashboardScreen() {
         </Card>
 
         <Card>
-          <SectionTitle>Reputation · Stufe {tierPerks(game.peakReputation ?? game.reputation).label}</SectionTitle>
+          <SectionTitle>Reputation · {t({ de: 'Stufe', en: 'Tier' })} {tierPerks(game.peakReputation ?? game.reputation).label}</SectionTitle>
           <Text style={styles.rep}>{game.reputation.toFixed(0)}</Text>
           <ProgressBar value={game.reputation / 100} color={colors.warning} />
           {(() => {
             const p = tierPerks(game.peakReputation ?? game.reputation);
             return (
               <>
-                <Text style={styles.hint}>Hebel bis {p.maxLeverage}× · Optionen {p.allowOptions ? '✓' : '🔒'} · Infra bis Stufe {p.maxInfraTier} · {p.lpTypes.length} LP-Typen</Text>
-                {p.nextAt ? <Text style={styles.hint}>Nächste Stufe „{p.nextTier === 'rising' ? 'Aufstrebend' : p.nextTier === 'established' ? 'Etabliert' : 'Titan'}" ab Reputation {p.nextAt}</Text> : <Text style={styles.hint}>Höchste Stufe erreicht.</Text>}
+                <Text style={styles.hint}>{t({ de: 'Hebel bis', en: 'Leverage up to' })} {p.maxLeverage}× · {t({ de: 'Optionen', en: 'Options' })} {p.allowOptions ? '✓' : '🔒'} · {t({ de: 'Infra bis Stufe', en: 'Infra up to tier' })} {p.maxInfraTier} · {p.lpTypes.length} {t({ de: 'LP-Typen', en: 'LP types' })}</Text>
+                {p.nextAt && p.nextTier ? <Text style={styles.hint}>{t({ de: 'Nächste Stufe', en: 'Next tier' })} „{t(TIER_LABEL[p.nextTier])}" {t({ de: 'ab Reputation', en: 'at reputation' })} {p.nextAt}</Text> : <Text style={styles.hint}>{t({ de: 'Höchste Stufe erreicht.', en: 'Highest tier reached.' })}</Text>}
               </>
             );
           })()}
         </Card>
 
         <Card>
-          <SectionTitle ornament>Auszeichnungen · {(game.achievements ?? []).length}/{ACHIEVEMENTS.length}</SectionTitle>
+          <SectionTitle ornament>{t({ de: 'Auszeichnungen', en: 'Achievements' })} · {(game.achievements ?? []).length}/{ACHIEVEMENTS.length}</SectionTitle>
           {ACHIEVEMENTS.map((a) => {
             const got = (game.achievements ?? []).some((x) => x.id === a.id);
             return (
               <View key={a.id} style={styles.achRow}>
                 <Text style={[styles.achMark, { color: got ? colors.warning : colors.ruleSoft }]}>{got ? '🏅' : '○'}</Text>
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.achTitle, !got && styles.achLocked]}>{a.title}</Text>
-                  <Text style={styles.achDesc}>{a.description}</Text>
+                  <Text style={[styles.achTitle, !got && styles.achLocked]}>{t(a.title)}</Text>
+                  <Text style={styles.achDesc}>{t(a.description)}</Text>
                 </View>
               </View>
             );
@@ -130,18 +132,18 @@ export function SimDashboardScreen() {
         </Card>
 
         <Card>
-          <SectionTitle>Makro · {REGIME_LABEL[game.economy.regime]}</SectionTitle>
-          <Text style={styles.macroDesc}>{REGIME_DESC[game.economy.regime]}</Text>
+          <SectionTitle>{t({ de: 'Makro', en: 'Macro' })} · {t(REGIME_LABEL[game.economy.regime])}</SectionTitle>
+          <Text style={styles.macroDesc}>{t(REGIME_DESC[game.economy.regime])}</Text>
           <View style={styles.statRow}>
-            <StatTile label="BIP" value={fmtPct(game.economy.gdpGrowth)} />
-            <StatTile label="Leitzins" value={fmtPct(game.economy.policyRate)} />
+            <StatTile label={t({ de: 'BIP', en: 'GDP' })} value={fmtPct(game.economy.gdpGrowth)} />
+            <StatTile label={t({ de: 'Leitzins', en: 'Policy rate' })} value={fmtPct(game.economy.policyRate)} />
             <StatTile label="Inflation" value={fmtPct(game.economy.inflation)} />
-            <StatTile label="Vola-Index" value={game.economy.volIndex.toFixed(0)} valueColor={game.economy.volIndex > 25 ? colors.negative : colors.text} />
+            <StatTile label={t({ de: 'Vola-Index', en: 'Volatility index' })} value={game.economy.volIndex.toFixed(0)} valueColor={game.economy.volIndex > 25 ? colors.negative : colors.text} />
           </View>
         </Card>
 
         <Card>
-          <SectionTitle>Ereignisse</SectionTitle>
+          <SectionTitle>{t({ de: 'Ereignisse', en: 'Events' })}</SectionTitle>
           {game.events.slice(0, 12).map((e) => (
             <View key={e.id} style={styles.event}>
               <View style={[styles.dot, { backgroundColor: EVENT_COLOR[e.type] }]} />

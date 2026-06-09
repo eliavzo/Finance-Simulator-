@@ -18,7 +18,7 @@ describe('run analysis', () => {
       portfolio: { ...g.portfolio, marginCalls: 4 },
       analytics: withAnalytics({ grossLevSum: 120 * 3, monthsOverLev: 90, maxGrossLev: 4.5 }),
     };
-    const r = analyzeRun(state);
+    const r = analyzeRun(state, 'de');
     expect(r.weaknesses.some((f) => /übergehebelt/i.test(f.title))).toBe(true);
     expect(r.weaknesses.some((f) => /Margin Calls/i.test(f.title))).toBe(true);
   });

@@ -31,6 +31,7 @@ import { tierPerks } from './tiers';
 import { MetaProgress, DEFAULT_META } from './difficulty';
 import { blackScholes, interpolateCurve } from './quant';
 import { Rng } from '../engine/rng';
+import { Lang, setCurrentLang, g } from '../i18n/lang';
 
 const STORAGE_KEY = 'alpha-carry/sim-v2';
 
@@ -82,6 +83,9 @@ interface SimStore {
   dismissedTips: Record<string, boolean>;
   /** Persistent cross-run meta progression (unlocks harder modes). */
   meta: MetaProgress;
+  /** UI language (persisted). */
+  lang: Lang;
+  setLang: (lang: Lang) => void;
   showOnboarding: boolean;
   showManual: boolean;
   showAnalysis: boolean;
@@ -145,6 +149,11 @@ export const useSimStore = create<SimStore>()(
       onboardingSeen: false,
       dismissedTips: {},
       meta: DEFAULT_META,
+      lang: 'en',
+      setLang: (lang) => {
+        setCurrentLang(lang);
+        set({ lang });
+      },
       showOnboarding: false,
       showManual: false,
       showAnalysis: false,
@@ -198,12 +207,18 @@ export const useSimStore = create<SimStore>()(
 
       trade: (instrumentId, signedQuantity, leverage) => {
         const { game } = get();
-        if (!game) return { ok: false, error: 'Kein Spiel.' };
+        if (!game) return { ok: false, error: g({ de: 'Kein Spiel.', en: 'No game.' }) };
         const inst = game.instruments.find((i) => i.id === instrumentId);
-        if (!inst) return { ok: false, error: 'Instrument nicht gefunden.' };
+        if (!inst) return { ok: false, error: g({ de: 'Instrument nicht gefunden.', en: 'Instrument not found.' }) };
         const perks = tierPerks(game.peakReputation ?? game.reputation);
         if (Math.abs(leverage) > perks.maxLeverage) {
-          return { ok: false, error: `Hebel bis ${perks.maxLeverage}x — höher ab Stufe „${perks.nextTier ? 'nächste Stufe' : perks.label}".` };
+          return {
+            ok: false,
+            error: g({
+              de: `Hebel bis ${perks.maxLeverage}x — höher ab Stufe „${perks.nextTier ? 'nächste Stufe' : perks.label}".`,
+              en: `Leverage up to ${perks.maxLeverage}x — higher from ${perks.nextTier ? 'the next tier' : perks.label}.`,
+            }),
+          };
         }
         uiCounter += 1;
         const res = openPosition(game.portfolio, inst, signedQuantity, leverage, game.month, String(uiCounter));
@@ -214,22 +229,22 @@ export const useSimStore = create<SimStore>()(
 
       closeTrade: (positionId) => {
         const { game } = get();
-        if (!game) return { ok: false, error: 'Kein Spiel.' };
+        if (!game) return { ok: false, error: g({ de: 'Kein Spiel.', en: 'No game.' }) };
         set({ game: { ...game, portfolio: closePosition(game.portfolio, positionId, game.instruments) } });
         return { ok: true };
       },
 
       buyOption: (underlyingId, optionType, strikeOffsetPct, monthsToExpiry, contracts) => {
         const { game } = get();
-        if (!game) return { ok: false, error: 'Kein Spiel.' };
+        if (!game) return { ok: false, error: g({ de: 'Kein Spiel.', en: 'No game.' }) };
         if (!tierPerks(game.peakReputation ?? game.reputation).allowOptions) {
-          return { ok: false, error: 'Optionshandel ab Stufe „Aufstrebend" (Reputation 55).' };
+          return { ok: false, error: g({ de: 'Optionshandel ab Stufe „Aufstrebend" (Reputation 55).', en: 'Options trading unlocks at the “Emerging” tier (reputation 55).' }) };
         }
         const underlying = game.instruments.find((i) => i.id === underlyingId);
         if (!underlying || underlying.kind !== 'equity') {
-          return { ok: false, error: 'Optionen nur auf Aktien.' };
+          return { ok: false, error: g({ de: 'Optionen nur auf Aktien.', en: 'Options on equities only.' }) };
         }
-        if (contracts <= 0) return { ok: false, error: 'Anzahl Kontrakte muss positiv sein.' };
+        if (contracts <= 0) return { ok: false, error: g({ de: 'Anzahl Kontrakte muss positiv sein.', en: 'Contract count must be positive.' }) };
         const multiplier = 100;
         const strike = Math.max(1, Math.round(underlying.price * (1 + strikeOffsetPct)));
         const expiryMonth = game.month + Math.max(1, monthsToExpiry);
@@ -255,7 +270,7 @@ export const useSimStore = create<SimStore>()(
         };
 
         const cost = contracts * price;
-        if (cost > game.portfolio.cash) return { ok: false, error: 'Nicht genug Cash für die Prämie.' };
+        if (cost > game.portfolio.cash) return { ok: false, error: g({ de: 'Nicht genug Cash für die Prämie.', en: 'Not enough cash for the premium.' }) };
 
         const instruments: Instrument[] = [...game.instruments, opt];
         uiCounter += 1;
@@ -279,10 +294,10 @@ export const useSimStore = create<SimStore>()(
 
       hire: (candidate) => {
         const { game, candidates } = get();
-        if (!game) return { ok: false, error: 'Kein Spiel.' };
+        if (!game) return { ok: false, error: g({ de: 'Kein Spiel.', en: 'No game.' }) };
         // One-off recruiting fee = 20% of first-year salary.
         const fee = candidate.salary * 0.2;
-        if (fee > game.firm.cash) return { ok: false, error: 'Nicht genug GP-Cash für die Einstellungsgebühr.' };
+        if (fee > game.firm.cash) return { ok: false, error: g({ de: 'Nicht genug GP-Cash für die Einstellungsgebühr.', en: 'Not enough GP cash for the recruiting fee.' }) };
         const firm = {
           ...game.firm,
           cash: game.firm.cash - fee,
@@ -295,7 +310,7 @@ export const useSimStore = create<SimStore>()(
 
       fire: (employeeId) => {
         const { game } = get();
-        if (!game) return { ok: false, error: 'Kein Spiel.' };
+        if (!game) return { ok: false, error: g({ de: 'Kein Spiel.', en: 'No game.' }) };
         const firm = { ...game.firm, employees: game.firm.employees.filter((e) => e.id !== employeeId) };
         set({ game: { ...game, firm } });
         return { ok: true };
@@ -303,15 +318,15 @@ export const useSimStore = create<SimStore>()(
 
       upgrade: (track) => {
         const { game } = get();
-        if (!game) return { ok: false, error: 'Kein Spiel.' };
+        if (!game) return { ok: false, error: g({ de: 'Kein Spiel.', en: 'No game.' }) };
         const tier = game.firm.infrastructure[track];
-        if (tier >= MAX_TIER) return { ok: false, error: 'Bereits maximale Stufe.' };
+        if (tier >= MAX_TIER) return { ok: false, error: g({ de: 'Bereits maximale Stufe.', en: 'Already at the maximum tier.' }) };
         const perks = tierPerks(game.peakReputation ?? game.reputation);
         if (tier + 1 > perks.maxInfraTier) {
-          return { ok: false, error: `Stufe ${tier + 1} ab höherer Reputation (aktuell „${perks.label}").` };
+          return { ok: false, error: g({ de: `Stufe ${tier + 1} ab höherer Reputation (aktuell „${perks.label}").`, en: `Tier ${tier + 1} needs higher reputation (currently “${perks.label}”).` }) };
         }
         const cost = upgradeCost(track, tier);
-        if (cost > game.firm.cash) return { ok: false, error: 'Nicht genug GP-Cash.' };
+        if (cost > game.firm.cash) return { ok: false, error: g({ de: 'Nicht genug GP-Cash.', en: 'Not enough GP cash.' }) };
         const firm = {
           ...game.firm,
           cash: game.firm.cash - cost,
@@ -323,10 +338,10 @@ export const useSimStore = create<SimStore>()(
 
       callLpCapital: (amount) => {
         const { game } = get();
-        if (!game) return { ok: false, error: 'Kein Spiel.' };
-        if (amount <= 0) return { ok: false, error: 'Betrag muss positiv sein.' };
+        if (!game) return { ok: false, error: g({ de: 'Kein Spiel.', en: 'No game.' }) };
+        if (amount <= 0) return { ok: false, error: g({ de: 'Betrag muss positiv sein.', en: 'Amount must be positive.' }) };
         const res = callCapital(game.fund, amount, game.month);
-        if (res.called <= 0) return { ok: false, error: 'Kein abrufbares Kapital mehr.' };
+        if (res.called <= 0) return { ok: false, error: g({ de: 'Kein abrufbares Kapital mehr.', en: 'No callable capital left.' }) };
         set({
           game: {
             ...game,
@@ -339,11 +354,11 @@ export const useSimStore = create<SimStore>()(
 
       buyHedge: (notional, months) => {
         const { game } = get();
-        if (!game) return { ok: false, error: 'Kein Spiel.' };
-        if (notional <= 0 || months <= 0) return { ok: false, error: 'Ungültige Absicherung.' };
+        if (!game) return { ok: false, error: g({ de: 'Kein Spiel.', en: 'No game.' }) };
+        if (notional <= 0 || months <= 0) return { ok: false, error: g({ de: 'Ungültige Absicherung.', en: 'Invalid hedge.' }) };
         // First month's premium is due immediately.
         const premium = notional * 0.005;
-        if (premium > game.portfolio.cash) return { ok: false, error: 'Nicht genug Cash für die Prämie.' };
+        if (premium > game.portfolio.cash) return { ok: false, error: g({ de: 'Nicht genug Cash für die Prämie.', en: 'Not enough cash for the premium.' }) };
         set({
           game: {
             ...game,
@@ -356,10 +371,10 @@ export const useSimStore = create<SimStore>()(
 
       acceptOpportunity: (amount) => {
         const { game } = get();
-        if (!game || !game.pendingOpportunity) return { ok: false, error: 'Kein Angebot.' };
+        if (!game || !game.pendingOpportunity) return { ok: false, error: g({ de: 'Kein Angebot.', en: 'No offer.' }) };
         const opp = game.pendingOpportunity;
         const invest = Math.max(opp.minInvest, Math.min(opp.maxInvest, amount));
-        if (invest > game.portfolio.cash) return { ok: false, error: 'Nicht genug Fonds-Cash.' };
+        if (invest > game.portfolio.cash) return { ok: false, error: g({ de: 'Nicht genug Fonds-Cash.', en: 'Not enough fund cash.' }) };
         uiCounter += 1;
         const holding = {
           id: `hold-${game.month}-${uiCounter}`,
@@ -388,8 +403,8 @@ export const useSimStore = create<SimStore>()(
 
       investStartup: (dealId, amount) => {
         const { game } = get();
-        if (!game) return { ok: false, error: 'Kein Spiel.' };
-        if (amount > game.portfolio.cash) return { ok: false, error: 'Nicht genug Fonds-Cash.' };
+        if (!game) return { ok: false, error: g({ de: 'Kein Spiel.', en: 'No game.' }) };
+        if (amount > game.portfolio.cash) return { ok: false, error: g({ de: 'Nicht genug Fonds-Cash.', en: 'Not enough fund cash.' }) };
         const res = investInDeal(game.vc, dealId, amount, game.month);
         if (!res.ok || !res.vc) return { ok: false, error: res.error };
         set({ game: { ...game, vc: res.vc, portfolio: { ...game.portfolio, cash: game.portfolio.cash - (res.amount ?? 0) } } });
@@ -398,20 +413,20 @@ export const useSimStore = create<SimStore>()(
 
       followOnStartup: (startupId) => {
         const { game } = get();
-        if (!game) return { ok: false, error: 'Kein Spiel.' };
+        if (!game) return { ok: false, error: g({ de: 'Kein Spiel.', en: 'No game.' }) };
         const res = followOn(game.vc, startupId, game.month);
         if (!res.ok || !res.vc) return { ok: false, error: res.error };
-        if ((res.cost ?? 0) > game.portfolio.cash) return { ok: false, error: 'Nicht genug Fonds-Cash.' };
+        if ((res.cost ?? 0) > game.portfolio.cash) return { ok: false, error: g({ de: 'Nicht genug Fonds-Cash.', en: 'Not enough fund cash.' }) };
         set({ game: { ...game, vc: res.vc, portfolio: { ...game.portfolio, cash: game.portfolio.cash - (res.cost ?? 0) } } });
         return { ok: true };
       },
 
       supportStartup: (startupId) => {
         const { game } = get();
-        if (!game) return { ok: false, error: 'Kein Spiel.' };
+        if (!game) return { ok: false, error: g({ de: 'Kein Spiel.', en: 'No game.' }) };
         const res = supportStartup(game.vc, startupId, game.month);
         if (!res.ok || !res.vc) return { ok: false, error: res.error };
-        if ((res.cost ?? 0) > game.portfolio.cash) return { ok: false, error: 'Nicht genug Fonds-Cash.' };
+        if ((res.cost ?? 0) > game.portfolio.cash) return { ok: false, error: g({ de: 'Nicht genug Fonds-Cash.', en: 'Not enough fund cash.' }) };
         set({ game: { ...game, vc: res.vc, portfolio: { ...game.portfolio, cash: game.portfolio.cash - (res.cost ?? 0) } } });
         return { ok: true };
       },
@@ -419,8 +434,10 @@ export const useSimStore = create<SimStore>()(
     {
       name: STORAGE_KEY,
       storage: createJSONStorage(() => safeStorage),
-      partialize: (state) => ({ game: state.game, onboardingSeen: state.onboardingSeen, dismissedTips: state.dismissedTips, meta: state.meta }),
+      partialize: (state) => ({ game: state.game, onboardingSeen: state.onboardingSeen, dismissedTips: state.dismissedTips, meta: state.meta, lang: state.lang }),
       onRehydrateStorage: () => (state) => {
+        // Keep the engine's language mirror in sync with the restored choice.
+        if (state?.lang) setCurrentLang(state.lang);
         // Show the intro for a restored game that never saw it.
         const showOnboarding = !!state?.game?.started && !state?.onboardingSeen;
         useSimStore.setState({ hydrated: true, showOnboarding });
