@@ -123,7 +123,7 @@ export function analyzeRun(state: SimState, lang: Lang = 'en'): AnalysisReport {
 
   // --- LP relations ---
   if (a.redemptions > 0) {
-    weaknesses.push({ kind: 'bad', title: L('Mittelabzüge', 'Redemptions'), detail: L(`LPs zogen ${a.redemptions}× Kapital ab${a.redemptionLoss > 1000 ? ` und Notverkäufe kosteten ${money(a.redemptionLoss)}` : ''}. Halte einen Liquiditätspuffer und liefere Performance.`, `LPs redeemed ${a.redemptions}× ${a.redemptionLoss > 1000 ? `and forced sales cost ${money(a.redemptionLoss)}` : ''}. Keep a liquidity buffer and deliver performance.`) });
+    weaknesses.push({ kind: 'bad', title: L('Mittelabzüge', 'Redemptions'), detail: L(`LPs zogen ${a.redemptions}× Kapital ab${a.redemptionLoss > 1000 ? ` und Notverkäufe kosteten ${money(a.redemptionLoss)}` : ''}. Abzüge entstehen durch Underperformance gegenüber der LP-Erwartung, nicht durch zu wenig Cash — liefere Rendite über deren Ziel. Ein kleiner Puffer hilft nur, Notverkaufs-Verluste zu vermeiden, wenn doch abgezogen wird.`, `LPs redeemed ${a.redemptions}× ${a.redemptionLoss > 1000 ? `and forced sales cost ${money(a.redemptionLoss)}` : ''}. Redemptions come from underperforming the LPs' expectation, not from holding too little cash — deliver returns above their target. A small buffer only helps avoid fire-sale losses when a redemption does hit.`) });
   }
   if (mandateRate >= 0.6 && objSucc >= 2) {
     strengths.push({ kind: 'good', title: L('Mandate erfüllt', 'Mandates met'), detail: L(`Du hast ${objSucc} LP-Mandate erfüllt (Quote ${pct(mandateRate)}).`, `You met ${objSucc} LP mandates (hit rate ${pct(mandateRate)}).`) });

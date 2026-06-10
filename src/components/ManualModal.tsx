@@ -52,8 +52,8 @@ const SECTIONS: { title: Loc; body: Loc }[] = [
   {
     title: { de: 'Liquidität & Mittelabzüge', en: 'Liquidity & redemptions' },
     body: {
-      de: 'Nach einer Sperrfrist ziehen enttäuschte LPs Kapital ab — reicht dein Cash nicht, drohen Notverkäufe mit Verlust. Halte einen Cash-Puffer (siehe „Liquidität & Abzugsrisiko" im Fonds-Tab), besonders in Drawdowns.',
-      en: 'After a lock-up period, disappointed LPs pull their capital — if your cash falls short, fire sales at a loss loom. Keep a cash buffer (see "Liquidity & redemption risk" in the Fund tab), especially during drawdowns.',
+      de: 'Nach einer Sperrfrist ziehen LPs Kapital ab, wenn deine rollierende 12-Monats-Rendite klar unter ihrer Erwartung liegt (Pension 8 %, Endowment 10 %, Family Office 12 %, FoF 13 %) oder du in einem tiefen Drawdown steckst. Wichtig: Abzüge kommen von Underperformance, NICHT von zu wenig Cash. Reines Cash bringt nur den Geldmarktzins (~Leitzins) und liegt damit meist unter den LP-Zielen — zu viel Cash führt also selbst zu Abzügen. Ein Puffer verhindert keine Abzüge; er verhindert nur Notverkaufs-Verluste, wenn doch abgezogen wird. Der Hebel zur Bindung der LPs ist Rendite über ihrem Ziel.',
+      en: 'After a lock-up period, LPs pull their capital when your trailing 12-month return is clearly below their expectation (Pension 8%, Endowment 10%, Family Office 12%, FoF 13%) or you are in a deep drawdown. Important: redemptions come from underperformance, NOT from holding too little cash. Pure cash earns only the money-market (≈policy) rate, which usually sits below the LP targets — so holding too much cash itself triggers redemptions. A buffer does not prevent redemptions; it only prevents fire-sale losses when one does hit. The lever for retaining LPs is returns above their target.',
     },
   },
   {

@@ -328,9 +328,13 @@ export function advanceMonth(state: SimState): SimState {
         keep.push(lp);
         continue;
       }
-      const underperf = Math.max(0, lp.expectedReturn - (Number.isFinite(trailing12) ? trailing12 : 0));
-      const pressure = underperf * 1.5 + drawdown * 1.2 + (economy.regime === 'contraction' ? 0.06 : 0);
-      const prob = Math.max(0, Math.min(0.5, pressure * (1 - lp.patience)));
+      // LPs tolerate a few points below their target before pressing — only a
+      // meaningful, sustained shortfall (or a real drawdown) drives redemptions.
+      const LP_TOLERANCE = 0.04;
+      const trailing = Number.isFinite(trailing12) ? trailing12 : 0;
+      const underperf = Math.max(0, lp.expectedReturn - LP_TOLERANCE - trailing);
+      const pressure = underperf * 1.1 + drawdown * 0.9 + (economy.regime === 'contraction' ? 0.04 : 0);
+      const prob = Math.max(0, Math.min(0.4, pressure * (1 - lp.patience)));
       if (rng.chance(prob)) redeemers.push(lp);
       else keep.push(lp);
     }
