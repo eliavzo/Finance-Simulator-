@@ -338,6 +338,10 @@ export function advanceMonth(state: SimState): SimState {
       if (rng.chance(prob)) redeemers.push(lp);
       else keep.push(lp);
     }
+    // At most one LP redeems per month: a rough patch peels capital gradually
+    // (leaving room to perform your way back) instead of an all-at-once stampede
+    // that would collapse AUM, fees and reputation in a single tick.
+    if (redeemers.length > 1) keep.push(...redeemers.splice(1));
     if (redeemers.length > 0) {
       const redeemValue = redeemers.reduce((s, lp) => s + fundNav * (lp.called / totalCalledActive), 0);
       const haircut = economy.volIndex > 25 ? 0.08 : 0.04;
@@ -420,6 +424,9 @@ export function advanceMonth(state: SimState): SimState {
   repDelta -= redeemedCount * 0.8;
   if (blackSwan && pStep.marginCalled.length === 0) repDelta += 0.5;
   if (Number.isFinite(metrics.netIrr) && metrics.netIrr > 0.15) repDelta += 0.2;
+  // Clear-recovery signal: a strong trailing book wins standing back faster, so
+  // performing your way out of a redemption patch is a real, viable path.
+  if (Number.isFinite(playerTrailing) && playerTrailing > 0.1) repDelta += 0.6;
   let reputation = Math.max(0, Math.min(100, state.reputation + repDelta));
 
   // 8b. Objectives / mandates ------------------------------------------------
@@ -457,6 +464,11 @@ export function advanceMonth(state: SimState): SimState {
     const loFresh = localizedObjective(fresh, getLang());
     events.push(ev(month, { type: 'fund', title: g({ de: `Neues LP-Mandat: ${loFresh.title}`, en: `New LP mandate: ${loFresh.title}` }), description: g({ de: `${loFresh.description} bis Monat ${fresh.deadlineMonth + 1}.`, en: `${loFresh.description} by month ${fresh.deadlineMonth + 1}.` }) }));
   }
+  // Anti-spiral guarantee: cap the TOTAL reputation lost in a single month across
+  // all sources (returns, redemptions, margin calls, missed mandates). One bad
+  // month dents standing but can never collapse it outright — recovery stays
+  // reachable. Gains (mandate rewards, strong returns) are unaffected.
+  reputation = Math.max(reputation, state.reputation - 4);
 
   // 9. Research desk & team-contribution feedback ----------------------------
   const signals = generateSignals(instruments, economy, capabilities, rng, THESES[state.thesis].signalNoiseMult);
