@@ -25,7 +25,7 @@ export function Segmented<T extends string>({
             onPress={() => onChange(opt.value)}
             activeOpacity={0.7}
           >
-            <Text style={[styles.segmentText, active && styles.segmentTextActive, opt.disabled && styles.segmentLockedText]}>{opt.disabled ? `🔒` : opt.label}</Text>
+            <Text style={[styles.segmentText, active && styles.segmentTextActive, opt.disabled && styles.segmentLockedText]} numberOfLines={1}>{opt.disabled ? `🔒 ${opt.label}` : opt.label}</Text>
           </TouchableOpacity>
         );
       })}

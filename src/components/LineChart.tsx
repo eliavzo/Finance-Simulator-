@@ -3,9 +3,10 @@
  * library — just react-native-svg so we keep full control of the look.
  */
 import React from 'react';
-import { View } from 'react-native';
+import { Text, View } from 'react-native';
 import Svg, { Path, Line, Circle, Defs, LinearGradient, Stop } from 'react-native-svg';
-import { colors } from '../utils/theme';
+import { useTr } from '../i18n';
+import { colors, fonts } from '../utils/theme';
 
 interface Props {
   data: number[];
@@ -19,8 +20,15 @@ interface Props {
 }
 
 export function LineChart({ data, width, height, color = colors.text, fill = true, baseline }: Props) {
+  const t = useTr();
   if (data.length < 2) {
-    return <View style={{ width, height }} />;
+    return (
+      <View style={{ width, height, alignItems: 'center', justifyContent: 'center' }}>
+        <Text style={{ color: colors.textMuted, fontFamily: fonts.serifItalic, fontSize: 11 }}>
+          {t({ de: 'Noch keine Kurshistorie — ab dem nächsten Monat.', en: 'No price history yet — from next month.' })}
+        </Text>
+      </View>
+    );
   }
 
   const pad = 6;

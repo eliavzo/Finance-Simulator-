@@ -157,7 +157,7 @@ export function computeScore(state: SimState): FinalScore {
     objSucceeded * 40 -
     dd * 120;
 
-  if (state.gameOverReason === 'insolvency' || state.gameOverReason === 'reputation') score -= 150;
+  if (state.gameOverReason === 'insolvency' || state.gameOverReason === 'reputation' || state.gameOverReason === 'collapse') score -= 150;
   // Harder difficulty multiplies the score (and easier shrinks it).
   score *= difficultyParams(state.difficulty ?? DEFAULT_DIFFICULTY).scoreMult;
   score = Math.max(0, Math.round(score));

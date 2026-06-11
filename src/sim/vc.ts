@@ -279,6 +279,30 @@ export function followOn(vc: VCState, startupId: string, month: number): ActionR
   };
 }
 
+/** Discount applied when selling a stake on the secondary market. */
+export const SECONDARY_DISCOUNT = 0.3;
+
+/**
+ * Sell the fund's stake in an active startup on the secondary market — instant
+ * liquidity at a steep discount to the marked valuation.
+ */
+export function sellSecondary(vc: VCState, startupId: string, month: number): ActionResult & { proceeds?: number } {
+  const s = vc.portfolio.find((x) => x.id === startupId);
+  if (!s || s.status !== 'active') return { ok: false, error: g({ de: 'Startup nicht aktiv.', en: 'Startup not active.' }) };
+  const proceeds = s.postMoney * s.ownership * (1 - SECONDARY_DISCOUNT);
+  const updated: Startup = { ...s, status: 'exited', exit: { type: 'Secondary', month, proceeds } };
+  return {
+    ok: true,
+    proceeds,
+    vc: {
+      ...vc,
+      portfolio: vc.portfolio.map((x) => (x.id === startupId ? updated : x)),
+      totalReturned: vc.totalReturned + proceeds,
+      cashflows: [...vc.cashflows, { t: month / 12, amount: proceeds }],
+    },
+  };
+}
+
 /** Operational support: boosts growth & survival for a cost. */
 export function supportStartup(vc: VCState, startupId: string, month: number): ActionResult {
   const s = vc.portfolio.find((x) => x.id === startupId);

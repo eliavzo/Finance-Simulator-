@@ -143,16 +143,25 @@ export function analyzeRun(state: SimState, lang: Lang = 'en'): AnalysisReport {
     weaknesses.push({ kind: 'bad', title: L('Kein Team', 'No team'), detail: L('Ohne Personal fehlen dir Research-Edge, Alpha und Risikokontrolle. Stelle früh Analysten & einen Risk Manager ein.', 'Without staff you lack a research edge, alpha and risk control. Hire analysts and a risk manager early.') });
   }
 
-  // --- Profile label ---
+  // --- Profile label (outcome-aware: a collapsed run never gets praise) ---
   const aggressive = overLevFrac > 0.4 || avgLev > 1.5;
   const passive = avgPositions < 1 || avgCash > 0.6;
   const valueDriven = avgValGap > 0.03;
+  const failedRun = state.gameOver && state.gameOverReason !== 'horizon';
+  const deepLoss = totalReturn < -0.3;
   let profile = L('Ausgewogener Allocator', 'Balanced Allocator');
   let profileBlurb = L('Du hast solide zwischen Risiko und Vorsicht balanciert.', 'You balanced risk and caution solidly.');
   if (aggressive && marginCalls >= 2) { profile = L('Aggressiver Zocker', 'Aggressive Gambler'); profileBlurb = L('Viel Hebel, große Wetten — hohe Varianz, oft am Rand des Margin Calls.', 'Heavy leverage, big bets — high variance, often on the edge of a margin call.'); }
   else if (aggressive) { profile = L('Mutiger Risikonehmer', 'Bold Risk-Taker'); profileBlurb = L('Du hast beherzt Hebel eingesetzt und das Risiko (meist) im Griff gehabt.', 'You used leverage boldly and (mostly) kept the risk in hand.'); }
   else if (passive) { profile = L('Passiver Parker', 'Passive Parker'); profileBlurb = L('Viel Cash, wenig Aktivität — sicher, aber renditearm.', 'Lots of cash, little activity — safe but low-return.'); }
   else if (valueDriven) { profile = L('Disziplinierter Value-Investor', 'Disciplined Value Investor'); profileBlurb = L('Du hast günstig gekauft und Risiko kontrolliert — der nachhaltige Weg.', 'You bought cheap and controlled risk — the sustainable path.'); }
+  if (failedRun || deepLoss) {
+    profileBlurb = L(
+      `Ansatz: ${profile}. Aber das Ergebnis zählt — dieser Lauf ist gescheitert. Die Gründe stehen unten.`,
+      `Approach: ${profile}. But the outcome is what counts — this run failed. The reasons are below.`,
+    );
+    profile = L('Gescheiterter Lauf', 'Failed Run');
+  }
 
   // --- Failure explanation ---
   let failure: string | undefined;
@@ -165,6 +174,11 @@ export function analyzeRun(state: SimState, lang: Lang = 'en'): AnalysisReport {
     failure = L(
       `Gescheitert am Reputationsverlust (auf 0): Treiber waren ${objFail > 0 ? `${objFail} verfehlte Mandate` : 'schwache Performance'}${a.redemptions > 0 ? `, ${a.redemptions} Mittelabzüge` : ''} und eine Platzierung hinter den Konkurrenzfonds. Liefere konstantere Renditen und erfülle die LP-Vorgaben.`,
       `Failed on loss of reputation (to 0): drivers were ${objFail > 0 ? `${objFail} missed mandates` : 'weak performance'}${a.redemptions > 0 ? `, ${a.redemptions} redemptions` : ''} and finishing behind the rival funds. Deliver more consistent returns and meet the LP targets.`,
+    );
+  } else if (state.gameOverReason === 'collapse') {
+    failure = L(
+      `Gescheitert an der Fonds-Abwicklung: Nach dem Abzug aller LPs blieb der Fonds ein Jahr ohne Kapital — Rettungsangebote (Re-Seed) wurden nicht genutzt oder kamen zu spät. Auslöser war Underperformance gegenüber dem Markt${a.redemptions > 0 ? ` (${a.redemptions} Mittelabzüge)` : ''}. Halte die rollierende Rendite über dem Benchmark, dann bleiben die LPs.`,
+      `Failed via fund wind-down: after every LP redeemed, the fund sat a year without capital — rescue offers (re-seed) were declined or came too late. The trigger was underperforming the market${a.redemptions > 0 ? ` (${a.redemptions} redemptions)` : ''}. Keep the trailing return above the benchmark and LPs stay.`,
     );
   } else if (state.gameOverReason === 'horizon') {
     failure = undefined;

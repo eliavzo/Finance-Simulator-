@@ -3,7 +3,7 @@
  * leading with the enterprise move and the biggest market swings so the player
  * can adjust their positioning (à la Coffee Inc's period report).
  */
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Modal, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSimStore } from '../store';
 import { REGIME_LABEL } from '../economy';
@@ -20,16 +20,25 @@ export function MonthReportModal() {
   const game = useSimStore((s) => s.game);
   const pending = useSimStore((s) => s.pendingReportMonth);
   const dismiss = useSimStore((s) => s.dismissReport);
+  const autoSkipQuiet = useSimStore((s) => s.autoSkipQuiet);
 
   const report = game?.lastReport;
   // Let any pending decision/opportunity be resolved first, then show the edition.
-  const visible = pending !== null && !!report && report.month === pending && !game?.pendingDecision && !game?.pendingOpportunity;
+  const visibleRaw = pending !== null && !!report && report.month === pending && !game?.pendingDecision && !game?.pendingOpportunity;
+  // A "quiet" month: no regime change, no black swan, no big swings, ≤1 headline.
+  const bigMovesArr = report ? [...report.gainers, ...report.losers].filter((x) => Math.abs(x.changePct) >= BIG_MOVE) : [];
+  const quiet = !!report && !report.regimeChanged && !report.blackSwan && bigMovesArr.length === 0 && report.headlines.length <= 1 && !game?.gameOver;
+  const skip = visibleRaw && autoSkipQuiet && quiet;
+  useEffect(() => {
+    if (skip) dismiss();
+  }, [skip, dismiss]);
+  const visible = visibleRaw && !skip;
   if (!report) return null;
 
   const year = Math.floor(report.month / 12) + 1;
   const m = (report.month % 12) + 1;
   const up = report.enterpriseChangePct >= 0;
-  const bigMoves = [...report.gainers, ...report.losers].filter((x) => Math.abs(x.changePct) >= BIG_MOVE);
+  const bigMoves = bigMovesArr;
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={dismiss}>
@@ -95,9 +104,12 @@ export function MonthReportModal() {
               </>
             ) : null}
 
-            <Button title={t({ de: 'Gelesen ▸', en: 'Read ▸' })} onPress={dismiss} variant="primary" style={{ marginTop: spacing.lg }} />
             <Text style={styles.colophon}>{t({ de: 'Alpha & Carry · Die Finanz-Chronik', en: 'Alpha & Carry · The Financial Chronicle' })}</Text>
           </ScrollView>
+          {/* Sticky footer: dismiss is always reachable without scrolling. */}
+          <View style={styles.footer}>
+            <Button title={t({ de: 'Gelesen ▸', en: 'Read ▸' })} onPress={dismiss} variant="primary" />
+          </View>
         </View>
       </View>
     </Modal>
@@ -152,7 +164,8 @@ function Row({ label, value, color, highlight }: { label: string; value: string;
 const styles = StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: 'rgba(20,17,10,0.6)', justifyContent: 'center', padding: spacing.md },
   panel: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, maxHeight: '90%' },
-  scroll: { padding: spacing.lg },
+  scroll: { padding: spacing.lg, paddingBottom: spacing.sm },
+  footer: { borderTopWidth: 1, borderTopColor: colors.border, padding: spacing.md, backgroundColor: colors.surface },
   masthead: { color: colors.text, fontFamily: fonts.displayBlack, fontSize: 30, textAlign: 'center', paddingVertical: 2 },
   dateline: { color: colors.textMuted, fontFamily: fonts.serifItalic, fontSize: 10, letterSpacing: 1.2, textAlign: 'center', marginBottom: spacing.xs },
   headline: { fontFamily: fonts.displayBlack, fontSize: 24, lineHeight: 28, marginTop: spacing.md },

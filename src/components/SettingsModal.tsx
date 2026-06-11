@@ -29,6 +29,11 @@ export function SettingsModal({
   const t = useTr();
   const lang = useLang();
   const setLang = useSimStore((s) => s.setLang);
+  const soundOn = useSimStore((s) => s.soundOn);
+  const setSoundOn = useSimStore((s) => s.setSoundOn);
+  const autoSkipQuiet = useSimStore((s) => s.autoSkipQuiet);
+  const setAutoSkipQuiet = useSimStore((s) => s.setAutoSkipQuiet);
+  const openArchive = useSimStore((s) => s.openArchive);
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={onClose}>
@@ -43,6 +48,24 @@ export function SettingsModal({
             onChange={(v) => setLang(v as Lang)}
             options={LANGS.map((l) => ({ label: LANG_LABEL[l], value: l }))}
           />
+
+          <Text style={styles.sectionLabel}>{t({ de: 'Komfort', en: 'Comfort' })}</Text>
+          <Text style={styles.body}>{t({ de: 'Klang & Vibration', en: 'Sound & haptics' })}</Text>
+          <Segmented<string>
+            value={soundOn ? '1' : '0'}
+            onChange={(v) => setSoundOn(v === '1')}
+            options={[{ label: t({ de: 'An', en: 'On' }), value: '1' }, { label: t({ de: 'Aus', en: 'Off' }), value: '0' }]}
+          />
+          <Text style={[styles.body, { marginTop: spacing.sm }]}>{t({ de: 'Ruhige Monatsberichte automatisch überspringen', en: 'Auto-skip quiet monthly reports' })}</Text>
+          <Segmented<string>
+            value={autoSkipQuiet ? '1' : '0'}
+            onChange={(v) => setAutoSkipQuiet(v === '1')}
+            options={[{ label: t({ de: 'An', en: 'On' }), value: '1' }, { label: t({ de: 'Aus', en: 'Off' }), value: '0' }]}
+          />
+
+          <Text style={styles.sectionLabel}>{t({ de: 'Archiv', en: 'Archive' })}</Text>
+          <Text style={styles.body}>{t({ de: 'Alle bisherigen Ausgaben dieses Laufs nachlesen — auf Web auch als Text exportierbar.', en: 'Re-read every edition of this run — exportable as text on web.' })}</Text>
+          <Button title={t({ de: 'Zeitungsarchiv öffnen', en: 'Open Newspaper Archive' })} variant="secondary" onPress={() => { onClose(); openArchive(); }} style={{ marginTop: spacing.md }} />
 
           <Text style={styles.sectionLabel}>{t({ de: 'Hilfe', en: 'Help' })}</Text>
           <Text style={styles.body}>{t({ de: 'Neu hier? Wiederhole die Einführung oder schlage Details im Leitfaden nach.', en: 'New here? Replay the intro or look up details in the guide.' })}</Text>

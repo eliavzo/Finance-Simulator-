@@ -4,7 +4,8 @@ import React, { useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSimStore } from '../store';
 import { portfolioNav } from '../portfolio';
-import { fundMetrics, uncalledCapital } from '../fund';
+import { fundMetrics, uncalledCapital, lpSentiment } from '../fund';
+import { benchmarkTrailing } from '../engine';
 import { trailingReturn } from '../rivals';
 import { metricValue, objectiveProgress, formatMetric, localizedObjective } from '../objectives';
 import { LP_TYPE_LABEL } from '../labels';
@@ -28,6 +29,15 @@ export function FundScreen() {
   const metrics = useMemo(() => fundMetrics(game.fund, fundNav, game.month), [game.fund, fundNav, game.month]);
   const uncalled = uncalledCapital(game.fund);
   const [callAmt, setCallAmt] = useState(2_000_000);
+
+  const trailing12 = trailingReturn(game.portfolio.returnHistory, 12);
+  const benchmark12 = benchmarkTrailing(game.benchmarkHistory, 12);
+  const lpHwm = game.portfolio.highWaterMark || fundNav;
+  const lpDrawdown = lpHwm > 0 ? Math.max(0, (lpHwm - fundNav) / lpHwm) : 0;
+  const benchLevels = game.benchmarkHistory ?? [];
+  const benchPeak = benchLevels.length ? Math.max(...benchLevels) : 0;
+  const benchNow = benchLevels.length ? benchLevels[benchLevels.length - 1] : 0;
+  const benchDrawdown = benchPeak > 0 ? Math.max(0, (benchPeak - benchNow) / benchPeak) : 0;
 
   const is = game.incomeStatements[0];
   const bs = game.balanceSheets[0];
@@ -150,15 +160,33 @@ export function FundScreen() {
 
         <Card>
           <SectionTitle>Limited Partners ({game.fund.lps.length})</SectionTitle>
-          {game.fund.lps.map((lp) => (
-            <View key={lp.id} style={styles.lpRow}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.lpName}>{lp.name}</Text>
-                <Text style={styles.lpMeta}>{t(LP_TYPE_LABEL[lp.type])} · committed {fmtMoney(lp.committed)} · called {fmtMoney(lp.called)}</Text>
+          <Text style={styles.lpSummary}>{t({ de: 'LPs messen dich am Markt: Ziel ≈ min(eigenes Ziel, Benchmark+2 Pkt.)', en: 'LPs judge you against the market: target ≈ min(own goal, benchmark+2pts)' })}</Text>
+          {game.fund.lps.map((lp) => {
+            const sent = lp.redeemed ? null : lpSentiment(lp, trailing12, benchmark12, lpDrawdown, benchDrawdown);
+            const moodColor = sent ? (sent.mood === 'happy' ? colors.positive : sent.mood === 'neutral' ? colors.warning : colors.negative) : colors.textMuted;
+            const moodLabel = sent
+              ? sent.mood === 'happy'
+                ? t({ de: 'zufrieden', en: 'content' })
+                : sent.mood === 'neutral'
+                  ? t({ de: 'wachsam', en: 'wary' })
+                  : t({ de: 'kritisch', en: 'critical' })
+              : '';
+            return (
+              <View key={lp.id} style={styles.lpRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.lpName}>{lp.name}</Text>
+                  <Text style={styles.lpMeta}>{t(LP_TYPE_LABEL[lp.type])} · committed {fmtMoney(lp.committed)} · called {fmtMoney(lp.called)}</Text>
+                  {sent ? (
+                    <Text style={styles.lpMood}>
+                      <Text style={{ color: moodColor }}>{sent.mood === 'happy' ? '●' : sent.mood === 'neutral' ? '◐' : '○'} {moodLabel}</Text>
+                      {sent.mood === 'critical' ? ` · ${t({ de: 'Abzugswahrsch.', en: 'redemption prob.' })} ${(sent.pressure * 100).toFixed(0)}%/${t({ de: 'Monat', en: 'mo' })}` : ''}
+                    </Text>
+                  ) : null}
+                </View>
+                {lp.redeemed ? <Pill text="Redeemed" color={colors.negative} /> : <Pill text={fmtPct(lp.expectedReturn, 0)} color={colors.textMuted} />}
               </View>
-              {lp.redeemed ? <Pill text="Redeemed" color={colors.negative} /> : <Pill text={fmtPct(lp.expectedReturn, 0)} color={colors.textMuted} />}
-            </View>
-          ))}
+            );
+          })}
         </Card>
       </ScrollView>
     </View>
@@ -210,6 +238,8 @@ const styles = StyleSheet.create({
   lpRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.sm, borderTopWidth: 1, borderTopColor: colors.border },
   lpName: { color: colors.text, fontSize: 14, fontWeight: '700' },
   lpMeta: { color: colors.textMuted, fontSize: 11, marginTop: 2 },
+  lpSummary: { color: colors.textMuted, fontSize: 11, fontStyle: 'italic', marginBottom: spacing.xs },
+  lpMood: { color: colors.textMuted, fontSize: 11, marginTop: 2 },
   objRow: { paddingVertical: spacing.sm, borderTopWidth: 1, borderTopColor: colors.ruleSoft, gap: spacing.xs },
   objHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm },
   objTitle: { color: colors.text, fontSize: 12, flex: 1 },

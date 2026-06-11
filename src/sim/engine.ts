@@ -23,7 +23,7 @@ import { THESES } from './thesis';
 import { scenarioEconomy, applyScenarioToInstruments } from './scenarios';
 import { generateObjective, metricValue, isMet, computeScore, localizedObjective } from './objectives';
 import { createRivals, stepRivals, buildLeague, trailingReturn, playerRankFraction } from './rivals';
-import { maybeDecision } from './decisions';
+import { maybeDecision, buildLpMeeting } from './decisions';
 import { maybeOpportunity, payoffMultiple, OPP_LABEL } from './opportunities';
 import { createVC, refreshDeals, stepVC, vcResidualValue } from './vc';
 import { maybeTriggerCrisis, applyCrisisToEconomy, crisisEquityShock, hedgePayout, HEDGE_MONTHLY_PREMIUM, CRISIS_DESC } from './crises';
@@ -137,6 +137,9 @@ export function createSimGame(
     balanceSheets: [],
     ledger: [],
     equityHistory: [enterprise],
+    benchmarkHistory: [100],
+    fundDeadMonths: 0,
+    chronicle: [],
     events: [
       ev(0, {
         type: 'info',
@@ -154,6 +157,27 @@ export function createSimGame(
 /** Total enterprise equity = GP cash + fund NAV + venture residual value. */
 export function enterpriseEquity(state: SimState): number {
   return state.firm.cash + portfolioNav(state.portfolio, state.instruments) + vcResidualValue(state.vc);
+}
+
+/** Equal-weight average one-month return across listed equities. */
+function equityMarketReturn(instruments: Instrument[]): number {
+  let sum = 0;
+  let n = 0;
+  for (const inst of instruments) {
+    if (inst.kind !== 'equity') continue;
+    const h = inst.priceHistory;
+    if (h.length < 2 || h[h.length - 2] <= 0) continue;
+    sum += inst.price / h[h.length - 2] - 1;
+    n += 1;
+  }
+  return n > 0 ? sum / n : 0;
+}
+
+/** Trailing n-month return of an index level series (NaN if too short). */
+export function benchmarkTrailing(levels: number[] | undefined, n = 12): number {
+  if (!levels || levels.length < n + 1) return NaN;
+  const a = levels[levels.length - 1 - n];
+  return a > 0 ? levels[levels.length - 1] / a - 1 : NaN;
 }
 
 /** Biggest one-month price moves across tradeable instruments (excl. options). */
@@ -222,6 +246,12 @@ export function advanceMonth(state: SimState): SimState {
     events.push(ev(month, { type: 'blackswan', title: g({ de: '🦢 Black Swan', en: '🦢 Black Swan' }), description: g({ de: 'Ein extremer Schock erschüttert die Märkte – gehebelte Positionen sind in Gefahr.', en: 'An extreme shock rocks the markets — leveraged positions are at risk.' }) }));
   }
 
+  // 2b. Benchmark index (equal-weight equities) -------------------------------
+  const prevBench = state.benchmarkHistory ?? [100];
+  const benchLevel = prevBench[prevBench.length - 1] * (1 + equityMarketReturn(instruments));
+  const benchmarkHistory = [...prevBench, benchLevel].slice(-TOTAL_MONTHS - 1);
+  const bench12 = benchmarkTrailing(benchmarkHistory, 12);
+
   // 3. Trading book ----------------------------------------------------------
   const capabilities = firmCapabilities(state.firm, state.reputation, state.thesis);
   const pStep = stepPortfolio(state.portfolio, instruments, month, {
@@ -242,15 +272,21 @@ export function advanceMonth(state: SimState): SimState {
   let hedge = state.hedge;
   if (hedge) {
     const premium = hedge.notional * HEDGE_MONTHLY_PREMIUM;
-    let cash = portfolio.cash - premium;
-    const payout = hedgePayout(hedge.notional, blackSwan, crisis);
-    if (payout > 0) {
-      cash += payout;
-      events.push(ev(month, { type: 'risk', title: g({ de: 'Absicherung greift', en: 'Hedge pays out' }), description: g({ de: `Hedge zahlt $${(payout / 1e6).toFixed(1)}M aus.`, en: `Hedge pays $${(payout / 1e6).toFixed(1)}M.` }) }));
+    if (portfolio.cash < premium) {
+      // Can't fund the premium — the policy lapses instead of overdrawing the fund.
+      events.push(ev(month, { type: 'risk', title: g({ de: 'Absicherung verfallen', en: 'Hedge lapsed' }), description: g({ de: 'Die Prämie konnte nicht gezahlt werden — der Schutz erlischt.', en: 'The premium could not be paid — the cover lapses.' }) }));
+      hedge = undefined;
+    } else {
+      let cash = portfolio.cash - premium;
+      const payout = hedgePayout(hedge.notional, blackSwan, crisis);
+      if (payout > 0) {
+        cash += payout;
+        events.push(ev(month, { type: 'risk', title: g({ de: 'Absicherung greift', en: 'Hedge pays out' }), description: g({ de: `Hedge zahlt $${(payout / 1e6).toFixed(1)}M aus.`, en: `Hedge pays $${(payout / 1e6).toFixed(1)}M.` }) }));
+      }
+      portfolio = { ...portfolio, cash };
+      const rem = hedge.monthsRemaining - 1;
+      hedge = rem > 0 ? { ...hedge, monthsRemaining: rem } : undefined;
     }
-    portfolio = { ...portfolio, cash };
-    const rem = hedge.monthsRemaining - 1;
-    hedge = rem > 0 ? { ...hedge, monthsRemaining: rem } : undefined;
   }
 
   // 3c. Resolve matured special opportunities --------------------------------
@@ -296,7 +332,8 @@ export function advanceMonth(state: SimState): SimState {
   let fund = state.fund;
   let firm = state.firm;
 
-  const fee = monthlyManagementFee(fund, fundNav, month);
+  // Fee is capped at available fund cash — it can't pull the fund below zero.
+  const fee = Math.min(monthlyManagementFee(fund, fundNav, month), Math.max(0, portfolio.cash));
   portfolio = { ...portfolio, cash: portfolio.cash - fee };
   firm = { ...firm, cash: firm.cash + fee, feesEarned: firm.feesEarned + fee };
   post('mgmtFeeRevenue', fee);
@@ -320,6 +357,12 @@ export function advanceMonth(state: SimState): SimState {
     const trailing12 = trailingReturn(portfolio.returnHistory, 12);
     const hwm = portfolio.highWaterMark || fundNav;
     const drawdown = hwm > 0 ? Math.max(0, (hwm - fundNav) / hwm) : 0;
+    // Only drawdown BEYOND the market's own drawdown alarms LPs: matching a bear
+    // market is expected, not a reason to redeem. Excess drawdown (from leverage
+    // or bad picks) is what builds pressure.
+    const benchPeak = Math.max(...benchmarkHistory);
+    const benchDrawdown = benchPeak > 0 ? Math.max(0, (benchPeak - benchLevel) / benchPeak) : 0;
+    const excessDrawdown = Math.max(0, drawdown - benchDrawdown);
     const totalCalledActive = fund.lps.filter((l) => !l.redeemed).reduce((s, l) => s + l.called, 0) || 1;
     const keep: typeof fund.lps = [];
     const redeemers: typeof fund.lps = [];
@@ -328,12 +371,15 @@ export function advanceMonth(state: SimState): SimState {
         keep.push(lp);
         continue;
       }
-      // LPs tolerate a few points below their target before pressing — only a
-      // meaningful, sustained shortfall (or a real drawdown) drives redemptions.
+      // LPs judge the fund RELATIVE to the market: in a bear year nobody expects
+      // +12%, they expect you to hold up better than the index. The effective
+      // target is the lesser of the LP's absolute goal and benchmark + 2pts,
+      // with a tolerance band before any pressure builds.
       const LP_TOLERANCE = 0.04;
       const trailing = Number.isFinite(trailing12) ? trailing12 : 0;
-      const underperf = Math.max(0, lp.expectedReturn - LP_TOLERANCE - trailing);
-      const pressure = underperf * 1.1 + drawdown * 0.9 + (economy.regime === 'contraction' ? 0.04 : 0);
+      const effectiveTarget = Number.isFinite(bench12) ? Math.min(lp.expectedReturn, bench12 + 0.02) : lp.expectedReturn;
+      const underperf = Math.max(0, effectiveTarget - LP_TOLERANCE - trailing);
+      const pressure = underperf * 1.1 + excessDrawdown * 0.9;
       const prob = Math.max(0, Math.min(0.4, pressure * (1 - lp.patience)));
       if (rng.chance(prob)) redeemers.push(lp);
       else keep.push(lp);
@@ -370,6 +416,18 @@ export function advanceMonth(state: SimState): SimState {
         }),
       }));
     }
+  }
+
+  // 4c. Re-baseline the NAV series so external LP capital flows (redemptions,
+  // and capital calls applied between ticks) are NOT counted as fund returns.
+  // A withdrawal is not an investment loss — measuring it as one is what turned
+  // a single bad year into an unrecoverable death spiral. Setting the latest NAV
+  // point to the post-flow value makes next month's return reflect market P&L on
+  // the capital actually at work.
+  if (portfolio.navHistory.length > 0) {
+    const navH = [...portfolio.navHistory];
+    navH[navH.length - 1] = portfolioNav(portfolio, instruments);
+    portfolio = { ...portfolio, navHistory: navH };
   }
 
   // 5. Firm: payroll, opex, morale, attrition -------------------------------
@@ -415,7 +473,8 @@ export function advanceMonth(state: SimState): SimState {
   const rivals = stepRivals(state.rivals, economy, rng, dp.rivalSkillBonus);
   const playerTrailing = trailingReturn(portfolio.returnHistory, 12);
   const league = buildLeague(rivals, state.firm.name, playerTrailing, fundNav);
-  const rankFrac = playerRankFraction(league);
+  // The league only judges a real track record — neutral standing in year one.
+  const rankFrac = month >= 12 ? playerRankFraction(league) : 0.5;
 
   let repDelta = Math.max(-2, Math.min(2, monthReturn * 30));
   // Standing vs rivals: top of the table lifts reputation, bottom drags it.
@@ -571,17 +630,28 @@ export function advanceMonth(state: SimState): SimState {
     headlines: events.map((e) => ({ type: e.type, title: e.title, description: e.description })),
   };
 
+  // Fail-fast: a fund with no LPs and (almost) no assets is dead. Count the dead
+  // months; rescue decision cards fire during this window — if nothing brings
+  // the fund back within a year, end the run instead of a multi-year zombie.
+  const activeLpCount = fund.lps.filter((l) => !l.redeemed).length;
+  const fundDead = activeLpCount === 0 && fundNav < 2_000_000 && fund.committed < 1_000_000;
+  const fundDeadMonths = fundDead ? (state.fundDeadMonths ?? 0) + 1 : 0;
+  if (fundDead && fundDeadMonths === 1) {
+    events.push(ev(month, { type: 'fund', title: g({ de: '⚠️ Fonds faktisch tot', en: '⚠️ Fund effectively dead' }), description: g({ de: 'Keine LPs, kein Kapital. Ohne Rettung (Re-Seed) wird das Haus binnen 12 Monaten abgewickelt.', en: 'No LPs, no capital. Without a rescue (re-seed) the house winds down within 12 months.' }) }));
+  }
+
   // Grace periods so early bad luck can't end a run in the first year(s).
   // Ironman: no safety net — insolvency ends the run immediately.
   const insolvent = dp.ironman ? firm.cash < 0 : firm.cash < -2_000_000 && month >= 12;
   const ruined = reputation <= 0 && month >= 24;
+  const collapsed = fundDeadMonths >= 12 && month >= 24;
   const horizon = month >= TOTAL_MONTHS;
-  const gameOver = insolvent || ruined || horizon;
+  const gameOver = insolvent || ruined || collapsed || horizon;
   let gameOverReason: GameOverReason | undefined;
   let finalScore: number | undefined;
   let finalGrade: string | undefined;
   if (gameOver) {
-    gameOverReason = insolvent ? 'insolvency' : ruined ? 'reputation' : 'horizon';
+    gameOverReason = insolvent ? 'insolvency' : ruined ? 'reputation' : collapsed ? 'collapse' : 'horizon';
     const endState = {
       ...state,
       firm,
@@ -602,23 +672,44 @@ export function advanceMonth(state: SimState): SimState {
         ? { de: 'Spielende', en: 'Game Over' }
         : gameOverReason === 'insolvency'
           ? { de: 'GP zahlungsunfähig', en: 'GP Insolvent' }
-          : { de: 'Vertrauen verspielt', en: 'Trust Lost' },
+          : gameOverReason === 'collapse'
+            ? { de: 'Fonds abgewickelt', en: 'Fund Wound Down' }
+            : { de: 'Vertrauen verspielt', en: 'Trust Lost' },
     );
     const desc = g(
       gameOverReason === 'horizon'
         ? { de: `Nach 20 Jahren: Unternehmenswert $${(enterprise / 1e6).toFixed(1)}M. Note ${finalGrade} (${finalScore}).`, en: `After 20 years: enterprise value $${(enterprise / 1e6).toFixed(1)}M. Grade ${finalGrade} (${finalScore}).` }
         : gameOverReason === 'insolvency'
           ? { de: 'Die Management-Gesellschaft ist pleite. Das Haus schließt.', en: 'The management company is bankrupt. The house closes.' }
-          : { de: 'Die Reputation ist auf null gefallen — die LPs ziehen ab.', en: 'Reputation has fallen to zero — the LPs withdraw.' },
+          : gameOverReason === 'collapse'
+            ? { de: 'Ein Jahr ohne LPs und ohne Kapital — das Haus wird abgewickelt.', en: 'A year with no LPs and no capital — the house is wound down.' }
+            : { de: 'Die Reputation ist auf null gefallen — die LPs ziehen ab.', en: 'Reputation has fallen to zero — the LPs withdraw.' },
     );
     events.push(ev(month, { type: 'info', title, description: desc }));
   }
 
-  // Decision card (not on the final month).
-  const decisionState = { ...state, firm, portfolio, instruments, reputation } as SimState;
-  const pendingDecision = gameOver ? undefined : maybeDecision(decisionState, blackSwan, rng);
+  // Decision card (not on the final month). The semi-annual LP meeting is
+  // scheduled; the rescue card fires while the fund is dead; everything else
+  // is the usual random "Extrablatt".
+  const decisionState = { ...state, firm, portfolio, fund, instruments, reputation, fundDeadMonths } as SimState;
+  let pendingDecision = gameOver ? undefined : maybeDecision(decisionState, blackSwan, rng);
+  if (!gameOver && !pendingDecision && activeLpCount > 0 && month > 0 && month % 6 === 0) {
+    pendingDecision = buildLpMeeting(rng);
+  }
   // Special opportunity (don't stack on top of a pending decision).
   const pendingOpportunity = gameOver || pendingDecision ? undefined : maybeOpportunity(reputation, month, portfolio.cash, rng);
+
+  // Archive this month's edition for the newspaper archive.
+  const chronicle = [
+    ...(state.chronicle ?? []),
+    {
+      month,
+      enterprise,
+      changePct: report.enterpriseChangePct,
+      regime: economy.regime,
+      headline: events.length > 0 ? events[0].title : undefined,
+    },
+  ].slice(-TOTAL_MONTHS);
 
   return {
     month,
@@ -656,6 +747,9 @@ export function advanceMonth(state: SimState): SimState {
     specialHoldings,
     vc,
     equityHistory: [...state.equityHistory, enterprise].slice(-TOTAL_MONTHS - 1),
+    benchmarkHistory,
+    fundDeadMonths,
+    chronicle,
     events: [...events, ...state.events].slice(0, 80),
     rngState: rng.getState(),
   };

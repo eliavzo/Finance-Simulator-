@@ -2,7 +2,7 @@
 import React, { useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSimStore } from '../store';
-import { vcMetrics, holdingValue } from '../vc';
+import { vcMetrics, holdingValue, SECONDARY_DISCOUNT } from '../vc';
 import { Startup, StartupDeal } from '../types';
 import { SECTOR_LABEL, STAGE_LABEL } from '../labels';
 import { SimHeader } from './SimHeader';
@@ -81,6 +81,7 @@ function StartupCard({ s }: { s: Startup }) {
   const t = useTr();
   const support = useSimStore((st) => st.supportStartup);
   const followOn = useSimStore((st) => st.followOnStartup);
+  const sell = useSimStore((st) => st.sellStartup);
   const value = holdingValue(s);
   const moic = s.totalInvested > 0 ? value / s.totalInvested : 0;
   const runwayMonths = s.burnRate > 0 ? s.runwayCash / s.burnRate : 0;
@@ -111,7 +112,11 @@ function StartupCard({ s }: { s: Startup }) {
         {s.raising ? (
           <Button title={`${t({ de: 'Folge-Inv.', en: 'Follow-on' })} ${fmtMoney(s.raising.proRata)}`} variant="positive" onPress={() => { const r = followOn(s.id); if (!r.ok) notify(t({ de: 'Nicht möglich', en: 'Not possible' }), r.error ?? ''); }} style={styles.smallBtn} />
         ) : null}
+        <Button title={t({ de: 'Sekundär verkaufen', en: 'Sell secondary' })} variant="secondary" onPress={() => { const r = sell(s.id); if (!r.ok) notify(t({ de: 'Nicht möglich', en: 'Not possible' }), r.error ?? ''); }} style={styles.smallBtn} />
       </View>
+      <Text style={styles.secondaryHint}>
+        {t({ de: 'Erlös ≈ ', en: 'proceeds ≈ ' })}{fmtMoney(s.postMoney * s.ownership * (1 - SECONDARY_DISCOUNT))}{t({ de: ' (30% Abschlag)', en: ' (30% discount)' })}
+      </Text>
     </View>
   );
 }
@@ -160,6 +165,7 @@ const styles = StyleSheet.create({
   healthLabel: { color: colors.textMuted, fontSize: 11, width: 44 },
   supportLabel: { color: colors.textMuted, fontSize: 11, width: 84, textAlign: 'right' },
   btnRow: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.sm },
+  secondaryHint: { color: colors.textMuted, fontSize: 11, marginTop: spacing.xs },
   smallBtn: { flex: 1, paddingHorizontal: spacing.sm, paddingVertical: spacing.sm },
   closedRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: spacing.sm, borderTopWidth: 1, borderTopColor: colors.ruleSoft },
   closedName: { color: colors.text, fontSize: 14, fontFamily: fonts.serifBold },

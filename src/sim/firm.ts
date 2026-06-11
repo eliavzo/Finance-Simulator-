@@ -70,11 +70,15 @@ export function upgradeCost(track: keyof Infrastructure, currentTier: number): n
 /* ------------------------------- Setup ----------------------------------- */
 
 const FIRST_NAMES = ['Alex', 'Sam', 'Jordan', 'Riley', 'Morgan', 'Casey', 'Taylor', 'Jamie', 'Devon', 'Quinn', 'Avery', 'Reese', 'Rowan', 'Sky', 'Lane'];
-const LAST_NAMES = ['Cohen', 'Nakamura', 'Schmidt', 'Okafor', 'Rossi', 'Patel', 'Larsson', 'Dubois', 'Ivanov', 'Khan', 'Meyer', 'Costa', 'Wong', 'Abadi'];
+const LAST_NAMES = ['Cohen', 'Nakamura', 'Schmidt', 'Okafor', 'Rossi', 'Patel', 'Larsson', 'Dubois', 'Ivanov', 'Khan', 'Meyer', 'Costa', 'Wong', 'Abadi', 'Haller', 'Mbeki', 'Lindqvist', 'Moreau', 'Tanaka', 'Novak'];
 
 let empCounter = 0;
+// Rotate through surnames so colleagues don't share a last name by accident.
+let surnameCursor = -1;
 function makeName(rng: Rng): string {
-  return `${rng.pick(FIRST_NAMES)} ${rng.pick(LAST_NAMES)}`;
+  if (surnameCursor < 0) surnameCursor = rng.int(0, LAST_NAMES.length - 1);
+  surnameCursor = (surnameCursor + 1 + rng.int(0, 3)) % LAST_NAMES.length;
+  return `${rng.pick(FIRST_NAMES)} ${LAST_NAMES[surnameCursor]}`;
 }
 
 export function createEmployee(role: Role, skill: number, rng: Rng, month: number): Employee {

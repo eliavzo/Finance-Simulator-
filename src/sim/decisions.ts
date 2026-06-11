@@ -3,9 +3,10 @@
  * the player choose, each with a trade-off. They fire occasionally, gated by
  * the firm's state, and are the main source of run-to-run variety.
  */
-import { DecisionCard, SimState } from './types';
+import { DecisionCard, DecisionEffect, Employee, SimState } from './types';
 import { exposures } from './portfolio';
 import { createLP } from './fund';
+import { fairSalary } from './firm';
 import { g } from '../i18n/lang';
 import { Rng } from '../engine/rng';
 
@@ -17,12 +18,14 @@ interface CardContext {
   hasLowMorale: boolean;
   grossExposure: number;
   blackSwan: boolean;
+  month: number;
+  rivalName: string;
 }
 
 interface CardTemplate {
   id: string;
   eligible: (c: CardContext) => boolean;
-  build: () => DecisionCard;
+  build: (c: CardContext) => DecisionCard;
 }
 
 let cardCounter = 0;
@@ -134,6 +137,38 @@ const TEMPLATES: CardTemplate[] = [
       ),
   },
   {
+    id: 'rivalshort',
+    eligible: (c) => c.month > 12 && c.reputation > 40,
+    build: (c) =>
+      card(
+        'rivalshort',
+        g({ de: `Schieflage bei ${c.rivalName}`, en: `${c.rivalName} in Trouble` }),
+        g({ de: 'Dein Desk sieht massive Risse im Buch eines Rivalen. Positionierst du dich öffentlich dagegen?', en: 'Your desk sees deep cracks in a rival’s book. Do you publicly position against them?' }),
+        [
+          {
+            label: g({ de: 'Dagegen wetten', en: 'Bet against them' }),
+            description: g({ de: 'Riskant: großer Gewinn, wenn der Desk recht hat — teuer, wenn nicht.', en: 'Risky: a big win if the desk is right — costly if not.' }),
+            effect: { gamble: { p: 0.55, win: { fundCash: 1_200_000, reputation: 2 }, lose: { fundCash: -800_000, reputation: -1 } } },
+          },
+          { label: g({ de: 'Finger weg', en: 'Stay out' }), description: g({ de: 'Kein Risiko, keine Schlagzeile.', en: 'No risk, no headline.' }), effect: {} },
+        ],
+      ),
+  },
+  {
+    id: 'poachstar',
+    eligible: (c) => c.reputation > 55 && c.firmCash > 600_000,
+    build: (c) =>
+      card(
+        'poachstar',
+        g({ de: `Star bei ${c.rivalName} unzufrieden`, en: `Star at ${c.rivalName} Unhappy` }),
+        g({ de: 'Ein hochkarätiger Kopf der Konkurrenz ist wechselwillig — gegen eine satte Antrittsprämie.', en: 'A top mind at a rival is open to moving — for a hefty signing bonus.' }),
+        [
+          { label: g({ de: 'Abwerben', en: 'Poach them' }), description: g({ de: 'Teuer, aber Elite-Skill fürs Team.', en: 'Expensive, but elite skill for the team.' }), effect: { cash: -500_000, hireStar: 'Analyst', reputation: 1 } },
+          { label: g({ de: 'Zu teuer', en: 'Too expensive' }), description: g({ de: 'Das Budget bleibt verschont.', en: 'The budget is spared.' }), effect: {} },
+        ],
+      ),
+  },
+  {
     id: 'media',
     eligible: (c) => c.reputation > 45,
     build: () =>
@@ -149,8 +184,49 @@ const TEMPLATES: CardTemplate[] = [
   },
 ];
 
+/** The dead-fund rescue card: an anchor backer offers a re-seed. */
+function buildRescue(reputation: number): DecisionCard {
+  if (reputation >= 25) {
+    return card(
+      'reseed',
+      g({ de: 'Rettungs-Re-Seed', en: 'Rescue Re-Seed' }),
+      g({ de: 'Ein Anker-Investor bietet an, den toten Fonds neu zu verankern — gegen einen dauerhaften Gebührenrabatt.', en: 'An anchor investor offers to re-seed the dead fund — in exchange for a permanent fee discount.' }),
+      [
+        { label: g({ de: 'Re-Seed annehmen', en: 'Accept the re-seed' }), description: g({ de: '$10M Commitment, aber 0,5 Pkt. weniger Management-Fee.', en: '$10M commitment, but 0.5pts less management fee.' }), effect: { committed: 10_000_000, feeRate: -0.005, reputation: 1 } },
+        { label: g({ de: 'Stolz ablehnen', en: 'Proudly decline' }), description: g({ de: 'Keine Bedingungen — und kein Kapital.', en: 'No strings — and no capital.' }), effect: {} },
+      ],
+    );
+  }
+  return card(
+    'ffround',
+    g({ de: 'Friends & Family', en: 'Friends & Family' }),
+    g({ de: 'Dein Ruf ist angeschlagen, aber das private Netzwerk würde dir noch einmal Startkapital anvertrauen.', en: 'Your standing is dented, but your private network would entrust you with seed capital once more.' }),
+    [
+      { label: g({ de: 'Annehmen', en: 'Accept' }), description: g({ de: '$4M Commitment — die letzte Chance, es zu beweisen.', en: '$4M commitment — the last chance to prove it.' }), effect: { committed: 4_000_000, morale: 4 } },
+      { label: g({ de: 'Ablehnen', en: 'Decline' }), description: g({ de: 'Kein privates Geld aufs Spiel setzen.', en: 'Don’t put private money at risk.' }), effect: {} },
+    ],
+  );
+}
+
+/** Semi-annual LP meeting: negotiate expectations, fees and goodwill. */
+export function buildLpMeeting(rng: Rng): DecisionCard {
+  void rng;
+  return card(
+    'lpmeeting',
+    g({ de: 'LP-Versammlung', en: 'LP Meeting' }),
+    g({ de: 'Die halbjährliche Versammlung deiner Investoren. Wie trittst du auf?', en: 'The semi-annual meeting of your investors. How do you present?' }),
+    [
+      { label: g({ de: 'Erwartungen dämpfen', en: 'Temper expectations' }), description: g({ de: 'Ehrlichkeit kauft Geduld, dämpft aber den Glanz.', en: 'Honesty buys patience but dims the shine.' }), effect: { patience: 0.08, reputation: -1 } },
+      { label: g({ de: 'Große Versprechen', en: 'Big promises' }), description: g({ de: 'Hebt den Ruf — und die Fallhöhe.', en: 'Lifts your standing — and the height of the fall.' }), effect: { reputation: 2, patience: -0.06 } },
+      { label: g({ de: 'Fee-Rabatt anbieten', en: 'Offer a fee discount' }), description: g({ de: '0,25 Pkt. weniger Fee, deutlich geduldigere LPs.', en: '0.25pts less fee, markedly more patient LPs.' }), effect: { feeRate: -0.0025, patience: 0.12 } },
+    ],
+  );
+}
+
 /** Possibly produce a decision card this month (≈12% base chance). */
 export function maybeDecision(state: SimState, blackSwan: boolean, rng: Rng): DecisionCard | undefined {
+  // While the fund is dead, rescue offers dominate the news cycle.
+  if ((state.fundDeadMonths ?? 0) >= 2 && rng.chance(0.45)) return buildRescue(state.reputation);
   if (!rng.chance(blackSwan ? 0.6 : 0.12)) return undefined;
   const ctx: CardContext = {
     reputation: state.reputation,
@@ -160,10 +236,12 @@ export function maybeDecision(state: SimState, blackSwan: boolean, rng: Rng): De
     hasLowMorale: state.firm.employees.some((e) => e.morale < 55),
     grossExposure: exposures(state.portfolio, state.instruments).gross,
     blackSwan,
+    month: state.month,
+    rivalName: state.rivals.length > 0 ? rng.pick(state.rivals).name : 'Meridian Capital',
   };
   const eligible = TEMPLATES.filter((t) => t.eligible(ctx));
   if (eligible.length === 0) return undefined;
-  return rng.pick(eligible).build();
+  return rng.pick(eligible).build(ctx);
 }
 
 /** Apply the chosen option of the pending decision and return a new state. */
@@ -172,22 +250,48 @@ export function applyDecision(state: SimState, choiceIndex: number, rng: Rng): S
   if (!card) return state;
   const choice = card.choices[choiceIndex];
   if (!choice) return { ...state, pendingDecision: undefined };
-  const e = choice.effect;
 
   let firm = state.firm;
   let portfolio = state.portfolio;
   let fund = state.fund;
+  let reputation = state.reputation;
+  let gambleNote: string | undefined;
 
-  if (e.cash) firm = { ...firm, cash: firm.cash + e.cash };
-  if (e.morale) {
-    firm = { ...firm, employees: firm.employees.map((emp) => ({ ...emp, morale: Math.max(0, Math.min(100, emp.morale + e.morale!)) })) };
-  }
-  if (e.fundCash) portfolio = { ...portfolio, cash: portfolio.cash + e.fundCash };
-  if (e.committed && e.committed > 0) {
-    const lp = createLP('SovereignWealth', e.committed, rng);
-    fund = { ...fund, committed: fund.committed + lp.committed, lps: [...fund.lps, lp] };
-  }
-  const reputation = e.reputation ? Math.max(0, Math.min(100, state.reputation + e.reputation)) : state.reputation;
+  const applyEffect = (e: DecisionEffect) => {
+    if (e.cash) firm = { ...firm, cash: firm.cash + e.cash };
+    if (e.morale) {
+      firm = { ...firm, employees: firm.employees.map((emp) => ({ ...emp, morale: Math.max(0, Math.min(100, emp.morale + e.morale!)) })) };
+    }
+    if (e.fundCash) portfolio = { ...portfolio, cash: portfolio.cash + e.fundCash };
+    if (e.committed && e.committed > 0) {
+      const lp = createLP('SovereignWealth', e.committed, rng);
+      fund = { ...fund, committed: fund.committed + lp.committed, lps: [...fund.lps, lp] };
+    }
+    if (e.patience) {
+      fund = { ...fund, lps: fund.lps.map((lp) => (lp.redeemed ? lp : { ...lp, patience: Math.max(0.2, Math.min(0.95, lp.patience + e.patience!)) })) };
+    }
+    if (e.feeRate) fund = { ...fund, mgmtFeeRate: Math.max(0.005, fund.mgmtFeeRate + e.feeRate) };
+    if (e.hireStar) {
+      cardCounter += 1;
+      const star: Employee = {
+        id: `star-${state.month}-${cardCounter}`,
+        name: g({ de: 'Der Neuzugang', en: 'The New Signing' }),
+        role: e.hireStar,
+        skill: 85,
+        salary: fairSalary(e.hireStar, 85) * 1.35,
+        morale: 80,
+        hiredMonth: state.month,
+      };
+      firm = { ...firm, employees: [...firm.employees, star] };
+    }
+    if (e.reputation) reputation = Math.max(0, Math.min(100, reputation + e.reputation));
+    if (e.gamble) {
+      const won = rng.chance(e.gamble.p);
+      gambleNote = won ? g({ de: 'Die Wette ging auf.', en: 'The bet paid off.' }) : g({ de: 'Die Wette ging schief.', en: 'The bet went wrong.' });
+      applyEffect(won ? e.gamble.win : e.gamble.lose);
+    }
+  };
+  applyEffect(choice.effect);
 
   return {
     ...state,
@@ -197,7 +301,7 @@ export function applyDecision(state: SimState, choiceIndex: number, rng: Rng): S
     reputation,
     pendingDecision: undefined,
     events: [
-      { id: `dec-res-${state.month}-${choiceIndex}-${cardCounter}`, month: state.month, type: 'firm' as const, title: card.title, description: g({ de: `Entscheidung: ${choice.label}.`, en: `Decision: ${choice.label}.` }) },
+      { id: `dec-res-${state.month}-${choiceIndex}-${cardCounter}`, month: state.month, type: 'firm' as const, title: card.title, description: g({ de: `Entscheidung: ${choice.label}.`, en: `Decision: ${choice.label}.` }) + (gambleNote ? ` ${gambleNote}` : '') },
       ...state.events,
     ].slice(0, 80),
   };

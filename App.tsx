@@ -30,6 +30,7 @@ import { EndGameModal } from './src/sim/screens/EndGameModal';
 import { OnboardingModal } from './src/components/OnboardingModal';
 import { ManualModal } from './src/components/ManualModal';
 import { AnalysisModal } from './src/sim/screens/AnalysisModal';
+import { ArchiveModal } from './src/components/ArchiveModal';
 import { colors, fonts } from './src/utils/theme';
 
 const Tab = createBottomTabNavigator();
@@ -95,6 +96,7 @@ export default function App() {
             <OnboardingModal />
             <ManualModal />
             <AnalysisModal />
+            <ArchiveModal />
           </NavigationContainer>
         )}
         <StatusBar style="dark" />

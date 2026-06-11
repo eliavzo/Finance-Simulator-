@@ -99,6 +99,29 @@ export function SimStartScreen() {
       <View style={{ height: spacing.md }} />
       <SectionLabel text={`${t({ de: 'Schwierigkeit', en: 'Difficulty' })} · ${presetLabel(difficulty, lang)}`} />
       <Text style={styles.renommee}>{t({ de: 'Renommee', en: 'Renown' })}: {meta.renommee} · {nextUnlockHint(meta, lang)}</Text>
+      {meta.runs && meta.runs.length > 0 ? (() => {
+        const reasonLabel = (reason: string): string => {
+          switch (reason) {
+            case 'horizon': return t({ de: '20 Jahre', en: '20 years' });
+            case 'insolvency': return t({ de: 'Pleite', en: 'Insolvent' });
+            case 'reputation': return t({ de: 'Vertrauen weg', en: 'Trust lost' });
+            case 'collapse': return t({ de: 'Abgewickelt', en: 'Wound down' });
+            default: return reason;
+          }
+        };
+        const best = meta.runs.reduce((a, b) => (b.score > a.score ? b : a));
+        return (
+          <View style={styles.runsBox}>
+            <Text style={styles.runsTitle}>{t({ de: 'Bisherige Läufe', en: 'Past Runs' })}</Text>
+            {meta.runs.slice(0, 5).map((r, i) => (
+              <Text key={i} style={styles.runLine}>
+                {r.grade} · {r.score} {t({ de: 'Punkte', en: 'pts' })} · {r.officeName} · {Math.floor(r.months / 12)}{t({ de: 'J', en: 'y' })} {r.months % 12}{t({ de: 'M', en: 'm' })} · {reasonLabel(r.reason)}
+              </Text>
+            ))}
+            <Text style={styles.runsBest}>{t({ de: 'Bestwert', en: 'Best' })}: {best.score} ({best.grade})</Text>
+          </View>
+        );
+      })() : null}
       {PRESETS.map((p) => {
         const locked = !presetUnlocked(p.config, unlocks);
         return (
@@ -192,6 +215,10 @@ const styles = StyleSheet.create({
   rowBlurbOn: { color: colors.paperText, opacity: 0.85 },
   langRow: { marginTop: spacing.sm, marginBottom: spacing.xs },
   renommee: { color: colors.accent, fontFamily: fonts.serifBold, fontSize: 12, marginBottom: spacing.sm },
+  runsBox: { borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, padding: spacing.md, marginBottom: spacing.sm },
+  runsTitle: { color: colors.text, fontFamily: fonts.serifBold, fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: spacing.xs },
+  runLine: { color: colors.textMuted, fontFamily: fonts.serif, fontSize: 11, marginTop: 2 },
+  runsBest: { color: colors.accent, fontFamily: fonts.serifBold, fontSize: 11, marginTop: spacing.xs },
   rowLocked: { opacity: 0.55 },
   rowLockedText: { color: colors.textMuted },
   tuneLabel: { color: colors.textMuted, fontFamily: fonts.serifBold, fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', marginTop: spacing.sm, marginBottom: spacing.xs },

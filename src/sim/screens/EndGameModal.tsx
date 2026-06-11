@@ -18,6 +18,7 @@ const REASON_HEADLINE: Record<string, Loc> = {
   horizon: { de: 'Zwanzig Jahre — die Schlussbilanz', en: 'Twenty years — the final reckoning' },
   insolvency: { de: 'Das Haus ist gefallen', en: 'The house has fallen' },
   reputation: { de: 'Die LPs haben das Vertrauen verloren', en: 'The LPs have lost trust' },
+  collapse: { de: 'Der Fonds wird abgewickelt', en: 'The fund is wound down' },
 };
 
 export function EndGameModal() {

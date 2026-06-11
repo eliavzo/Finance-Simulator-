@@ -4,6 +4,8 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSimStore } from '../store';
 import { portfolioNav, exposures } from '../portfolio';
 import { computeRisk, STRESS_SCENARIOS, stressPnl } from '../risk';
+import { benchmarkTrailing } from '../engine';
+import { trailingReturn } from '../rivals';
 import { CRISIS_DESC, CRISIS_LABEL, HEDGE_MONTHLY_PREMIUM } from '../crises';
 import { SimHeader } from './SimHeader';
 import { TabTip } from '../../components/TabTip';
@@ -12,7 +14,7 @@ import { useTr } from '../../i18n';
 import { Button, Card, Pill, SectionTitle, StatTile } from '../../components/ui';
 import { AmountStepper, Segmented } from '../../components/controls';
 import { colors, fonts, spacing } from '../../utils/theme';
-import { fmtMoney, fmtNum, fmtPct } from '../../utils/format';
+import { fmtMoney, fmtNum, fmtPct, fmtPctSigned } from '../../utils/format';
 
 export function RiskScreen() {
   const t = useTr();
@@ -26,6 +28,11 @@ export function RiskScreen() {
 
   const grossLeverage = nav > 0 ? exp.gross / nav : 0;
   const netLeverage = nav > 0 ? exp.net / nav : 0;
+
+  const player12 = trailingReturn(game.portfolio.returnHistory, 12);
+  const bench12 = benchmarkTrailing(game.benchmarkHistory, 12);
+  const has12 = game.portfolio.returnHistory.length >= 12 && Number.isFinite(player12) && Number.isFinite(bench12);
+  const alpha12 = player12 - bench12;
 
   return (
     <View style={styles.container}>
@@ -74,6 +81,12 @@ export function RiskScreen() {
           <View style={styles.statRow}>
             <StatTile label="VaR 95%" value={fmtMoney(risk.var95)} valueColor={colors.warning} hint={nav > 0 ? fmtPct(risk.var95 / nav) + t({ de: ' des NAV', en: ' of NAV' }) : undefined} />
             <StatTile label="VaR 99%" value={fmtMoney(risk.var99)} valueColor={colors.negative} hint={nav > 0 ? fmtPct(risk.var99 / nav) + t({ de: ' des NAV', en: ' of NAV' }) : undefined} />
+            <StatTile
+              label="Alpha (12M)"
+              value={has12 ? fmtPctSigned(alpha12) : '—'}
+              valueColor={has12 ? (alpha12 >= 0 ? colors.positive : colors.negative) : colors.textMuted}
+              hint={t({ de: 'vs. Marktindex', en: 'vs. market index' })}
+            />
           </View>
         </Card>
 

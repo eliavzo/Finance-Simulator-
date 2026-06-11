@@ -148,15 +148,19 @@ describe('objectives & score', () => {
     let g = createSimGame(2030);
     for (let i = 0; i < TOTAL_MONTHS; i++) g = advanceMonth(g);
     expect(g.gameOver).toBe(true);
-    expect(['horizon', 'insolvency', 'reputation']).toContain(g.gameOverReason);
+    expect(['horizon', 'insolvency', 'reputation', 'collapse']).toContain(g.gameOverReason);
     expect(typeof g.finalScore).toBe('number');
     expect(['S', 'A', 'B', 'C', 'D', 'F']).toContain(g.finalGrade);
   });
 
   it('resolves a mandate by its deadline', () => {
     let g = createSimGame(5);
-    const firstDeadline = Math.min(...g.objectives.map((o) => o.deadlineMonth));
-    for (let i = 0; i < firstDeadline; i++) g = advanceMonth(g);
+    // Pin one mandate to an early, pre-redemption deadline so this exercises
+    // resolution itself rather than long-run fund survival (a fully passive,
+    // abandoned fund now winds down around month 34).
+    const deadline = 6;
+    g = { ...g, objectives: g.objectives.map((o, i) => (i === 0 ? { ...o, deadlineMonth: deadline } : o)) };
+    for (let i = 0; i < deadline; i++) g = advanceMonth(g);
     const resolved = g.objectives.filter((o) => o.status !== 'active');
     expect(resolved.length).toBeGreaterThan(0);
   });

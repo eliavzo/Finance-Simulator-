@@ -220,3 +220,39 @@ export function tryRaiseCapital(
   const ticket = Math.round((base * rng.range(0.6, 1.8) * (1 + trackRecord)) / 1_000_000) * 1_000_000;
   return createLP(type, Math.max(2_000_000, ticket), rng);
 }
+
+/* ---------------------------- LP sentiment ------------------------------- */
+
+export type LpMood = 'happy' | 'neutral' | 'critical';
+
+export interface LpSentiment {
+  /** Monthly redemption probability under current conditions (0..0.4). */
+  pressure: number;
+  mood: LpMood;
+  /** The return this LP effectively demands right now (benchmark-relative). */
+  effectiveTarget: number;
+}
+
+/**
+ * Per-LP redemption pressure — the SAME formula the engine uses, exposed so the
+ * Fund screen can show danger building before it strikes. LPs judge the fund
+ * relative to the market: effective target = min(absolute goal, benchmark+2pts),
+ * with a 4pt tolerance band.
+ */
+export function lpSentiment(
+  lp: LimitedPartner,
+  trailing12: number,
+  benchmark12: number,
+  drawdown: number,
+  benchmarkDrawdown: number,
+): LpSentiment {
+  const LP_TOLERANCE = 0.04;
+  const trailing = Number.isFinite(trailing12) ? trailing12 : 0;
+  const effectiveTarget = Number.isFinite(benchmark12) ? Math.min(lp.expectedReturn, benchmark12 + 0.02) : lp.expectedReturn;
+  const underperf = Math.max(0, effectiveTarget - LP_TOLERANCE - trailing);
+  // Only EXCESS drawdown vs the market alarms LPs (matching a bear is expected).
+  const excessDrawdown = Math.max(0, drawdown - (benchmarkDrawdown || 0));
+  const pressure = Math.max(0, Math.min(0.4, (underperf * 1.1 + excessDrawdown * 0.9) * (1 - lp.patience)));
+  const mood: LpMood = pressure < 0.01 ? 'happy' : pressure < 0.05 ? 'neutral' : 'critical';
+  return { pressure, mood, effectiveTarget };
+}

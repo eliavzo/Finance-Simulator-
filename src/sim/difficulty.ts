@@ -144,15 +144,29 @@ export function heatLabel(heat: number, lang: Lang): string {
 
 /* --------------------------- Meta progression ---------------------------- */
 
+/** One finished run, archived for the cross-run history. */
+export interface RunRecord {
+  officeName: string;
+  score: number;
+  grade: string;
+  /** Months survived. */
+  months: number;
+  reason: string;
+  /** Heat of the difficulty the run was played on. */
+  heat: number;
+}
+
 /** Persistent cross-run progress that unlocks harder modes. */
 export interface MetaProgress {
   /** Cumulative end-of-run score earned across all games. */
   renommee: number;
   /** Number of runs that reached the full 20-year horizon. */
   horizonFinishes: number;
+  /** Archive of finished runs (most recent first, bounded). */
+  runs?: RunRecord[];
 }
 
-export const DEFAULT_META: MetaProgress = { renommee: 0, horizonFinishes: 0 };
+export const DEFAULT_META: MetaProgress = { renommee: 0, horizonFinishes: 0, runs: [] };
 
 /** Renommee thresholds for the unlocks. */
 export const UNLOCK_AT = { hard: 150, brutal: 500, ironman: 500 };

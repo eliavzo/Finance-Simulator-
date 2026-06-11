@@ -25,10 +25,11 @@ import { advanceMonth, createSimGame } from './engine';
 import { applyDecision } from './decisions';
 import { closePosition, openPosition } from './portfolio';
 import { callCapital } from './fund';
-import { investInDeal, followOn, supportStartup } from './vc';
+import { investInDeal, followOn, supportStartup, sellSecondary } from './vc';
 import { firmCapabilities, generateCandidate, upgradeCost, MAX_TIER, fairSalary } from './firm';
 import { tierPerks } from './tiers';
-import { MetaProgress, DEFAULT_META } from './difficulty';
+import { MetaProgress, DEFAULT_META, difficultyParams } from './difficulty';
+import { sndTick, sndChime, sndThud } from '../utils/sound';
 import { blackScholes, interpolateCurve } from './quant';
 import { Rng } from '../engine/rng';
 import { Lang, setCurrentLang, g } from '../i18n/lang';
@@ -86,21 +87,34 @@ interface SimStore {
   /** UI language (persisted). */
   lang: Lang;
   setLang: (lang: Lang) => void;
+  /** Audio/haptic accents (persisted). */
+  soundOn: boolean;
+  setSoundOn: (on: boolean) => void;
+  /** Auto-dismiss the monthly report on quiet months (persisted). */
+  autoSkipQuiet: boolean;
+  setAutoSkipQuiet: (on: boolean) => void;
   showOnboarding: boolean;
   showManual: boolean;
   showAnalysis: boolean;
+  showArchive: boolean;
   completeOnboarding: () => void;
   replayOnboarding: () => void;
   openManual: () => void;
   closeManual: () => void;
   openAnalysis: () => void;
   closeAnalysis: () => void;
+  openArchive: () => void;
+  closeArchive: () => void;
   dismissTip: (key: string) => void;
 
   newGame: (opts?: { seed?: number; thesis?: FundThesis; scenario?: Scenario; officeName?: string; difficulty?: DifficultyConfig }) => void;
   /** Wipe the current run and return to the front page. */
   resetGame: () => void;
   nextMonth: () => void;
+  /** Fast-forward up to `n` months; stops at decisions, offers or game over. */
+  advanceMonths: (n: number) => void;
+  /** Sell a startup stake on the secondary market (30% discount). */
+  sellStartup: (startupId: string) => ActionResult;
   /** Dismiss the monthly edition report overlay. */
   dismissReport: () => void;
   /** Resolve the pending decision card by choosing an option. */
@@ -154,9 +168,14 @@ export const useSimStore = create<SimStore>()(
         setCurrentLang(lang);
         set({ lang });
       },
+      soundOn: true,
+      setSoundOn: (soundOn) => set({ soundOn }),
+      autoSkipQuiet: false,
+      setAutoSkipQuiet: (autoSkipQuiet) => set({ autoSkipQuiet }),
       showOnboarding: false,
       showManual: false,
       showAnalysis: false,
+      showArchive: false,
 
       completeOnboarding: () => set({ onboardingSeen: true, showOnboarding: false }),
       replayOnboarding: () => set({ showOnboarding: true }),
@@ -164,6 +183,8 @@ export const useSimStore = create<SimStore>()(
       closeManual: () => set({ showManual: false }),
       openAnalysis: () => set({ showAnalysis: true }),
       closeAnalysis: () => set({ showAnalysis: false }),
+      openArchive: () => set({ showArchive: true }),
+      closeArchive: () => set({ showArchive: false }),
       dismissTip: (key) => set((s) => ({ dismissedTips: { ...s.dismissedTips, [key]: true } })),
 
       newGame: (opts) =>
@@ -179,22 +200,54 @@ export const useSimStore = create<SimStore>()(
       resetGame: () => set({ game: null, candidates: {}, candidateSearchMonth: {}, pendingReportMonth: null }),
 
       nextMonth: () => {
-        const { game, meta } = get();
+        const { game, meta, soundOn } = get();
         if (!game || game.gameOver) return;
         const next = advanceMonth(game);
-        // On the game-over transition, bank the score as Renommee for unlocks.
+        if (soundOn) {
+          if (next.gameOver) (next.gameOverReason === 'horizon' ? sndChime : sndThud)();
+          else if ((next.achievements?.length ?? 0) > (game.achievements?.length ?? 0)) sndChime();
+          else sndTick();
+        }
+        // On the game-over transition, bank the score as Renommee for unlocks
+        // and archive the run for the cross-run history.
         if (next.gameOver) {
+          const run = {
+            officeName: next.firm.name,
+            score: next.finalScore ?? 0,
+            grade: next.finalGrade ?? '—',
+            months: next.month,
+            reason: next.gameOverReason ?? 'horizon',
+            heat: difficultyParams(next.difficulty).heat,
+          };
           set({
             game: next,
             pendingReportMonth: next.month,
             meta: {
               renommee: meta.renommee + Math.max(0, next.finalScore ?? 0),
               horizonFinishes: meta.horizonFinishes + (next.gameOverReason === 'horizon' ? 1 : 0),
+              runs: [run, ...(meta.runs ?? [])].slice(0, 20),
             },
           });
         } else {
           set({ game: next, pendingReportMonth: next.month });
         }
+      },
+
+      advanceMonths: (n) => {
+        for (let i = 0; i < n; i++) {
+          const g0 = get().game;
+          if (!g0 || g0.gameOver || g0.pendingDecision || g0.pendingOpportunity) break;
+          get().nextMonth();
+        }
+      },
+
+      sellStartup: (startupId) => {
+        const { game } = get();
+        if (!game) return { ok: false, error: g({ de: 'Kein Spiel.', en: 'No game.' }) };
+        const res = sellSecondary(game.vc, startupId, game.month);
+        if (!res.ok || !res.vc) return { ok: false, error: res.error };
+        set({ game: { ...game, vc: res.vc, portfolio: { ...game.portfolio, cash: game.portfolio.cash + (res.proceeds ?? 0) } } });
+        return { ok: true };
       },
 
       dismissReport: () => set({ pendingReportMonth: null }),
@@ -342,11 +395,15 @@ export const useSimStore = create<SimStore>()(
         if (amount <= 0) return { ok: false, error: g({ de: 'Betrag muss positiv sein.', en: 'Amount must be positive.' }) };
         const res = callCapital(game.fund, amount, game.month);
         if (res.called <= 0) return { ok: false, error: g({ de: 'Kein abrufbares Kapital mehr.', en: 'No callable capital left.' }) };
+        // Called capital is an inflow, not a gain — lift the NAV baseline so the
+        // next month's measured return reflects market P&L, not the new capital.
+        const navH = [...game.portfolio.navHistory];
+        if (navH.length > 0) navH[navH.length - 1] += res.called;
         set({
           game: {
             ...game,
             fund: res.fund,
-            portfolio: { ...game.portfolio, cash: game.portfolio.cash + res.called },
+            portfolio: { ...game.portfolio, cash: game.portfolio.cash + res.called, navHistory: navH },
           },
         });
         return { ok: true };
@@ -434,7 +491,7 @@ export const useSimStore = create<SimStore>()(
     {
       name: STORAGE_KEY,
       storage: createJSONStorage(() => safeStorage),
-      partialize: (state) => ({ game: state.game, onboardingSeen: state.onboardingSeen, dismissedTips: state.dismissedTips, meta: state.meta, lang: state.lang }),
+      partialize: (state) => ({ game: state.game, onboardingSeen: state.onboardingSeen, dismissedTips: state.dismissedTips, meta: state.meta, lang: state.lang, soundOn: state.soundOn, autoSkipQuiet: state.autoSkipQuiet }),
       onRehydrateStorage: () => (state) => {
         // Keep the engine's language mirror in sync with the restored choice.
         if (state?.lang) setCurrentLang(state.lang);

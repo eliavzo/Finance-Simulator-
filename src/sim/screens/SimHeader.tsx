@@ -15,6 +15,7 @@ export function SimHeader({ title }: { title: string }) {
   const t = useTr();
   const game = useSimStore((s) => s.game);
   const nextMonth = useSimStore((s) => s.nextMonth);
+  const advanceMonths = useSimStore((s) => s.advanceMonths);
   const resetGame = useSimStore((s) => s.resetGame);
   const replayOnboarding = useSimStore((s) => s.replayOnboarding);
   const openManual = useSimStore((s) => s.openManual);
@@ -25,7 +26,7 @@ export function SimHeader({ title }: { title: string }) {
 
   const year = Math.floor(game.month / 12) + 1;
   const m = (game.month % 12) + 1;
-  const dateline = `${t({ de: 'Jahr', en: 'Year' })} ${year}, ${t({ de: 'Monat', en: 'Month' })} ${String(m).padStart(2, '0')} · ${t(REGIME_LABEL[game.economy.regime])}`;
+  const dateline = `${t({ de: 'J', en: 'Y' })}${year} ${t({ de: 'M', en: 'M' })}${String(m).padStart(2, '0')} · ${t(REGIME_LABEL[game.economy.regime])}`;
 
   const onReset = () =>
     confirmDestructive(
@@ -55,6 +56,9 @@ export function SimHeader({ title }: { title: string }) {
           variant={game.gameOver ? 'secondary' : 'primary'}
           style={styles.btn}
         />
+        {!game.gameOver ? (
+          <Button title="▸▸" onPress={() => advanceMonths(3)} variant="secondary" style={styles.btnFf} />
+        ) : null}
       </View>
       <Rule />
 
@@ -100,4 +104,5 @@ const styles = StyleSheet.create({
   },
   dateline: { color: colors.textMuted, fontFamily: fonts.serifItalic, fontSize: 10, letterSpacing: 1, flex: 1, marginRight: spacing.sm },
   btn: { paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
+  btnFf: { paddingHorizontal: spacing.sm, paddingVertical: spacing.sm, marginLeft: spacing.xs },
 });

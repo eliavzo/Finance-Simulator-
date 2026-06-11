@@ -2,7 +2,7 @@
 import React, { useMemo } from 'react';
 import { ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useSimStore, useCapabilities } from '../store';
-import { enterpriseEquity } from '../engine';
+import { enterpriseEquity, benchmarkTrailing } from '../engine';
 import { portfolioNav } from '../portfolio';
 import { fundMetrics } from '../fund';
 import { computeRisk } from '../risk';
@@ -43,6 +43,11 @@ export function SimDashboardScreen() {
   const hist = game.equityHistory;
   const start = hist[0] ?? enterprise;
   const totalRet = enterprise / start - 1;
+
+  const player12 = trailingReturn(game.portfolio.returnHistory, 12);
+  const bench12 = benchmarkTrailing(game.benchmarkHistory, 12);
+  const has12 = game.portfolio.returnHistory.length >= 12 && Number.isFinite(player12) && Number.isFinite(bench12);
+  const alpha12 = player12 - bench12;
 
   return (
     <View style={styles.container}>
@@ -86,11 +91,21 @@ export function SimDashboardScreen() {
             <StatTile label="Netto-β" value={fmtNum(risk.netBeta / Math.max(1, fundNav), 2)} />
             <StatTile label={t({ de: 'Positionen', en: 'Positions' })} value={`${game.portfolio.positions.length}/${caps.capacityPositions}`} valueColor={game.portfolio.positions.length > caps.capacityPositions ? colors.negative : colors.text} />
           </View>
+          {has12 ? (
+            <Text style={styles.alphaRow}>
+              12M vs. {t({ de: 'Markt', en: 'market' })}: {t({ de: 'Du', en: 'You' })} {fmtPctSigned(player12)} · {t({ de: 'Markt', en: 'Market' })} {fmtPctSigned(bench12)} · Alpha{' '}
+              <Text style={{ color: alpha12 >= 0 ? colors.positive : colors.negative, fontFamily: fonts.serifBold }}>{fmtPctSigned(alpha12)}</Text>
+            </Text>
+          ) : (
+            <Text style={styles.alphaMuted}>{t({ de: '12M vs. Markt: ab Monat 12', en: '12M vs. market: from month 12' })}</Text>
+          )}
         </Card>
 
         <Card>
           <SectionTitle ornament>{t({ de: 'Rangliste · 12-Monats-Rendite', en: 'League table · 12-month return' })}</SectionTitle>
-          {buildLeague(game.rivals, game.firm.name, trailingReturn(game.portfolio.returnHistory), fundNav).map((e) => (
+          {game.month < 12 ? (
+            <Text style={styles.leagueGate}>{t({ de: 'Rangliste ab Monat 12 — erst braucht es einen Track-Record.', en: 'League table from month 12 — a track record comes first.' })}</Text>
+          ) : buildLeague(game.rivals, game.firm.name, trailingReturn(game.portfolio.returnHistory), fundNav).map((e) => (
             <View key={e.name} style={[styles.leagueRow, e.isPlayer && styles.leagueMe]}>
               <Text style={[styles.leagueRank, e.isPlayer && styles.leagueMeText]}>{e.rank}</Text>
               <Text style={[styles.leagueName, e.isPlayer && styles.leagueMeText]} numberOfLines={1}>{e.name}</Text>
@@ -171,6 +186,9 @@ const styles = StyleSheet.create({
   colVal: { color: colors.text, fontSize: 22, fontFamily: fonts.display, marginBottom: spacing.xs },
   hint: { color: colors.textMuted, fontSize: 11, marginTop: 2 },
   statRow: { flexDirection: 'row', flexWrap: 'wrap' },
+  alphaRow: { color: colors.text, fontFamily: fonts.serif, fontSize: 12, marginTop: spacing.sm },
+  alphaMuted: { color: colors.textMuted, fontFamily: fonts.serif, fontSize: 12, marginTop: spacing.sm },
+  leagueGate: { color: colors.textMuted, fontFamily: fonts.serifItalic, fontSize: 12, fontStyle: 'italic', paddingVertical: spacing.sm },
   leagueRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 5, borderTopWidth: 1, borderTopColor: colors.ruleSoft, gap: spacing.sm },
   leagueMe: { backgroundColor: colors.surfaceAlt },
   leagueMeText: { fontFamily: fonts.serifBold },

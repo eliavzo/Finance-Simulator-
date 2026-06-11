@@ -427,7 +427,7 @@ export interface Objective {
   penaltyReputation: number;
 }
 
-export type GameOverReason = 'horizon' | 'insolvency' | 'reputation';
+export type GameOverReason = 'horizon' | 'insolvency' | 'reputation' | 'collapse';
 
 /** Running aggregates of player behaviour, for the end-of-run analysis. */
 export interface RunAnalytics {
@@ -537,6 +537,14 @@ export interface DecisionEffect {
   committed?: number;
   /** Delta applied to every employee's morale. */
   morale?: number;
+  /** Delta applied to every active LP's patience (clamped to [0.2, 0.95]). */
+  patience?: number;
+  /** Delta applied to the fund's management-fee rate (floored at 0.5%). */
+  feeRate?: number;
+  /** Hire a star employee of this role (skill ~85, premium salary). */
+  hireStar?: Role;
+  /** Risky branch: with probability `p` apply `win`, else `lose`. */
+  gamble?: { p: number; win: DecisionEffect; lose: DecisionEffect };
 }
 
 export interface DecisionChoice {
@@ -620,7 +628,7 @@ export interface Startup {
   foundedMonth: number;
   /** Set the month a startup raises a new round; lets the player follow on. */
   raising?: { proRata: number; ownershipIfFollow: number; stage: FundingStage };
-  exit?: { type: 'IPO' | 'M&A'; month: number; proceeds: number };
+  exit?: { type: 'IPO' | 'M&A' | 'Secondary'; month: number; proceeds: number };
 }
 
 export interface VCState {
@@ -700,6 +708,23 @@ export interface SimState {
   /** Total enterprise equity history (fund equity + GP equity), oldest first. */
   equityHistory: number[];
 
+  /** Equal-weight equity market index (level, starts at 100), oldest first. */
+  benchmarkHistory?: number[];
+  /** Consecutive months the fund has been effectively dead (no LPs, ~no NAV). */
+  fundDeadMonths?: number;
+  /** One-line archive of every published monthly edition (oldest first). */
+  chronicle?: ChronicleEntry[];
+
   events: SimEvent[];
   rngState: number;
+}
+
+/** A compact archived "edition" for the newspaper archive. */
+export interface ChronicleEntry {
+  month: number;
+  enterprise: number;
+  changePct: number;
+  regime: Regime;
+  /** Title of the month's most notable headline, if any. */
+  headline?: string;
 }
