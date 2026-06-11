@@ -80,17 +80,21 @@ incremental, text-based, mobile-friendly
 
 ---
 
-## Grafiken (Cover & Icon)
+## Grafiken (Cover & Icon) — alle englisch
 
 Im Ordner `branding/` liegen fertige Assets im Zeitungs-Stil des Spiels:
 
 - `branding/cover.png` — **630 × 500**, direkt als itch.io-Cover hochladbar.
-- `branding/icon.png` — **1024 × 1024** „A&C"-Monogramm; für das itch-Icon
-  bzw. als Quelle für App-Icons (skaliert auf 512/256/… herunter).
+- `branding/cover-square.png` — **1024 × 1024**, quadratisches Cover / Social-Card.
+- `branding/icon.png` (= `icon-1024.png`) — **1024 × 1024**, „A&C"-Monogramm mit Kicker + Kurve.
+- `branding/icon-512.png` — vereinfachtes Monogramm (besser lesbar als itch-Icon).
+- `branding/icon-256.png`, `icon-192.png`, `icon-180.png`, `icon-32.png` — App-/Favicon-Größen
+  (256/192 = Android, 180 = Apple-Touch, 32 = Favicon).
 
-Neu erzeugen (rendert mit den echten Playfair/PT-Serif-Fonts via Headless-Chrome):
+Neu erzeugen (rendert mit den echten Playfair/PT-Serif-Fonts via Headless-Chrome,
+kleine Größen via pngjs heruntergerechnet):
 
 ```bash
-node scripts/build-art.mjs   # schreibt itch-dist/cover.png und itch-dist/icon.png
+node scripts/build-art.mjs   # schreibt alles nach branding/
 ```
 
