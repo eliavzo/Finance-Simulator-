@@ -25,7 +25,7 @@ export function SimHeader({ title }: { title: string }) {
 
   const year = Math.floor(game.month / 12) + 1;
   const m = (game.month % 12) + 1;
-  const dateline = `${game.firm.name} · ${t({ de: 'Jahr', en: 'Year' })} ${year}, ${t({ de: 'Monat', en: 'Month' })} ${String(m).padStart(2, '0')} · ${t(REGIME_LABEL[game.economy.regime])}`;
+  const dateline = `${t({ de: 'Jahr', en: 'Year' })} ${year}, ${t({ de: 'Monat', en: 'Month' })} ${String(m).padStart(2, '0')} · ${t(REGIME_LABEL[game.economy.regime])}`;
 
   const onReset = () =>
     confirmDestructive(
