@@ -77,3 +77,20 @@ Zahnrad-Menü erklärt alle Mechaniken.
 incremental, text-based, mobile-friendly
 
 **Genre:** Simulation
+
+---
+
+## Grafiken (Cover & Icon)
+
+Im Ordner `branding/` liegen fertige Assets im Zeitungs-Stil des Spiels:
+
+- `branding/cover.png` — **630 × 500**, direkt als itch.io-Cover hochladbar.
+- `branding/icon.png` — **1024 × 1024** „A&C"-Monogramm; für das itch-Icon
+  bzw. als Quelle für App-Icons (skaliert auf 512/256/… herunter).
+
+Neu erzeugen (rendert mit den echten Playfair/PT-Serif-Fonts via Headless-Chrome):
+
+```bash
+node scripts/build-art.mjs   # schreibt itch-dist/cover.png und itch-dist/icon.png
+```
+
