@@ -543,6 +543,14 @@ export interface DecisionEffect {
   feeRate?: number;
   /** Hire a star employee of this role (skill ~85, premium salary). */
   hireStar?: Role;
+  /** Gift a free +1 infrastructure tier on this track (capped). */
+  infraGift?: keyof Infrastructure;
+  /** Force the departure of a (random) employee. */
+  loseEmployee?: boolean;
+  /** Add to the implied-vol index (market drama; mean-reverts over time). */
+  volSpike?: number;
+  /** Nudge market sentiment, clamped to [-1, 1]. */
+  sentiment?: number;
   /** Risky branch: with probability `p` apply `win`, else `lose`. */
   gamble?: { p: number; win: DecisionEffect; lose: DecisionEffect };
 }
@@ -555,6 +563,10 @@ export interface DecisionChoice {
 
 export interface DecisionCard {
   id: string;
+  /** Base template id (stable across instances; used to avoid repeats). */
+  cardId?: string;
+  /** Banner kicker shown above the title (e.g. "SCANDAL", "OPPORTUNITY"). */
+  kicker?: string;
   title: string;
   body: string;
   choices: DecisionChoice[];
@@ -691,6 +703,8 @@ export interface SimState {
   lastReport?: MonthlyReport;
   /** A decision awaiting the player's choice (blocks nothing; shown as a modal). */
   pendingDecision?: DecisionCard;
+  /** Recently fired decision template ids (most recent first) to avoid repeats. */
+  lastDecisionIds?: string[];
   /** A special deal awaiting accept/decline. */
   pendingOpportunity?: SpecialOpportunity;
   /** Accepted opportunities resolving to a payoff later. */

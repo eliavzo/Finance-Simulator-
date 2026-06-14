@@ -31,7 +31,7 @@ export function DecisionModal() {
         <View style={styles.panel}>
           <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
             <Rule double />
-            <Text style={styles.kicker}>{t({ de: 'EXTRABLATT', en: 'SPECIAL EDITION' })}</Text>
+            <Text style={styles.kicker}>{card.kicker ?? t({ de: 'EXTRABLATT', en: 'SPECIAL EDITION' })}</Text>
             <Text style={styles.title}>{card.title}</Text>
             <Rule />
             <Text style={styles.body}>{card.body}</Text>
