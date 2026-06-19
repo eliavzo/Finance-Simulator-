@@ -27,6 +27,7 @@ import { createRivals, stepRivals, buildLeague, trailingReturn, playerRankFracti
 import { maybeDecision, buildLpMeeting, buildChain } from './decisions';
 import { maybeOpportunity, payoffMultiple, OPP_LABEL } from './opportunities';
 import { createVC, refreshDeals, stepVC, vcResidualValue } from './vc';
+import { createRealEstate, refreshPropertyDeals, stepRealEstate, realEstateEquity } from './realestate';
 import { maybeTriggerCrisis, applyCrisisToEconomy, crisisEquityShock, hedgePayout, HEDGE_MONTHLY_PREMIUM, CRISIS_DESC } from './crises';
 import { tierPerks } from './tiers';
 import { ACHIEVEMENTS, evaluateAchievements } from './achievements';
@@ -134,6 +135,7 @@ export function createSimGame(
     achievements: [],
     specialHoldings: [],
     vc: { ...createVC(), deals: refreshDeals(rng, 50) },
+    realEstate: { ...createRealEstate(), deals: refreshPropertyDeals(rng, 1) },
     rivals: rivals0,
     nemesisId: nemesis?.id,
     lastDecisionIds: [],
@@ -162,9 +164,9 @@ export function createSimGame(
   };
 }
 
-/** Total enterprise equity = GP cash + fund NAV + venture residual value. */
+/** Total enterprise equity = GP cash + fund NAV + venture + real-estate equity. */
 export function enterpriseEquity(state: SimState): number {
-  return state.firm.cash + portfolioNav(state.portfolio, state.instruments) + vcResidualValue(state.vc);
+  return state.firm.cash + portfolioNav(state.portfolio, state.instruments) + vcResidualValue(state.vc) + realEstateEquity(state.realEstate);
 }
 
 /** Equal-weight average one-month return across listed equities. */
@@ -438,6 +440,17 @@ export function advanceMonth(state: SimState): SimState {
     events.push(ev(month, { type: 'fund', title, description: note.text }));
   }
 
+  // 3e. Real-estate book: net rent to the fund, value drift, occupancy. --------
+  const reScale = Math.max(1, Math.min(10, portfolioNav(portfolio, instruments) / 15_000_000));
+  const reStep = stepRealEstate(state.realEstate ?? createRealEstate(), economy, month, rng, reScale);
+  const realEstate = reStep.re;
+  if (Math.abs(reStep.income) > 1) {
+    portfolio = { ...portfolio, cash: portfolio.cash + reStep.income };
+  }
+  for (const note of reStep.notes) {
+    if (note.kind === 'event') events.push(ev(month, { type: 'fund', title: g({ de: 'Immobilien', en: 'Real Estate' }), description: note.text }));
+  }
+
   let fundNav = portfolioNav(portfolio, instruments);
 
   // 4. Fund economics: management fee & carry (paid out of fund NAV to GP) ----
@@ -665,7 +678,7 @@ export function advanceMonth(state: SimState): SimState {
   const incomeStatement: IncomeStatement = buildIncomeStatement(month, ledger);
   const balanceSheet = buildBalanceSheet({ month, firm, fund, fundCash: portfolio.cash, positionsValue });
 
-  const enterprise = firm.cash + fundNav + vcResidualValue(vc);
+  const enterprise = firm.cash + fundNav + vcResidualValue(vc) + realEstateEquity(realEstate);
 
   // Behaviour analytics for the end-of-run coaching report.
   const expo = exposures(portfolio, instruments);
@@ -871,6 +884,7 @@ export function advanceMonth(state: SimState): SimState {
     nemesisId: state.nemesisId,
     specialHoldings,
     vc,
+    realEstate,
     equityHistory: [...state.equityHistory, enterprise].slice(-TOTAL_MONTHS - 1),
     benchmarkHistory,
     fundDeadMonths,

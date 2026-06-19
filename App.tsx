@@ -22,6 +22,7 @@ import { MarketsScreen } from './src/sim/screens/MarketsScreen';
 import { FirmScreen } from './src/sim/screens/FirmScreen';
 import { FundScreen } from './src/sim/screens/FundScreen';
 import { StartupsScreen } from './src/sim/screens/StartupsScreen';
+import { RealEstateScreen } from './src/sim/screens/RealEstateScreen';
 import { RiskScreen } from './src/sim/screens/RiskScreen';
 import { MonthReportModal } from './src/sim/screens/MonthReportModal';
 import { DecisionModal } from './src/sim/screens/DecisionModal';
@@ -87,6 +88,7 @@ export default function App() {
               <Tab.Screen name="Firma" component={FirmScreen} options={{ tabBarLabel: t({ de: 'Firma', en: 'Firm' }), tabBarIcon: ({ color }) => <TabGlyph glyph="¶" color={color} /> }} />
               <Tab.Screen name="Fonds" component={FundScreen} options={{ tabBarLabel: t({ de: 'Fonds', en: 'Fund' }), tabBarIcon: ({ color }) => <TabGlyph glyph="‡" color={color} /> }} />
               <Tab.Screen name="Startups" component={StartupsScreen} options={{ tabBarLabel: t({ de: 'Startups', en: 'Startups' }), tabBarIcon: ({ color }) => <TabGlyph glyph="◇" color={color} /> }} />
+              <Tab.Screen name="Immobilien" component={RealEstateScreen} options={{ tabBarLabel: t({ de: 'Immo', en: 'Property' }), tabBarIcon: ({ color }) => <TabGlyph glyph="⌂" color={color} /> }} />
               <Tab.Screen name="Risiko" component={RiskScreen} options={{ tabBarLabel: t({ de: 'Risiko', en: 'Risk' }), tabBarIcon: ({ color }) => <TabGlyph glyph="†" color={color} /> }} />
             </Tab.Navigator>
             <MonthReportModal />

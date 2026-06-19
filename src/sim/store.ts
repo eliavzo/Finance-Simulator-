@@ -26,6 +26,7 @@ import { applyDecision } from './decisions';
 import { closePosition, openPosition } from './portfolio';
 import { callCapital } from './fund';
 import { investInDeal, followOn, supportStartup, sellSecondary } from './vc';
+import { createRealEstate, buyProperty, sellProperty } from './realestate';
 import { firmCapabilities, generateCandidate, upgradeCost, MAX_TIER, fairSalary } from './firm';
 import { tierPerks } from './tiers';
 import { MetaProgress, DEFAULT_META, difficultyParams } from './difficulty';
@@ -117,6 +118,10 @@ interface SimStore {
   sellStartup: (startupId: string) => ActionResult;
   /** Close the current fund and launch a larger successor (Fund I→II→III). */
   raiseSuccessorFund: () => ActionResult;
+  /** Acquire a property (optionally with a 50% mortgage). */
+  buyProperty: (dealId: string, mortgage: boolean) => ActionResult;
+  /** Sell a property at market, net of costs and any mortgage. */
+  sellProperty: (propertyId: string) => ActionResult;
   /** Dismiss the monthly edition report overlay. */
   dismissReport: () => void;
   /** Resolve the pending decision card by choosing an option. */
@@ -258,6 +263,27 @@ export const useSimStore = create<SimStore>()(
         if (!successorInfo(game).eligible) return { ok: false, error: g({ de: 'Voraussetzungen nicht erfüllt.', en: 'Requirements not met.' }) };
         set({ game: raiseSuccessor(game, uiRng) });
         if (soundOn) sndChime();
+        return { ok: true };
+      },
+
+      buyProperty: (dealId, mortgage) => {
+        const { game } = get();
+        if (!game) return { ok: false, error: g({ de: 'Kein Spiel.', en: 'No game.' }) };
+        const re = game.realEstate ?? createRealEstate();
+        const res = buyProperty(re, dealId, game.month, mortgage);
+        if (!res.ok || !res.re) return { ok: false, error: res.error };
+        if ((res.cash ?? 0) > game.portfolio.cash) return { ok: false, error: g({ de: 'Nicht genug Fonds-Cash.', en: 'Not enough fund cash.' }) };
+        set({ game: { ...game, realEstate: res.re, portfolio: { ...game.portfolio, cash: game.portfolio.cash - (res.cash ?? 0) } } });
+        return { ok: true };
+      },
+
+      sellProperty: (propertyId) => {
+        const { game } = get();
+        if (!game) return { ok: false, error: g({ de: 'Kein Spiel.', en: 'No game.' }) };
+        const re = game.realEstate ?? createRealEstate();
+        const res = sellProperty(re, propertyId, game.month, game.economy.volIndex);
+        if (!res.ok || !res.re) return { ok: false, error: res.error };
+        set({ game: { ...game, realEstate: res.re, portfolio: { ...game.portfolio, cash: game.portfolio.cash + (res.cash ?? 0) } } });
         return { ok: true };
       },
 

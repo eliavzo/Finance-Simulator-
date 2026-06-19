@@ -4,7 +4,15 @@
  * `g(…)` in engine code.
  */
 import { Loc } from '../i18n/lang';
-import { CreditRating, FundingStage, InstrumentKind, LPType, Role, Sector } from './types';
+import { CreditRating, FundingStage, InstrumentKind, LPType, PropertyType, Role, Sector } from './types';
+
+export const PROPERTY_TYPE_LABEL: Record<PropertyType, Loc> = {
+  Residential: { de: 'Wohnen', en: 'Residential' },
+  Office: { de: 'Büro', en: 'Office' },
+  Retail: { de: 'Einzelhandel', en: 'Retail' },
+  Industrial: { de: 'Industrie', en: 'Industrial' },
+  Hotel: { de: 'Hotel', en: 'Hotel' },
+};
 
 export const SECTOR_LABEL: Record<Sector | 'Government', Loc> = {
   Tech: { de: 'Technologie', en: 'Tech' },

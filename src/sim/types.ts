@@ -657,6 +657,52 @@ export interface VCState {
 }
 
 /* -------------------------------------------------------------------------- */
+/*                              Real estate                                   */
+/* -------------------------------------------------------------------------- */
+
+export type PropertyType = 'Residential' | 'Office' | 'Retail' | 'Industrial' | 'Hotel';
+
+/** A property on the market, available to acquire. */
+export interface PropertyDeal {
+  id: string;
+  name: string;
+  type: PropertyType;
+  /** Asking price. */
+  price: number;
+  /** Annual net cap rate (net operating income / value). */
+  capRate: number;
+  /** Asset quality in [0, 1] — better assets hold value & occupancy. */
+  quality: number;
+}
+
+/** A property the fund owns. */
+export interface Property {
+  id: string;
+  name: string;
+  type: PropertyType;
+  status: 'active' | 'sold';
+  /** Current market value. */
+  value: number;
+  capRate: number;
+  quality: number;
+  /** Occupancy in [0, 1]; vacancy cuts rent. */
+  occupancy: number;
+  /** Outstanding mortgage debt (0 = unlevered). */
+  debt: number;
+  /** Total equity the fund has put in. */
+  invested: number;
+  boughtMonth: number;
+}
+
+export interface RealEstateState {
+  deals: PropertyDeal[];
+  portfolio: Property[];
+  totalInvested: number;
+  totalReturned: number;
+  cashflows: { t: number; amount: number }[];
+}
+
+/* -------------------------------------------------------------------------- */
 /*                              Whole sim state                               */
 /* -------------------------------------------------------------------------- */
 
@@ -719,6 +765,8 @@ export interface SimState {
   specialHoldings: SpecialHolding[];
   /** Venture-capital / startup book. */
   vc: VCState;
+  /** Real-estate book. */
+  realEstate?: RealEstateState;
 
   /** Recent monthly income statements (most recent first, bounded). */
   incomeStatements: IncomeStatement[];
