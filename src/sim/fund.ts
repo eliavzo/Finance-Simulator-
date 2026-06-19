@@ -50,6 +50,7 @@ export function createFund(vintageMonth: number, anchorCommitment: number, rng: 
   const lps = [createLP('FamilyOffice', anchorCommitment, rng)];
   return {
     vintageMonth,
+    generation: 1,
     committed: anchorCommitment,
     called: 0,
     distributed: 0,

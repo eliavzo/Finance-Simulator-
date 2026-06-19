@@ -278,6 +278,8 @@ export interface LimitedPartner {
 
 export interface FundState {
   vintageMonth: number;
+  /** Fund generation (Fund I = 1, successor = 2, …). */
+  generation: number;
   /** Total LP commitments. */
   committed: number;
   /** Capital called from LPs to date. */

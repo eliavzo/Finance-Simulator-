@@ -21,7 +21,7 @@ import {
   Scenario,
   SimState,
 } from './types';
-import { advanceMonth, createSimGame } from './engine';
+import { advanceMonth, createSimGame, raiseSuccessor, successorInfo } from './engine';
 import { applyDecision } from './decisions';
 import { closePosition, openPosition } from './portfolio';
 import { callCapital } from './fund';
@@ -115,6 +115,8 @@ interface SimStore {
   advanceMonths: (n: number) => void;
   /** Sell a startup stake on the secondary market (30% discount). */
   sellStartup: (startupId: string) => ActionResult;
+  /** Close the current fund and launch a larger successor (Fund I→II→III). */
+  raiseSuccessorFund: () => ActionResult;
   /** Dismiss the monthly edition report overlay. */
   dismissReport: () => void;
   /** Resolve the pending decision card by choosing an option. */
@@ -247,6 +249,15 @@ export const useSimStore = create<SimStore>()(
         const res = sellSecondary(game.vc, startupId, game.month);
         if (!res.ok || !res.vc) return { ok: false, error: res.error };
         set({ game: { ...game, vc: res.vc, portfolio: { ...game.portfolio, cash: game.portfolio.cash + (res.proceeds ?? 0) } } });
+        return { ok: true };
+      },
+
+      raiseSuccessorFund: () => {
+        const { game, soundOn } = get();
+        if (!game) return { ok: false, error: g({ de: 'Kein Spiel.', en: 'No game.' }) };
+        if (!successorInfo(game).eligible) return { ok: false, error: g({ de: 'Voraussetzungen nicht erfüllt.', en: 'Requirements not met.' }) };
+        set({ game: raiseSuccessor(game, uiRng) });
+        if (soundOn) sndChime();
         return { ok: true };
       },
 

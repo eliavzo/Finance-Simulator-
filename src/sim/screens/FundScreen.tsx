@@ -5,7 +5,7 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSimStore } from '../store';
 import { portfolioNav } from '../portfolio';
 import { fundMetrics, uncalledCapital, lpSentiment } from '../fund';
-import { benchmarkTrailing } from '../engine';
+import { benchmarkTrailing, successorInfo } from '../engine';
 import { trailingReturn } from '../rivals';
 import { metricValue, objectiveProgress, formatMetric, localizedObjective } from '../objectives';
 import { LP_TYPE_LABEL } from '../labels';
@@ -24,6 +24,16 @@ export function FundScreen() {
   const lang = useLang();
   const game = useSimStore((s) => s.game)!;
   const callLpCapital = useSimStore((s) => s.callLpCapital);
+  const raiseSuccessorFund = useSimStore((s) => s.raiseSuccessorFund);
+  const ROMAN = ['', 'I', 'II', 'III', 'IV', 'V'];
+  const succ = successorInfo(game);
+  const succReason: Record<string, string> = {
+    maxgen: t({ de: 'Höchste Fonds-Generation erreicht.', en: 'Highest fund generation reached.' }),
+    young: t({ de: 'Der Fonds muss mind. 3 Jahre laufen.', en: 'The fund must run at least 3 years.' }),
+    track: t({ de: 'Track-Record zu schwach (TVPI ≥ 1,2 nötig).', en: 'Track record too weak (TVPI ≥ 1.2 needed).' }),
+    rep: t({ de: 'Reputation zu niedrig (≥ 55 nötig).', en: 'Reputation too low (≥ 55 needed).' }),
+    late: t({ de: 'Zu spät im Spiel für einen Nachfolger.', en: 'Too late in the game for a successor.' }),
+  };
 
   const fundNav = useMemo(() => portfolioNav(game.portfolio, game.instruments), [game.portfolio, game.instruments]);
   const metrics = useMemo(() => fundMetrics(game.fund, fundNav, game.month), [game.fund, fundNav, game.month]);
@@ -48,7 +58,10 @@ export function FundScreen() {
       <ScrollView contentContainerStyle={styles.scroll}>
         <TabTip tipKey="fonds" text={t({ de: 'Rufe LP-Kapital ab für Dry Powder, erfülle Mandate für Reputation & frisches Kapital, und halte einen Cash-Puffer gegen Mittelabzüge.', en: 'Call LP capital for dry powder, fulfil mandates for reputation & fresh capital, and keep a cash buffer against redemptions.' })} />
         <Card>
-          <SectionTitle>{t({ de: 'Fonds-Kennzahlen', en: 'Fund metrics' })}</SectionTitle>
+          <View style={styles.titleRow}>
+            <SectionTitle>{t({ de: 'Fonds-Kennzahlen', en: 'Fund metrics' })}</SectionTitle>
+            <Pill text={`Fund ${ROMAN[game.fund.generation ?? 1] ?? game.fund.generation}`} color={colors.accent} />
+          </View>
           <Text style={styles.big}>{fmtMoney(fundNav)}</Text>
           <View style={styles.statRow}>
             <StatTile label={t({ de: 'Netto-IRR', en: 'Net IRR' })} value={fmtPct(metrics.netIrr)} valueColor={metrics.netIrr >= 0 ? colors.positive : colors.negative} />
@@ -63,6 +76,37 @@ export function FundScreen() {
             <StatTile label="Uncalled" value={fmtMoney(uncalled)} />
           </View>
         </Card>
+
+        {(game.fund.generation ?? 1) < 4 ? (
+          <Card>
+            <SectionTitle>{t({ de: 'Nachfolgefonds', en: 'Successor Fund' })}</SectionTitle>
+            <Text style={styles.body}>
+              {t({
+                de: `Schließe Fund ${ROMAN[game.fund.generation ?? 1]} und lege einen größeren Fund ${ROMAN[succ.nextGen]} auf — frische, größere Commitments und etwas reichere Konditionen. GP, Team und Venture-Buch bleiben.`,
+                en: `Close Fund ${ROMAN[game.fund.generation ?? 1]} and launch a larger Fund ${ROMAN[succ.nextGen]} — fresh, bigger commitments and slightly richer terms. The GP, team and venture book carry over.`,
+              })}
+            </Text>
+            {succ.eligible ? (
+              <>
+                <Text style={styles.succLine}>
+                  {t({ de: 'Geschätzte Commitments', en: 'Estimated commitments' })}: <Text style={styles.succStrong}>{fmtMoney(succ.newCommitted)}</Text>
+                </Text>
+                <Button
+                  title={t({ de: `Fund ${ROMAN[succ.nextGen]} auflegen`, en: `Launch Fund ${ROMAN[succ.nextGen]}` })}
+                  variant="primary"
+                  style={{ marginTop: spacing.sm }}
+                  onPress={() => {
+                    const res = raiseSuccessorFund();
+                    if (res.ok) notify(t({ de: 'Nachfolgefonds aufgelegt', en: 'Successor fund launched' }), t({ de: `Fund ${ROMAN[succ.nextGen]} ist live.`, en: `Fund ${ROMAN[succ.nextGen]} is live.` }));
+                    else if (res.error) notify(t({ de: 'Nicht möglich', en: 'Not possible' }), res.error);
+                  }}
+                />
+              </>
+            ) : (
+              <Text style={[styles.succLine, { color: colors.textMuted }]}>🔒 {succReason[succ.reason ?? '']}</Text>
+            )}
+          </Card>
+        ) : null}
 
         {(() => {
           const cashQuote = fundNav > 0 ? game.portfolio.cash / fundNav : 0;
@@ -227,6 +271,10 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
   scroll: { padding: spacing.lg, paddingBottom: spacing.xl * 2 },
   big: { color: colors.text, fontSize: 32, fontFamily: fonts.displayBlack, marginBottom: spacing.sm },
+  titleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  body: { color: colors.text, fontFamily: fonts.serif, fontSize: 13, lineHeight: 19, marginBottom: spacing.sm },
+  succLine: { color: colors.text, fontFamily: fonts.serif, fontSize: 13, marginTop: spacing.xs },
+  succStrong: { fontFamily: fonts.serifBold, color: colors.accent },
   statRow: { flexDirection: 'row', flexWrap: 'wrap' },
   hint: { color: colors.textMuted, fontSize: 12, marginBottom: spacing.md },
   empty: { color: colors.textMuted, fontSize: 13, fontStyle: 'italic' },

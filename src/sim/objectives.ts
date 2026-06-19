@@ -154,7 +154,8 @@ export function computeScore(state: SimState): FinalScore {
     Math.max(-50, growth * 150) +
     Math.max(-60, Math.min(120, irr * 300)) +
     state.reputation * 2 +
-    objSucceeded * 40 -
+    objSucceeded * 40 +
+    ((state.fund.generation ?? 1) - 1) * 35 -
     dd * 120;
 
   if (state.gameOverReason === 'insolvency' || state.gameOverReason === 'reputation' || state.gameOverReason === 'collapse') score -= 150;

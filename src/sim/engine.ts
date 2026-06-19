@@ -8,6 +8,7 @@ import {
   IncomeStatement,
   Instrument,
   LedgerEntry,
+  LPType,
   MarketMover,
   MonthlyReport,
   SimEvent,
@@ -185,6 +186,110 @@ export function benchmarkTrailing(levels: number[] | undefined, n = 12): number 
   if (!levels || levels.length < n + 1) return NaN;
   const a = levels[levels.length - 1 - n];
   return a > 0 ? levels[levels.length - 1] / a - 1 : NaN;
+}
+
+/* ----------------------------- Fund generations ------------------------- */
+
+export const MAX_FUND_GENERATION = 4;
+
+export interface SuccessorInfo {
+  eligible: boolean;
+  /** Reason code when not eligible: 'maxgen' | 'young' | 'track' | 'rep' | 'late'. */
+  reason?: string;
+  nextGen: number;
+  /** Committed capital the successor fund would raise. */
+  newCommitted: number;
+}
+
+/** Can the player close this fund and raise a larger successor? */
+export function successorInfo(state: SimState): SuccessorInfo {
+  const fund = state.fund;
+  const gen = fund.generation ?? 1;
+  const nav = portfolioNav(state.portfolio, state.instruments);
+  const m = fundMetrics(fund, nav, state.month);
+  const monthsRun = state.month - fund.vintageMonth;
+  const mult = Math.min(3.2, 1.6 + Math.max(0, m.tvpi - 1) * 0.8 + Math.max(0, (state.reputation - 55) / 100));
+  const newCommitted = Math.max(fund.committed, Math.round((fund.committed * mult) / 1e6) * 1e6);
+  let reason: string | undefined;
+  if (gen >= MAX_FUND_GENERATION) reason = 'maxgen';
+  else if (monthsRun < 36) reason = 'young';
+  else if (!(m.tvpi >= 1.2)) reason = 'track';
+  else if (state.reputation < 55) reason = 'rep';
+  else if (state.month > TOTAL_MONTHS - 36) reason = 'late';
+  return { eligible: !reason, reason, nextGen: gen + 1, newCommitted };
+}
+
+/**
+ * Close the current fund and launch a larger successor: realise the book, pay
+ * the GP a final carry on gains above the high-water mark, then start a fresh,
+ * bigger fund (new LPs, slightly richer terms) — the long-run progression
+ * ladder. The GP (cash, team, infra, reputation) and the venture book carry over.
+ */
+export function raiseSuccessor(state: SimState, rng: Rng): SimState {
+  const info = successorInfo(state);
+  if (!info.eligible) return state;
+  const fund = state.fund;
+  const nav = portfolioNav(state.portfolio, state.instruments);
+  const gen = (fund.generation ?? 1) + 1;
+
+  // Final carry to the GP on gains above the high-water mark.
+  const finalCarry = Math.max(0, nav - fund.highWaterMark) * fund.carryRate;
+  const firm = { ...state.firm, cash: state.firm.cash + finalCarry, carryEarned: state.firm.carryEarned + finalCarry };
+
+  // Terms improve with track record.
+  const mgmtFeeRate = Math.min(0.025, fund.mgmtFeeRate + 0.0025);
+  const carryRate = Math.min(0.25, fund.carryRate + 0.01);
+  const committed = info.newCommitted;
+  const called = Math.round((committed * 0.4) / 1e6) * 1e6;
+
+  // Fresh LP base spread across institution types.
+  const types: LPType[] = ['SovereignWealth', 'Endowment', 'Pension', 'FundOfFunds'];
+  const lps = types.map((t) => {
+    const lp = createLP(t, Math.round(committed / types.length / 1e6) * 1e6, rng);
+    return { ...lp, called: Math.round(called / types.length) };
+  });
+
+  const newFund = {
+    ...fund,
+    generation: gen,
+    vintageMonth: state.month,
+    committed,
+    called,
+    distributed: 0,
+    lps,
+    mgmtFeeRate,
+    carryRate,
+    highWaterMark: called,
+    accruedCarry: 0,
+    cashflows: [{ t: state.month / 12, amount: -called }],
+    lastCarryMonth: state.month,
+  };
+
+  const portfolio = createPortfolio(called);
+  const reputation = Math.min(100, state.reputation + 5);
+  const ev0 = ev(state.month, {
+    type: 'fund',
+    title: g({ de: `Fund ${roman(gen)} aufgelegt`, en: `Fund ${roman(gen)} Launched` }),
+    description: g({
+      de: `Track-Record überzeugt: $${(committed / 1e6).toFixed(0)}M Commitments eingeworben${finalCarry > 1000 ? ` · $${(finalCarry / 1e6).toFixed(1)}M Final-Carry` : ''}.`,
+      en: `Track record pays off: raised $${(committed / 1e6).toFixed(0)}M in commitments${finalCarry > 1000 ? ` · $${(finalCarry / 1e6).toFixed(1)}M final carry` : ''}.`,
+    }),
+  });
+
+  return {
+    ...state,
+    firm,
+    fund: newFund,
+    portfolio,
+    reputation,
+    peakReputation: Math.max(state.peakReputation ?? reputation, reputation),
+    fundDeadMonths: 0,
+    events: [ev0, ...state.events].slice(0, 80),
+  };
+}
+
+function roman(n: number): string {
+  return ['0', 'I', 'II', 'III', 'IV', 'V'][n] ?? String(n);
 }
 
 /** Biggest one-month price moves across tradeable instruments (excl. options). */
