@@ -551,6 +551,8 @@ export interface DecisionEffect {
   volSpike?: number;
   /** Nudge market sentiment, clamped to [-1, 1]. */
   sentiment?: number;
+  /** Schedule a follow-up decision card to fire later (event chain). */
+  scheduleChain?: { id: string; inMonths: number };
   /** Risky branch: with probability `p` apply `win`, else `lose`. */
   gamble?: { p: number; win: DecisionEffect; lose: DecisionEffect };
 }
@@ -705,6 +707,10 @@ export interface SimState {
   pendingDecision?: DecisionCard;
   /** Recently fired decision template ids (most recent first) to avoid repeats. */
   lastDecisionIds?: string[];
+  /** Scheduled follow-up decision cards (event chains), by fire month. */
+  pendingChains?: { fireMonth: number; chainId: string }[];
+  /** The id of the rival cast as this run's recurring nemesis. */
+  nemesisId?: string;
   /** A special deal awaiting accept/decline. */
   pendingOpportunity?: SpecialOpportunity;
   /** Accepted opportunities resolving to a payoff later. */

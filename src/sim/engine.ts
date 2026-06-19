@@ -23,7 +23,7 @@ import { THESES } from './thesis';
 import { scenarioEconomy, applyScenarioToInstruments } from './scenarios';
 import { generateObjective, metricValue, isMet, computeScore, localizedObjective } from './objectives';
 import { createRivals, stepRivals, buildLeague, trailingReturn, playerRankFraction } from './rivals';
-import { maybeDecision, buildLpMeeting } from './decisions';
+import { maybeDecision, buildLpMeeting, buildChain } from './decisions';
 import { maybeOpportunity, payoffMultiple, OPP_LABEL } from './opportunities';
 import { createVC, refreshDeals, stepVC, vcResidualValue } from './vc';
 import { maybeTriggerCrisis, applyCrisisToEconomy, crisisEquityShock, hedgePayout, HEDGE_MONTHLY_PREMIUM, CRISIS_DESC } from './crises';
@@ -111,6 +111,10 @@ export function createSimGame(
   const caps0 = firmCapabilities(firm, 50, thesis);
   const signals0 = generateSignals(instruments, economy, caps0, rng, THESES[thesis].signalNoiseMult);
 
+  // The recurring nemesis: the most skilled rival at launch.
+  const rivals0 = createRivals(rng);
+  const nemesis = rivals0.reduce((a, b) => (b.skill > a.skill ? b : a), rivals0[0]);
+
   return {
     month: 0,
     started: true,
@@ -129,7 +133,10 @@ export function createSimGame(
     achievements: [],
     specialHoldings: [],
     vc: { ...createVC(), deals: refreshDeals(rng, 50) },
-    rivals: createRivals(rng),
+    rivals: rivals0,
+    nemesisId: nemesis?.id,
+    lastDecisionIds: [],
+    pendingChains: [],
     objectives: [generateObjective(rng, 0, 50), generateObjective(rng, 0, 50)],
     signals: signals0,
     lastContribution: NO_CONTRIBUTION,
@@ -688,13 +695,23 @@ export function advanceMonth(state: SimState): SimState {
     events.push(ev(month, { type: 'info', title, description: desc }));
   }
 
-  // Decision card (not on the final month). The semi-annual LP meeting is
-  // scheduled; the rescue card fires while the fund is dead; everything else
-  // is the usual random "Extrablatt".
+  // Decision card (not on the final month). Priority: a due event-chain
+  // callback first, then the semi-annual LP meeting, then a random "Extrablatt".
+  // (Rescue cards take over inside maybeDecision while the fund is dead.)
   const decisionState = { ...state, firm, portfolio, fund, instruments, reputation, fundDeadMonths } as SimState;
-  let pendingDecision = gameOver ? undefined : maybeDecision(decisionState, blackSwan, rng);
-  if (!gameOver && !pendingDecision && activeLpCount > 0 && month > 0 && month % 6 === 0) {
-    pendingDecision = buildLpMeeting(rng);
+  let pendingChains = state.pendingChains ?? [];
+  let pendingDecision: ReturnType<typeof maybeDecision>;
+  if (!gameOver) {
+    const dueIdx = pendingChains.findIndex((c) => c.fireMonth <= month);
+    if (dueIdx >= 0) {
+      const due = pendingChains[dueIdx];
+      pendingChains = pendingChains.filter((_, i) => i !== dueIdx);
+      pendingDecision = buildChain(due.chainId, decisionState, rng);
+    }
+    if (!pendingDecision) pendingDecision = maybeDecision(decisionState, blackSwan, rng);
+    if (!pendingDecision && activeLpCount > 0 && month > 0 && month % 6 === 0) {
+      pendingDecision = buildLpMeeting(rng);
+    }
   }
   // Special opportunity (don't stack on top of a pending decision).
   const pendingOpportunity = gameOver || pendingDecision ? undefined : maybeOpportunity(reputation, month, portfolio.cash, rng);
@@ -744,6 +761,9 @@ export function advanceMonth(state: SimState): SimState {
     ledger: [],
     pendingDecision,
     pendingOpportunity,
+    lastDecisionIds: state.lastDecisionIds ?? [],
+    pendingChains,
+    nemesisId: state.nemesisId,
     specialHoldings,
     vc,
     equityHistory: [...state.equityHistory, enterprise].slice(-TOTAL_MONTHS - 1),

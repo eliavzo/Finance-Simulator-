@@ -47,6 +47,7 @@ interface CardContext {
   regime: Regime;
   biggestSymbol: string;
   hasInfraRoom: boolean;
+  nemesisName: string;
 }
 
 interface CardTemplate {
@@ -110,7 +111,7 @@ const TEMPLATES: CardTemplate[] = [
       card('poachstar', K.people(), g({ de: `Star bei ${c.rivalName} unzufrieden`, en: `Star at ${c.rivalName} Unhappy` }),
         g({ de: 'Ein hochkarätiger Kopf der Konkurrenz ist wechselwillig — gegen eine satte Antrittsprämie.', en: 'A top mind at a rival is open to moving — for a hefty signing bonus.' }),
         [
-          { label: g({ de: 'Abwerben', en: 'Poach them' }), description: g({ de: 'Teuer, aber Elite-Skill fürs Team.', en: 'Expensive, but elite skill for the team.' }), effect: { cash: -500_000, hireStar: 'Analyst', reputation: 1 } },
+          { label: g({ de: 'Abwerben', en: 'Poach them' }), description: g({ de: 'Teuer, aber Elite-Skill fürs Team.', en: 'Expensive, but elite skill for the team.' }), effect: { cash: -500_000, hireStar: 'Analyst', reputation: 1, scheduleChain: { id: 'poachPayoff', inMonths: 10 } } },
           { label: g({ de: 'Zu teuer', en: 'Too expensive' }), description: g({ de: 'Das Budget bleibt verschont.', en: 'The budget is spared.' }), effect: {} },
         ]),
   },
@@ -203,6 +204,18 @@ const TEMPLATES: CardTemplate[] = [
         ]),
   },
   {
+    id: 'nemesis',
+    weight: 2,
+    eligible: (c) => c.month > 18 && c.reputation > 35,
+    build: (c) =>
+      card('nemesis', K.market(), g({ de: `${c.nemesisName} zieht davon`, en: `${c.nemesisName} Pulls Ahead` }),
+        g({ de: `Dein Erzrivale ${c.nemesisName} prahlt mit Rekordrenditen und umwirbt offen deine LPs. Wie reagierst du?`, en: `Your arch-rival ${c.nemesisName} is boasting record returns and openly courting your LPs. How do you respond?` }),
+        [
+          { label: g({ de: 'Strategie kopieren', en: 'Copy their playbook' }), description: g({ de: 'Riskant: aufschließen — oder ihrem Crash folgen.', en: 'Risky: catch up — or follow them into a crash.' }), effect: { scheduleChain: { id: 'nemesisResult', inMonths: 8 }, gamble: { p: 0.5, win: { reputation: 3, fundCash: 400_000 }, lose: { reputation: -3, fundCash: -400_000 } } } },
+          { label: g({ de: 'Diszipliniert bleiben', en: 'Stay disciplined' }), description: g({ de: 'Dein Stil, deine Regeln — Standhaftigkeit zahlt sich aus.', en: 'Your style, your rules — steadiness is rewarded.' }), effect: { patience: 0.05, scheduleChain: { id: 'nemesisResult', inMonths: 8 } } },
+        ]),
+  },
+  {
     id: 'whale',
     weight: 2,
     eligible: (c) => c.fundCash > 2_000_000,
@@ -236,7 +249,7 @@ const TEMPLATES: CardTemplate[] = [
       card('tip', K.scandal(), g({ de: 'Ein heißer Tipp', en: 'A Hot Tip' }),
         g({ de: 'Ein Kontakt flüstert dir nicht-öffentliche Informationen zu. Riecht nach Insiderhandel.', en: 'A contact whispers non-public information to you. It reeks of insider trading.' }),
         [
-          { label: g({ de: 'Diskret nutzen', en: 'Use it discreetly' }), description: g({ de: 'Schneller Gewinn — hohes Risiko für den Ruf.', en: 'A quick profit — high risk to your reputation.' }), effect: { gamble: { p: 0.7, win: { fundCash: 900_000, reputation: -2 }, lose: { fundCash: 300_000, reputation: -12 } } } },
+          { label: g({ de: 'Diskret nutzen', en: 'Use it discreetly' }), description: g({ de: 'Schneller Gewinn — hohes Risiko für den Ruf.', en: 'A quick profit — high risk to your reputation.' }), effect: { scheduleChain: { id: 'tipProbe', inMonths: 9 }, gamble: { p: 0.7, win: { fundCash: 900_000, reputation: -2 }, lose: { fundCash: 300_000, reputation: -12 } } } },
           { label: g({ de: 'Dankend ablehnen', en: 'Politely decline' }), description: g({ de: 'Integrität zahlt sich langfristig aus.', en: 'Integrity pays off in the long run.' }), effect: { reputation: 2 } },
         ]),
   },
@@ -248,7 +261,7 @@ const TEMPLATES: CardTemplate[] = [
       card('bribe', K.scandal(), g({ de: 'Schmiergeld-Angebot', en: 'A Kickback Offer' }),
         g({ de: 'Ein Mittelsmann verspricht ein riesiges Staatsfonds-Commitment — gegen eine „Beraterprovision".', en: 'A fixer promises a huge sovereign commitment — in exchange for a "consulting fee".' }),
         [
-          { label: g({ de: 'Zahlen', en: 'Pay it' }), description: g({ de: 'Großes Kapital — aber moralisch verseucht.', en: 'Big capital — but morally toxic.' }), effect: { cash: -150_000, committed: 25_000_000, reputation: -7 } },
+          { label: g({ de: 'Zahlen', en: 'Pay it' }), description: g({ de: 'Großes Kapital — aber moralisch verseucht.', en: 'Big capital — but morally toxic.' }), effect: { cash: -150_000, committed: 25_000_000, reputation: -7, scheduleChain: { id: 'bribeFallout', inMonths: 22 } } },
           { label: g({ de: 'Empört ablehnen', en: 'Refuse, offended' }), description: g({ de: 'Sauber bleiben zahlt sich aus.', en: 'Staying clean pays off.' }), effect: { reputation: 3 } },
         ]),
   },
@@ -261,7 +274,7 @@ const TEMPLATES: CardTemplate[] = [
         g({ de: 'Ein Junior hat versehentlich eure Positionen geleakt. Die Presse fragt nach.', en: 'A junior accidentally leaked your positions. The press is asking questions.' }),
         [
           { label: g({ de: 'Verantwortlichen entlassen', en: 'Fire the culprit' }), description: g({ de: 'Hart, aber stellt Vertrauen wieder her.', en: 'Harsh, but restores trust.' }), effect: { loseEmployee: true, reputation: 2 } },
-          { label: g({ de: 'Vertuschen', en: 'Cover it up' }), description: g({ de: 'Riskant — fliegt es auf, wird es übel.', en: 'Risky — if it surfaces, it gets ugly.' }), effect: { gamble: { p: 0.5, win: { reputation: 0 }, lose: { reputation: -9 } } } },
+          { label: g({ de: 'Vertuschen', en: 'Cover it up' }), description: g({ de: 'Riskant — fliegt es auf, wird es übel.', en: 'Risky — if it surfaces, it gets ugly.' }), effect: { scheduleChain: { id: 'leakProbe', inMonths: 11 }, gamble: { p: 0.5, win: { reputation: 0 }, lose: { reputation: -9 } } } },
         ]),
   },
   {
@@ -472,12 +485,8 @@ export function buildLpMeeting(rng: Rng): DecisionCard {
     ]);
 }
 
-/** Possibly produce a decision card this month (≈14% base chance). */
-export function maybeDecision(state: SimState, blackSwan: boolean, rng: Rng): DecisionCard | undefined {
-  // While the fund is dead, rescue offers dominate the news cycle.
-  if ((state.fundDeadMonths ?? 0) >= 2 && rng.chance(0.45)) return buildRescue(state.reputation);
-  if (!rng.chance(blackSwan ? 0.6 : 0.14)) return undefined;
-
+/** Build the shared decision context from the current state. */
+function makeCtx(state: SimState, blackSwan: boolean, rng: Rng): CardContext {
   const positions = state.portfolio.positions;
   let biggest = positions[0];
   for (const p of positions) {
@@ -486,7 +495,8 @@ export function maybeDecision(state: SimState, blackSwan: boolean, rng: Rng): De
     if (inst && (!big || Math.abs(p.quantity) * inst.price > Math.abs(biggest.quantity) * big.price)) biggest = p;
   }
   const infra = state.firm.infrastructure;
-  const ctx: CardContext = {
+  const nemesis = state.rivals.find((r) => r.id === state.nemesisId);
+  return {
     reputation: state.reputation,
     firmCash: state.firm.cash,
     fundCash: state.portfolio.cash,
@@ -501,7 +511,62 @@ export function maybeDecision(state: SimState, blackSwan: boolean, rng: Rng): De
     regime: state.economy.regime,
     biggestSymbol: biggest?.symbol ?? g({ de: 'deine Top-Position', en: 'your top holding' }),
     hasInfraRoom: infra.dataTier < MAX_TIER || infra.quantTier < MAX_TIER || infra.primeBrokerTier < MAX_TIER || infra.officeTier < MAX_TIER,
+    nemesisName: nemesis?.name ?? (state.rivals[0]?.name ?? 'Meridian Capital'),
   };
+}
+
+/* ----------------------------- Event chains ---------------------------- */
+/** Follow-up cards triggered months after an earlier choice (callbacks). */
+const CHAINS: Record<string, (c: CardContext) => DecisionCard> = {
+  tipProbe: (c) =>
+    card('tipProbe', K.law(), g({ de: 'Verdächtiger Trade im Visier', en: 'Suspicious Trade Flagged' }),
+      g({ de: 'Die Aufsicht hat deinen auffälligen Gewinn von damals bemerkt und ermittelt.', en: 'The regulator has noticed that suspiciously timed profit and is investigating.' }),
+      [
+        { label: g({ de: 'Anwälte einschalten', en: 'Lawyer up' }), description: g({ de: 'Teuer, begrenzt aber den Schaden.', en: 'Costly, but limits the damage.' }), effect: { cash: -250_000, reputation: 1 } },
+        { label: g({ de: 'Auf Zufall plädieren', en: 'Plead coincidence' }), description: g({ de: 'Riskant — glaubt es niemand, wird es übel.', en: 'Risky — if nobody buys it, it gets ugly.' }), effect: { gamble: { p: 0.45, win: { reputation: 1 }, lose: { reputation: -10, cash: -150_000 } } } },
+      ]),
+  bribeFallout: (c) =>
+    card('bribeFallout', K.scandal(), g({ de: 'Die Schmiergeld-Affäre fliegt auf', en: 'The Kickback Scandal Breaks' }),
+      g({ de: 'Investigativjournalisten haben die „Beraterprovision" von damals aufgedeckt.', en: 'Investigative reporters have uncovered that old "consulting fee".' }),
+      [
+        { label: g({ de: 'Stillen Vergleich zahlen', en: 'Settle quietly' }), description: g({ de: 'Sehr teuer, aber begrenzt den Rufschaden.', en: 'Very expensive, but contains the reputational damage.' }), effect: { cash: -600_000, reputation: -2 } },
+        { label: g({ de: 'Alles abstreiten', en: 'Deny everything' }), description: g({ de: 'Hohes Risiko fürs Standing.', en: 'High risk to your standing.' }), effect: { gamble: { p: 0.4, win: { reputation: -2 }, lose: { reputation: -14 } } } },
+      ]),
+  leakProbe: (c) =>
+    card('leakProbe', K.scandal(), g({ de: 'Die Leak-Akte', en: 'The Leak Resurfaces' }),
+      g({ de: 'Die vertuschte Datenpanne von damals taucht in einem Branchenblog wieder auf.', en: 'That covered-up data leak resurfaces on an industry blog.' }),
+      [
+        { label: g({ de: 'Volle Transparenz', en: 'Full transparency' }), description: g({ de: 'Kostet, stellt aber Vertrauen wieder her.', en: 'Costs money, but restores trust.' }), effect: { cash: -120_000, reputation: 2 } },
+        { label: g({ de: 'Erneut begraben', en: 'Bury it again' }), description: g({ de: 'Riskant — die zweite Vertuschung wiegt schwerer.', en: 'Risky — a second cover-up weighs heavier.' }), effect: { gamble: { p: 0.5, win: { reputation: -1 }, lose: { reputation: -11 } } } },
+      ]),
+  poachPayoff: (c) =>
+    card('poachPayoff', K.people(), g({ de: 'Der Neuzugang liefert', en: 'The New Signing Delivers' }),
+      g({ de: 'Dein teuer abgeworbener Star hat seine erste große Idee. Setzt du sie groß um?', en: 'Your costly star hire has their first big idea. Do you size it up?' }),
+      [
+        { label: g({ de: 'Voll dahinter', en: 'Back it fully' }), description: g({ de: 'Meist Alpha — aber kein Selbstläufer.', en: 'Usually alpha — but not a sure thing.' }), effect: { gamble: { p: 0.7, win: { fundCash: 900_000, reputation: 2 }, lose: { fundCash: -350_000, morale: -3 } } } },
+        { label: g({ de: 'Klein testen', en: 'Test small' }), description: g({ de: 'Vorsichtig — bescheidener Ertrag.', en: 'Cautious — a modest return.' }), effect: { fundCash: 150_000 } },
+      ]),
+  nemesisResult: (c) =>
+    card('nemesisResult', K.market(), g({ de: `Abrechnung mit ${c.nemesisName}`, en: `Reckoning with ${c.nemesisName}` }),
+      g({ de: `Das Jahresergebnis ist da. Die Branche vergleicht dich direkt mit ${c.nemesisName}.`, en: `The annual numbers are in. The industry is comparing you head-to-head with ${c.nemesisName}.` }),
+      [
+        { label: g({ de: 'Ergebnis abwarten', en: 'Await the verdict' }), description: g({ de: 'Hast du geliefert, glänzt du — sonst lacht die Konkurrenz.', en: 'Deliver and you shine — fall short and the rivals gloat.' }), effect: { gamble: { p: 0.5, win: { reputation: 5, committed: 10_000_000 }, lose: { reputation: -4 } } } },
+      ]),
+};
+
+/** Build a scheduled chain card (or undefined for an unknown id). */
+export function buildChain(chainId: string, state: SimState, rng: Rng): DecisionCard | undefined {
+  const builder = CHAINS[chainId];
+  return builder ? builder(makeCtx(state, false, rng)) : undefined;
+}
+
+/** Possibly produce a decision card this month (≈14% base chance). */
+export function maybeDecision(state: SimState, blackSwan: boolean, rng: Rng): DecisionCard | undefined {
+  // While the fund is dead, rescue offers dominate the news cycle.
+  if ((state.fundDeadMonths ?? 0) >= 2 && rng.chance(0.45)) return buildRescue(state.reputation);
+  if (!rng.chance(blackSwan ? 0.6 : 0.14)) return undefined;
+
+  const ctx = makeCtx(state, blackSwan, rng);
 
   // Exclude the last few fired templates so the news feels fresh.
   const recent = new Set(state.lastDecisionIds ?? []);
@@ -533,6 +598,7 @@ export function applyDecision(state: SimState, choiceIndex: number, rng: Rng): S
   let economy = state.economy;
   let reputation = state.reputation;
   let gambleNote: string | undefined;
+  const pendingChains = [...(state.pendingChains ?? [])];
 
   const applyEffect = (e: DecisionEffect) => {
     if (e.cash) firm = { ...firm, cash: firm.cash + e.cash };
@@ -571,6 +637,7 @@ export function applyDecision(state: SimState, choiceIndex: number, rng: Rng): S
     }
     if (e.volSpike) economy = { ...economy, volIndex: Math.max(5, economy.volIndex + e.volSpike) };
     if (e.sentiment) economy = { ...economy, sentiment: Math.max(-1, Math.min(1, economy.sentiment + e.sentiment)) };
+    if (e.scheduleChain) pendingChains.push({ fireMonth: state.month + e.scheduleChain.inMonths, chainId: e.scheduleChain.id });
     if (e.reputation) reputation = Math.max(0, Math.min(100, reputation + e.reputation));
     if (e.gamble) {
       const won = rng.chance(e.gamble.p);
@@ -591,6 +658,7 @@ export function applyDecision(state: SimState, choiceIndex: number, rng: Rng): S
     reputation,
     pendingDecision: undefined,
     lastDecisionIds,
+    pendingChains,
     events: [
       { id: `dec-res-${state.month}-${choiceIndex}-${cardCounter}`, month: state.month, type: 'firm' as const, title: card.title, description: g({ de: `Entscheidung: ${choice.label}.`, en: `Decision: ${choice.label}.` }) + (gambleNote ? ` ${gambleNote}` : '') },
       ...state.events,

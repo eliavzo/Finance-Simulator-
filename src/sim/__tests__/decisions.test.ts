@@ -74,3 +74,40 @@ describe('new decision effects', () => {
     expect(after.reputation).toBeGreaterThan(flush().reputation); // p=1 always wins
   });
 });
+
+import { buildChain } from '../decisions';
+import { advanceMonth } from '../engine';
+
+describe('event chains & nemesis', () => {
+  const flush2 = () => {
+    const g = createSimGame(2, 'multistrat', 'normal');
+    return { ...g, month: 20, reputation: 60, firm: { ...g.firm, cash: 3_000_000 } };
+  };
+
+  it('scheduleChain queues a future follow-up', () => {
+    const g = flush2();
+    const card: DecisionCard = { id: 'b-1', cardId: 'bribe', kicker: 'K', title: 't', body: 'b', choices: [{ label: 'pay', description: 'd', effect: { committed: 1_000_000, scheduleChain: { id: 'bribeFallout', inMonths: 22 } } }] };
+    const after = applyDecision({ ...g, pendingDecision: card }, 0, new Rng(5));
+    expect(after.pendingChains?.some((c) => c.chainId === 'bribeFallout' && c.fireMonth === g.month + 22)).toBe(true);
+  });
+
+  it('buildChain produces a card for a known id, undefined otherwise', () => {
+    const g = flush2();
+    expect(buildChain('tipProbe', g, new Rng(1))?.cardId).toBe('tipProbe');
+    expect(buildChain('does-not-exist', g, new Rng(1))).toBeUndefined();
+  });
+
+  it('a due chain fires on the next month, bypassing the random gate', () => {
+    let g = createSimGame(2, 'multistrat', 'normal');
+    g = { ...g, pendingChains: [{ fireMonth: g.month + 1, chainId: 'tipProbe' }] };
+    const next = advanceMonth(g);
+    expect(next.pendingDecision?.cardId).toBe('tipProbe');
+    expect(next.pendingChains?.length ?? 0).toBe(0);
+  });
+
+  it('assigns a nemesis at game start', () => {
+    const g = createSimGame(2, 'multistrat', 'normal');
+    expect(g.nemesisId).toBeTruthy();
+    expect(g.rivals.some((r) => r.id === g.nemesisId)).toBe(true);
+  });
+});
