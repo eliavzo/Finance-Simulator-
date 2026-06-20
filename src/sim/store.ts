@@ -27,6 +27,7 @@ import { closePosition, openPosition } from './portfolio';
 import { callCapital } from './fund';
 import { investInDeal, followOn, supportStartup, sellSecondary } from './vc';
 import { createRealEstate, buyProperty, sellProperty } from './realestate';
+import { mutatorParams } from './mutators';
 import { firmCapabilities, generateCandidate, upgradeCost, MAX_TIER, fairSalary } from './firm';
 import { tierPerks } from './tiers';
 import { MetaProgress, DEFAULT_META, difficultyParams } from './difficulty';
@@ -108,7 +109,7 @@ interface SimStore {
   closeArchive: () => void;
   dismissTip: (key: string) => void;
 
-  newGame: (opts?: { seed?: number; thesis?: FundThesis; scenario?: Scenario; officeName?: string; difficulty?: DifficultyConfig }) => void;
+  newGame: (opts?: { seed?: number; thesis?: FundThesis; scenario?: Scenario; officeName?: string; difficulty?: DifficultyConfig; mutators?: string[] }) => void;
   /** Wipe the current run and return to the front page. */
   resetGame: () => void;
   nextMonth: () => void;
@@ -196,7 +197,7 @@ export const useSimStore = create<SimStore>()(
 
       newGame: (opts) =>
         set((s) => ({
-          game: createSimGame(opts?.seed, opts?.thesis, opts?.scenario, opts?.officeName, opts?.difficulty),
+          game: createSimGame(opts?.seed, opts?.thesis, opts?.scenario, opts?.officeName, opts?.difficulty, opts?.mutators),
           candidates: {},
           candidateSearchMonth: {},
           pendingReportMonth: null,
@@ -300,6 +301,10 @@ export const useSimStore = create<SimStore>()(
         if (!game) return { ok: false, error: g({ de: 'Kein Spiel.', en: 'No game.' }) };
         const inst = game.instruments.find((i) => i.id === instrumentId);
         if (!inst) return { ok: false, error: g({ de: 'Instrument nicht gefunden.', en: 'Instrument not found.' }) };
+        const mp = mutatorParams(game.mutators);
+        if (mp.longOnly && (signedQuantity < 0 || leverage > 1)) {
+          return { ok: false, error: g({ de: 'Mutator „Nur Long": keine Shorts, kein Hebel.', en: 'Mutator “Long Only”: no shorts, no leverage.' }) };
+        }
         const perks = tierPerks(game.peakReputation ?? game.reputation);
         if (Math.abs(leverage) > perks.maxLeverage) {
           return {
@@ -449,6 +454,7 @@ export const useSimStore = create<SimStore>()(
       buyHedge: (notional, months) => {
         const { game } = get();
         if (!game) return { ok: false, error: g({ de: 'Kein Spiel.', en: 'No game.' }) };
+        if (mutatorParams(game.mutators).noHedge) return { ok: false, error: g({ de: 'Mutator „Ohne Netz": Absicherung deaktiviert.', en: 'Mutator “No Safety Net”: hedging disabled.' }) };
         if (notional <= 0 || months <= 0) return { ok: false, error: g({ de: 'Ungültige Absicherung.', en: 'Invalid hedge.' }) };
         // First month's premium is due immediately.
         const premium = notional * 0.005;

@@ -9,6 +9,7 @@
 import { Objective, ObjectiveMetric, SimState } from './types';
 import { maxDrawdown } from '../engine/finance';
 import { difficultyParams, DEFAULT_DIFFICULTY } from './difficulty';
+import { mutatorScoreMult } from './mutators';
 import { fundMetrics } from './fund';
 import { portfolioNav } from './portfolio';
 import { Lang, Loc, tr, getLang } from '../i18n/lang';
@@ -159,8 +160,9 @@ export function computeScore(state: SimState): FinalScore {
     dd * 120;
 
   if (state.gameOverReason === 'insolvency' || state.gameOverReason === 'reputation' || state.gameOverReason === 'collapse') score -= 150;
-  // Harder difficulty multiplies the score (and easier shrinks it).
+  // Harder difficulty and active mutators both multiply the score.
   score *= difficultyParams(state.difficulty ?? DEFAULT_DIFFICULTY).scoreMult;
+  score *= mutatorScoreMult(state.mutators);
   score = Math.max(0, Math.round(score));
 
   const grade = score >= 620 ? 'S' : score >= 460 ? 'A' : score >= 320 ? 'B' : score >= 190 ? 'C' : score >= 90 ? 'D' : 'F';

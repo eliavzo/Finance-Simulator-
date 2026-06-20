@@ -33,6 +33,7 @@ import { tierPerks } from './tiers';
 import { ACHIEVEMENTS, evaluateAchievements } from './achievements';
 import { maxDrawdown } from '../engine/finance';
 import { difficultyParams, DEFAULT_DIFFICULTY } from './difficulty';
+import { mutatorParams } from './mutators';
 import { DifficultyConfig, FundThesis, GameOverReason, Scenario } from './types';
 import { createPortfolio, portfolioNav, stepPortfolio, raiseCash, exposures } from './portfolio';
 import { EMPTY_ANALYTICS } from './analysis';
@@ -83,22 +84,25 @@ export function createSimGame(
   scenario: Scenario = 'normal',
   officeName = 'Family Office',
   difficulty: DifficultyConfig = DEFAULT_DIFFICULTY,
+  mutators: string[] = [],
 ): SimState {
   evCounter = 0;
   const rng = new Rng(seed);
   const dp = difficultyParams(difficulty);
+  const mp = mutatorParams(mutators);
+  const capMult = dp.startCapitalMult * mp.startCapitalMult;
   const economy = scenarioEconomy(scenario);
   const instruments = applyScenarioToInstruments(scenario, createInstruments());
-  const firm = createFirm(officeName.trim() || 'Family Office', GP_RUNWAY * dp.startCapitalMult, rng);
+  const firm = createFirm(officeName.trim() || 'Family Office', GP_RUNWAY * capMult, rng);
 
-  let fund = createFund(0, ANCHOR_COMMITMENT * dp.startCapitalMult, rng);
+  let fund = createFund(0, ANCHOR_COMMITMENT * capMult, rng);
   // Leaner fees on harder difficulties.
   fund = { ...fund, mgmtFeeRate: fund.mgmtFeeRate * dp.feeMult, carryRate: fund.carryRate * dp.feeMult };
   // Two seed LPs join at launch, so the fund has enough AUM for fees to
   // support a lean team through the J-curve.
-  const seedLPs = [createLP('Endowment', 12_000_000 * dp.startCapitalMult, rng), createLP('Pension', 13_000_000 * dp.startCapitalMult, rng)];
-  const committed = ANCHOR_COMMITMENT * dp.startCapitalMult + seedLPs.reduce((a, l) => a + l.committed, 0);
-  const called = Math.min(INITIAL_CALL * dp.startCapitalMult, committed);
+  const seedLPs = [createLP('Endowment', 12_000_000 * capMult, rng), createLP('Pension', 13_000_000 * capMult, rng)];
+  const committed = ANCHOR_COMMITMENT * capMult + seedLPs.reduce((a, l) => a + l.committed, 0);
+  const called = Math.min(INITIAL_CALL * capMult, committed);
   fund = {
     ...fund,
     committed,
@@ -124,6 +128,7 @@ export function createSimGame(
     thesis,
     scenario,
     difficulty,
+    mutators,
     economy,
     instruments,
     portfolio,
@@ -317,6 +322,7 @@ export function advanceMonth(state: SimState): SimState {
 
   const rng = new Rng(state.rngState);
   const dp = difficultyParams(state.difficulty ?? DEFAULT_DIFFICULTY);
+  const mp = mutatorParams(state.mutators);
   const month = state.month + 1;
   const events: SimEvent[] = [];
   const ledger: LedgerEntry[] = [];
@@ -344,7 +350,7 @@ export function advanceMonth(state: SimState): SimState {
     crisis = undefined;
   }
   if (!crisis) {
-    const newCrisis = maybeTriggerCrisis(stepped.economy, false, rng, dp.crisisProbMult);
+    const newCrisis = maybeTriggerCrisis(stepped.economy, false, rng, dp.crisisProbMult * mp.crisisMult);
     if (newCrisis) {
       crisis = newCrisis;
       events.push(ev(month, { type: 'blackswan', title: g({ de: `⚠ ${crisis.label} (${crisis.monthsRemaining} Monate)`, en: `⚠ ${crisis.label} (${crisis.monthsRemaining} months)` }), description: g(CRISIS_DESC[crisis.type]) }));
@@ -355,7 +361,7 @@ export function advanceMonth(state: SimState): SimState {
   const economy = crisis ? applyCrisisToEconomy(stepped.economy, crisis) : stepped.economy;
 
   // 2. Market ----------------------------------------------------------------
-  const { instruments, blackSwan } = stepMarket(state.instruments, economy, month, rng, crisisEquityShock(crisis), dp.swanProbMult);
+  const { instruments, blackSwan } = stepMarket(state.instruments, economy, month, rng, crisisEquityShock(crisis), dp.swanProbMult * mp.crisisMult);
   if (blackSwan) {
     events.push(ev(month, { type: 'blackswan', title: g({ de: '🦢 Black Swan', en: '🦢 Black Swan' }), description: g({ de: 'Ein extremer Schock erschüttert die Märkte – gehebelte Positionen sind in Gefahr.', en: 'An extreme shock rocks the markets — leveraged positions are at risk.' }) }));
   }
@@ -505,7 +511,7 @@ export function advanceMonth(state: SimState): SimState {
       const effectiveTarget = Number.isFinite(bench12) ? Math.min(lp.expectedReturn, bench12 + 0.02) : lp.expectedReturn;
       const underperf = Math.max(0, effectiveTarget - LP_TOLERANCE - trailing);
       const pressure = underperf * 1.1 + excessDrawdown * 0.9;
-      const prob = Math.max(0, Math.min(0.4, pressure * (1 - lp.patience)));
+      const prob = Math.max(0, Math.min(0.5, pressure * (1 - lp.patience) * mp.redemptionMult));
       if (rng.chance(prob)) redeemers.push(lp);
       else keep.push(lp);
     }
@@ -857,6 +863,7 @@ export function advanceMonth(state: SimState): SimState {
     thesis: state.thesis,
     scenario: state.scenario,
     difficulty: state.difficulty ?? DEFAULT_DIFFICULTY,
+    mutators: state.mutators,
     // Persist the canonical economy; the crisis spike is transient (this month
     // only) so it can't ratchet the vol index upward across months.
     economy: stepped.economy,

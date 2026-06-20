@@ -5,6 +5,7 @@ import { useSimStore } from '../store';
 import { THESES, THESIS_ORDER } from '../thesis';
 import { SCENARIOS, SCENARIO_ORDER } from '../scenarios';
 import { PRESETS, DEFAULT_DIFFICULTY, UNLOCK_AT, difficultyParams, presetLabel, heatLabel, MODIFIER_LABEL, LEVEL_LABEL, ModifierKey, computeUnlocks, levelUnlocked, presetUnlocked, nextUnlockHint, Unlocks } from '../difficulty';
+import { MUTATORS, mutatorScoreMult } from '../mutators';
 import { DifficultyConfig, DifficultyLevel, FundThesis, Scenario } from '../types';
 import { Button, Masthead, Rule } from '../../components/ui';
 import { Segmented } from '../../components/controls';
@@ -34,6 +35,8 @@ export function SimStartScreen() {
   const [thesis, setThesis] = useState<FundThesis>('multistrat');
   const [scenario, setScenario] = useState<Scenario>('normal');
   const [difficulty, setDifficulty] = useState<DifficultyConfig>(DEFAULT_DIFFICULTY);
+  const [mutators, setMutators] = useState<string[]>([]);
+  const toggleMutator = (id: string) => setMutators((m) => (m.includes(id) ? m.filter((x) => x !== id) : [...m, id]));
   const dp = difficultyParams(difficulty);
   const trimmedName = officeName.trim();
   const canStart = trimmedName.length >= 2;
@@ -155,14 +158,25 @@ export function SimStartScreen() {
           options={[{ label: t({ de: 'Aus', en: 'Off' }), value: '0' }, { label: t({ de: 'An', en: 'On' }), value: '1', disabled: !unlocks.ironman }]}
         />
       </View>
+      <Text style={styles.tuneLabel}>{t({ de: 'Mutatoren (optional)', en: 'Mutators (optional)' })}</Text>
+      {MUTATORS.map((m) => (
+        <SelectRow
+          key={m.id}
+          label={`${t(m.label)}  ·  ×${m.scoreMult.toFixed(2)}`}
+          blurb={t(m.blurb)}
+          selected={mutators.includes(m.id)}
+          onPress={() => toggleMutator(m.id)}
+        />
+      ))}
+
       <Text style={styles.heatLine}>
-        {t({ de: 'Härtegrad', en: 'Heat' })}: {heatLabel(dp.heat, lang)} ({dp.heat >= 0 ? '+' : ''}{dp.heat}) · Score ×{dp.scoreMult.toFixed(2)}
+        {t({ de: 'Härtegrad', en: 'Heat' })}: {heatLabel(dp.heat, lang)} ({dp.heat >= 0 ? '+' : ''}{dp.heat}) · Score ×{(dp.scoreMult * mutatorScoreMult(mutators)).toFixed(2)}
       </Text>
 
       <Rule />
       <Button
         title={canStart ? t({ de: 'Erste Ausgabe drucken', en: 'Print the First Edition' }) : t({ de: 'Erst dem Haus einen Namen geben', en: 'First give the house a name' })}
-        onPress={() => newGame({ thesis, scenario, officeName: trimmedName, difficulty })}
+        onPress={() => newGame({ thesis, scenario, officeName: trimmedName, difficulty, mutators })}
         variant="primary"
         disabled={!canStart}
         style={styles.cta}

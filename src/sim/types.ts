@@ -714,6 +714,8 @@ export interface SimState {
   thesis: FundThesis;
   scenario: Scenario;
   difficulty: DifficultyConfig;
+  /** Active roguelike mutators (rule-flips chosen before the run). */
+  mutators?: string[];
 
   economy: EconomyState;
   instruments: Instrument[];
