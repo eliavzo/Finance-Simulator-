@@ -7,9 +7,35 @@
  * deploy capital. People cost salaries, get demoralised when the firm is
  * over-stretched or unprofitable, and quit if morale collapses.
  */
-import { Employee, FirmState, FundThesis, Infrastructure, Role } from './types';
+import { Employee, EmployeeTrait, FirmState, FundThesis, Infrastructure, Role } from './types';
 import { THESES } from './thesis';
 import { Rng } from '../engine/rng';
+
+/* -------------------------------- Traits --------------------------------- */
+
+/** Per-trait effects: output multiplier, attrition multiplier, morale tweak. */
+const TRAIT_FX: Record<EmployeeTrait, { eff: number; quit: number; morale: number }> = {
+  star: { eff: 1.25, quit: 1.0, morale: 0 },
+  mentor: { eff: 1.0, quit: 0.8, morale: 0 },
+  ironNerves: { eff: 1.0, quit: 0.7, morale: 0 },
+  rainmaker: { eff: 1.0, quit: 1.0, morale: 0 },
+  workaholic: { eff: 1.18, quit: 1.1, morale: -8 },
+  volatile: { eff: 1.12, quit: 1.7, morale: 0 },
+  loyal: { eff: 0.95, quit: 0.35, morale: 4 },
+};
+
+/** Output effectiveness multiplier from an employee's traits. */
+export function effectiveness(emp: Employee): number {
+  return (emp.traits ?? []).reduce((m, t) => m * (TRAIT_FX[t]?.eff ?? 1), 1);
+}
+
+/** Randomly assign 0–1 traits; stronger talent skews toward better traits. */
+function assignTraits(rng: Rng, skill: number): EmployeeTrait[] {
+  if (!rng.chance(0.6)) return [];
+  const pool: EmployeeTrait[] = ['mentor', 'ironNerves', 'rainmaker', 'workaholic', 'volatile', 'loyal'];
+  if (skill >= 72) pool.push('star', 'star');
+  return [rng.pick(pool)];
+}
 
 /* ------------------------------ Salaries --------------------------------- */
 
@@ -81,7 +107,7 @@ function makeName(rng: Rng): string {
   return `${rng.pick(FIRST_NAMES)} ${LAST_NAMES[surnameCursor]}`;
 }
 
-export function createEmployee(role: Role, skill: number, rng: Rng, month: number): Employee {
+export function createEmployee(role: Role, skill: number, rng: Rng, month: number, traits?: EmployeeTrait[]): Employee {
   empCounter += 1;
   return {
     id: `emp-${month}-${empCounter}`,
@@ -91,6 +117,7 @@ export function createEmployee(role: Role, skill: number, rng: Rng, month: numbe
     salary: fairSalary(role, skill),
     morale: 75,
     hiredMonth: month,
+    traits: traits ?? assignTraits(rng, skill),
   };
 }
 
@@ -130,19 +157,23 @@ const ROLE_OF = (emps: Employee[], role: Role) => emps.filter((e) => e.role === 
 /** Effective contribution of a set of employees (skill × morale), with
  *  diminishing returns so the 5th analyst adds less than the 1st. */
 function teamScore(emps: Employee[]): number {
-  const contribution = emps.reduce((acc, e) => acc + (e.skill / 100) * (0.4 + (0.6 * e.morale) / 100), 0);
+  const contribution = emps.reduce((acc, e) => acc + (e.skill / 100) * (0.4 + (0.6 * e.morale) / 100) * effectiveness(e), 0);
   return 1 - Math.exp(-0.7 * contribution);
 }
+
+const countTrait = (emps: Employee[], trait: EmployeeTrait) => emps.filter((e) => (e.traits ?? []).includes(trait)).length;
 
 export function firmCapabilities(firm: FirmState, reputation: number, thesis?: FundThesis): FirmCapabilities {
   const e = firm.employees;
   const infra = firm.infrastructure;
   const t = thesis ? THESES[thesis].cap : { research: 0, execution: 0, risk: 0, fundraising: 0, capacity: 0 };
 
-  const research = Math.min(1, teamScore([...ROLE_OF(e, 'Analyst'), ...ROLE_OF(e, 'Quant')]) * 0.8 + infra.dataTier * 0.06 + t.research);
-  const execution = Math.min(1, teamScore([...ROLE_OF(e, 'Trader'), ...ROLE_OF(e, 'Quant')]) * 0.8 + infra.quantTier * 0.07 + t.execution);
-  const risk = Math.min(1, teamScore([...ROLE_OF(e, 'RiskManager'), ...ROLE_OF(e, 'Quant')]) * 0.85 + infra.quantTier * 0.05 + t.risk);
-  const fundraising = Math.min(1, teamScore(ROLE_OF(e, 'InvestorRelations')) * 0.7 + reputation / 200 + t.fundraising);
+  // A mentor lifts the whole team; specialists add a focused capability bump.
+  const mentorBonus = countTrait(e, 'mentor') > 0 ? 0.04 : 0;
+  const research = Math.min(1, teamScore([...ROLE_OF(e, 'Analyst'), ...ROLE_OF(e, 'Quant')]) * 0.8 + infra.dataTier * 0.06 + t.research + mentorBonus);
+  const execution = Math.min(1, teamScore([...ROLE_OF(e, 'Trader'), ...ROLE_OF(e, 'Quant')]) * 0.8 + infra.quantTier * 0.07 + t.execution + mentorBonus);
+  const risk = Math.min(1, teamScore([...ROLE_OF(e, 'RiskManager'), ...ROLE_OF(e, 'Quant')]) * 0.85 + infra.quantTier * 0.05 + t.risk + mentorBonus + countTrait(e, 'ironNerves') * 0.05);
+  const fundraising = Math.min(1, teamScore(ROLE_OF(e, 'InvestorRelations')) * 0.7 + reputation / 200 + t.fundraising + mentorBonus + countTrait(e, 'rainmaker') * 0.07);
 
   const pmCount = ROLE_OF(e, 'PortfolioManager').length;
   const cooCount = ROLE_OF(e, 'COO').length;
@@ -187,23 +218,34 @@ export function stepFirm(firm: FirmState, ctx: FirmStepContext, rng: Rng): FirmS
 
   const departures: Employee[] = [];
   const survivors: Employee[] = [];
+  const mentorPresent = firm.employees.some((e) => (e.traits ?? []).includes('mentor'));
 
   for (const emp of firm.employees) {
+    const traits = emp.traits ?? [];
+    const traitMorale = traits.reduce((a, tr) => a + (TRAIT_FX[tr]?.morale ?? 0), 0);
+    const traitQuit = traits.reduce((m, tr) => m * (TRAIT_FX[tr]?.quit ?? 1), 1);
+
     // Target morale: high when not overloaded, profitable, good reputation.
     let target = 80;
     if (overloaded) target -= Math.min(40, (overloadRatio - 1) * 60);
     if (!ctx.profitable) target -= 12;
     target += (ctx.reputation - 50) * 0.2;
+    target += traitMorale + (mentorPresent ? 6 : 0);
     target = Math.max(10, Math.min(95, target));
 
-    const morale = Math.max(0, Math.min(100, emp.morale + (target - emp.morale) * 0.25 + rng.normal(0, 3)));
+    const noise = traits.includes('volatile') ? 6 : 3;
+    const morale = Math.max(0, Math.min(100, emp.morale + (target - emp.morale) * 0.25 + rng.normal(0, noise)));
 
-    // Attrition: chance rises sharply as morale falls below 40.
-    const quitProb = morale < 40 ? (40 - morale) / 100 : 0.01;
+    // Experience: skill creeps up over time, faster with a mentor and high morale.
+    const growth = (mentorPresent ? 0.32 : 0.16) * (0.5 + morale / 200);
+    const skill = Math.min(99, emp.skill + (emp.skill < 99 ? growth : 0));
+
+    // Attrition: chance rises sharply as morale falls below 40, scaled by traits.
+    const quitProb = (morale < 40 ? (40 - morale) / 100 : 0.01) * traitQuit;
     if (rng.chance(quitProb)) {
-      departures.push({ ...emp, morale });
+      departures.push({ ...emp, morale, skill });
     } else {
-      survivors.push({ ...emp, morale });
+      survivors.push({ ...emp, morale, skill });
     }
   }
 

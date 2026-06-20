@@ -215,6 +215,9 @@ export type Role =
   | 'InvestorRelations'
   | 'COO';
 
+/** Personality traits that modify an employee's output and behaviour. */
+export type EmployeeTrait = 'star' | 'mentor' | 'ironNerves' | 'rainmaker' | 'workaholic' | 'volatile' | 'loyal';
+
 export interface Employee {
   id: string;
   name: string;
@@ -226,6 +229,8 @@ export interface Employee {
   /** Morale in [0, 100]; low morale risks attrition & cuts productivity. */
   morale: number;
   hiredMonth: number;
+  /** Personality traits (0–1 of them). */
+  traits?: EmployeeTrait[];
 }
 
 /** Upgradeable infrastructure tiers (0 = none). Higher tiers cost more opex. */

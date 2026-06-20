@@ -624,6 +624,7 @@ export function applyDecision(state: SimState, choiceIndex: number, rng: Rng): S
         salary: fairSalary(e.hireStar, 85) * 1.35,
         morale: 80,
         hiredMonth: state.month,
+        traits: ['star'],
       };
       firm = { ...firm, employees: [...firm.employees, star] };
     }

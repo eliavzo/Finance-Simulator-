@@ -4,7 +4,7 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSimStore, useCapabilities } from '../store';
 import { Employee, Infrastructure, Role } from '../types';
 import { monthlyPayroll, infraMonthlyOpex, upgradeCost, MAX_TIER } from '../firm';
-import { ROLE_LABEL } from '../labels';
+import { ROLE_LABEL, TRAIT_LABEL } from '../labels';
 import { THESES } from '../thesis';
 import { SimHeader } from './SimHeader';
 import { TabTip } from '../../components/TabTip';
@@ -91,7 +91,12 @@ export function FirmScreen() {
             <View key={e.id} style={styles.empRow}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.empName}>{e.name}</Text>
-                <Text style={styles.empMeta}>{t(ROLE_LABEL[e.role])} · Skill {e.skill} · {fmtMoney(e.salary)}/{t({ de: 'J', en: 'yr' })}</Text>
+                <Text style={styles.empMeta}>{t(ROLE_LABEL[e.role])} · Skill {Math.round(e.skill)} · {fmtMoney(e.salary)}/{t({ de: 'J', en: 'yr' })}</Text>
+                {(e.traits ?? []).length > 0 ? (
+                  <View style={styles.traitRow}>
+                    {(e.traits ?? []).map((tr) => <Pill key={tr} text={t(TRAIT_LABEL[tr])} color={colors.accent} />)}
+                  </View>
+                ) : null}
                 <View style={styles.moraleRow}>
                   <Text style={styles.moraleLabel}>{t({ de: 'Moral', en: 'Morale' })}</Text>
                   <View style={{ flex: 1 }}><ProgressBar value={e.morale / 100} color={moraleColor(e.morale)} /></View>
@@ -126,7 +131,12 @@ export function FirmScreen() {
             <View key={c.id} style={styles.candRow}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.empName}>{c.name}</Text>
-                <Text style={styles.empMeta}>{t(ROLE_LABEL[c.role])} · Skill {c.skill} · {fmtMoney(c.salary)}/{t({ de: 'J', en: 'yr' })}</Text>
+                <Text style={styles.empMeta}>{t(ROLE_LABEL[c.role])} · Skill {Math.round(c.skill)} · {fmtMoney(c.salary)}/{t({ de: 'J', en: 'yr' })}</Text>
+                {(c.traits ?? []).length > 0 ? (
+                  <View style={styles.traitRow}>
+                    {(c.traits ?? []).map((tr) => <Pill key={tr} text={t(TRAIT_LABEL[tr])} color={colors.accent} />)}
+                  </View>
+                ) : null}
                 <Text style={styles.hint}>{t({ de: 'Einstellungsgebühr', en: 'Hiring fee' })} {fmtMoney(c.salary * 0.2)}</Text>
               </View>
               <Button title={t({ de: 'Einstellen', en: 'Hire' })} variant="positive" onPress={() => { const r = hire(c); if (!r.ok) notify(t({ de: 'Nicht möglich', en: 'Not possible' }), r.error ?? ''); }} style={styles.smallBtn} />
@@ -182,6 +192,7 @@ const styles = StyleSheet.create({
   infraRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.md, borderTopWidth: 1, borderTopColor: colors.border },
   empName: { color: colors.text, fontSize: 14, fontWeight: '700' },
   empMeta: { color: colors.textMuted, fontSize: 12, marginTop: 2 },
+  traitRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, marginTop: spacing.xs },
   moraleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: spacing.xs },
   moraleLabel: { color: colors.textMuted, fontSize: 10, width: 36 },
   smallBtn: { paddingHorizontal: spacing.md, paddingVertical: spacing.sm },

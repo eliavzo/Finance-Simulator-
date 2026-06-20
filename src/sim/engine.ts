@@ -23,7 +23,7 @@ import { createInstruments, stepMarket } from './market';
 import { THESES } from './thesis';
 import { scenarioEconomy, applyScenarioToInstruments } from './scenarios';
 import { generateObjective, metricValue, isMet, computeScore, localizedObjective } from './objectives';
-import { createRivals, stepRivals, buildLeague, trailingReturn, playerRankFraction } from './rivals';
+import { createRivals, stepRivals, buildLeague, trailingReturn, playerRankFraction, spawnRival } from './rivals';
 import { maybeDecision, buildLpMeeting, buildChain } from './decisions';
 import { maybeOpportunity, payoffMultiple, OPP_LABEL } from './opportunities';
 import { createVC, refreshDeals, stepVC, vcResidualValue } from './vc';
@@ -571,8 +571,15 @@ export function advanceMonth(state: SimState): SimState {
   firm = { ...firm, cash: firm.cash - payroll - infraOpex };
   post('salaries', -payroll);
   post('infraOpex', -infraOpex);
+  const spawnedRivals: ReturnType<typeof spawnRival>[] = [];
   for (const dep of firmStep.departures) {
     events.push(ev(month, { type: 'firm', title: g({ de: 'Kündigung', en: 'Resignation' }), description: g({ de: `${dep.name} (${g(ROLE_LABEL[dep.role])}) verlässt die Firma (Moral ${dep.morale.toFixed(0)}).`, en: `${dep.name} (${g(ROLE_LABEL[dep.role])}) is leaving the firm (morale ${dep.morale.toFixed(0)}).` }) }));
+    // A departing star may set up shop as a new rival.
+    if (dep.skill >= 70 && rng.chance(0.5)) {
+      const r = spawnRival(dep.name, dep.skill, rng);
+      spawnedRivals.push(r);
+      events.push(ev(month, { type: 'firm', title: g({ de: 'Abtrünniger gründet Rivalen', en: 'Defector Founds a Rival' }), description: g({ de: `${dep.name} startet ${r.name} und nimmt Wissen mit.`, en: `${dep.name} launches ${r.name}, taking know-how along.` }) }));
+    }
   }
   if (firm.cash < 0) {
     events.push(ev(month, { type: 'firm', title: g({ de: '⚠️ GP-Liquidität negativ', en: '⚠️ GP liquidity negative' }), description: g({ de: 'Die Management-Gesellschaft verbrennt Cash. Hebe Gebühren über mehr AUM oder reduziere Kosten.', en: 'The management company is burning cash. Raise fees via more AUM or cut costs.' }) }));
@@ -601,7 +608,7 @@ export function advanceMonth(state: SimState): SimState {
   const monthReturn = prevNav > 0 ? fundNav / prevNav - 1 : 0;
 
   // Rivals & league standing.
-  const rivals = stepRivals(state.rivals, economy, rng, dp.rivalSkillBonus);
+  const rivals = [...stepRivals(state.rivals, economy, rng, dp.rivalSkillBonus), ...spawnedRivals].slice(0, 9);
   const playerTrailing = trailingReturn(portfolio.returnHistory, 12);
   const league = buildLeague(rivals, state.firm.name, playerTrailing, fundNav);
   // The league only judges a real track record — neutral standing in year one.

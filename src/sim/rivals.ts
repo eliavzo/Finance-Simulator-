@@ -31,6 +31,23 @@ export function createRivals(rng: Rng): RivalFund[] {
   return out;
 }
 
+let spawnCtr = 0;
+/** A breakaway rival founded by a departing star (`skill` in [0,100]). */
+export function spawnRival(founderName: string, skill: number, rng: Rng): RivalFund {
+  spawnCtr += 1;
+  const last = founderName.split(' ').slice(-1)[0] || founderName;
+  return {
+    id: `rival-spin-${spawnCtr}`,
+    name: `${last} Capital`,
+    thesis: rng.pick(THESIS_KEYS),
+    aum: rng.range(8_000_000, 30_000_000),
+    skill: Math.max(0.35, Math.min(0.95, skill / 100)),
+    reputation: rng.range(40, 60),
+    ytdReturn: 0,
+    monthlyReturns: [],
+  };
+}
+
 /** Trailing-N-month compounded return from a series of monthly returns. */
 export function trailingReturn(returns: number[], n = 12): number {
   if (returns.length === 0) return 0;
