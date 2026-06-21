@@ -33,6 +33,15 @@ describe('difficulty params', () => {
   it('ironman adds a big heat chunk', () => {
     expect(difficultyParams(cfg({ ironman: true })).heat).toBeGreaterThanOrEqual(8);
   });
+
+  it('brutal does not stack the fee hit into a deterministic GP-insolvency clock', () => {
+    const brutal = difficultyParams(cfg({ market: 2, capital: 2, fees: 2, rivals: 2, ironman: true }));
+    // Fee income is base (startCapitalMult) × rate (feeMult). Keep the combined
+    // hit above a floor so a smaller fund can still work toward break-even.
+    expect(brutal.startCapitalMult * brutal.feeMult).toBeGreaterThanOrEqual(0.4);
+    // And the cost base must not blow out relative to that thinner income.
+    expect(brutal.opexMult).toBeLessThanOrEqual(1.25);
+  });
 });
 
 describe('presets', () => {

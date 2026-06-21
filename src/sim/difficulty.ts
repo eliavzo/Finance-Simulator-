@@ -91,9 +91,16 @@ export interface DifficultyParams {
   scoreMult: number;
 }
 
-const START_CAPITAL: Record<DifficultyLevel, number> = { '-1': 1.4, '0': 1, '1': 0.7, '2': 0.5 };
-const OPEX: Record<DifficultyLevel, number> = { '-1': 0.9, '0': 1, '1': 1.15, '2': 1.3 };
-const FEE: Record<DifficultyLevel, number> = { '-1': 1.3, '0': 1, '1': 0.7, '2': 0.5 };
+// GP solvency tuning: management-fee income is hit twice on hard modes — the
+// fund (and thus the fee BASE) shrinks with `startCapitalMult`, while the fee
+// RATE shrinks with `feeMult`. Stacked at level 2 that quartered fee income
+// against a cost base that only rose ~1.3×, making GP insolvency a near-
+// deterministic clock (~29 months) regardless of investment skill. These
+// curves soften the tight/distress steps so a smaller fund can still claw to
+// break-even with good performance, keeping the pressure without the auto-loss.
+const START_CAPITAL: Record<DifficultyLevel, number> = { '-1': 1.4, '0': 1, '1': 0.75, '2': 0.6 };
+const OPEX: Record<DifficultyLevel, number> = { '-1': 0.9, '0': 1, '1': 1.1, '2': 1.2 };
+const FEE: Record<DifficultyLevel, number> = { '-1': 1.3, '0': 1, '1': 0.8, '2': 0.7 };
 const VOL: Record<DifficultyLevel, number> = { '-1': 0.85, '0': 1, '1': 1.25, '2': 1.5 };
 const SHOCK: Record<DifficultyLevel, number> = { '-1': 0.5, '0': 1, '1': 1.7, '2': 2.5 };
 const RIVAL: Record<DifficultyLevel, number> = { '-1': -0.1, '0': 0, '1': 0.12, '2': 0.22 };
